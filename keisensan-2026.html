@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>罫線さん2026</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            400: '#818cf8',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- js-yaml for YAML support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <style>
+        /* Custom Scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+            border: 2px solid #f1f1f1;
+            /* Adds padding around thumb */
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body {
+            overscroll-behavior: none;
+            /* Prevent bounce on Mac */
+        }
+
+        /* Grid specific styles to ensure borders align */
+        .grid-container {
+            isolation: isolate;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-slate-800 font-sans h-screen overflow-hidden">
+    <div id="root" class="h-full"></div>
+
+    <!-- Import Map for cleaner imports -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "@monaco-editor/react": "https://esm.sh/@monaco-editor/react@4.6.0?deps=react@18.2.0,react-dom@18.2.0",
+            "lucide-react": "https://esm.sh/lucide-react@0.294.0?deps=react@18.2.0",
+            "toon": "https://esm.sh/@toon-format/toon"
+        }
+    }
+    </script>
+
+    <!-- App Logic -->
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import Editor from '@monaco-editor/react';
+        import {
+            FileSpreadsheet, ArrowRight, ArrowLeft, Copy, Plus, Trash2,
+            Table, Eye, Code, AlignLeft, MinusCircle, PlusCircle, Settings
+        } from 'lucide-react';
+
+        // --- Utility Functions ---
+
+        const getVisualWidth = (str) => {
+            if (!str) return 0;
+            let width = 0;
+            for (let i = 0; i < str.length; i++) {
+                const code = str.charCodeAt(i);
+                if ((code >= 0x0020 && code <= 0x007E) || (code >= 0xFF61 && code <= 0xFF9F)) {
+                    width += 1;
+                } else {
+                    width += 2;
+                }
+            }
+            return width;
+        };
+
+        const repeatChar = (char, count) => {
+            if (count <= 0) return '';
+            return char.repeat(count);
+        };
+
+        const isNumeric = (num) => {
+            if (!num) return false;
+            return /^[+-]?\d[0-9,]*(\.\d+)?$/.test(String(num).trim());
+        };
+
+        // --- Escaping Utilities ---
+
+        const escapeDataToText = (text) => {
+            if (text === null || text === undefined) return "";
+            return String(text)
+                .replace(/\r?\n/g, "<br>")
+                .replace(/\|/g, "｜")
+                .replace(/\\/g, "\\\\");
+        };
+
+        const unescapeTextToData = (text) => {
+            if (!text) return "";
+            return String(text)
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/｜/g, "|")
+                .replace(/\\\\/g, "\\")
+                .trim();
+        };
+
+        // --- Conversion Logic ---
+
+        const generateGitLab = (data) => {
+            if (!data || data.length === 0) return '';
+            const colCount = Math.max(...data.map(row => row.length));
+
+            const alignments = new Array(colCount).fill('');
+            if (data.length > 0) {
+                const firstRow = data[0];
+                for (let i = 0; i < colCount; i++) {
+                    if (isNumeric(String(firstRow[i] || '').replace(/,/g, ''))) {
+                        alignments[i] = ':';
+                    }
+                }
+            }
+
+            const colWidths = new Array(colCount).fill(3);
+            const formattedData = data.map(row =>
+                Array.from({ length: colCount }).map((_, i) => escapeDataToText(row[i] || ''))
+            );
+
+            formattedData.forEach(row => {
+                row.forEach((cell, i) => {
+                    colWidths[i] = Math.max(colWidths[i], getVisualWidth(cell));
+                });
+            });
+
+            const pad = (str, width) => str + repeatChar(' ', width - getVisualWidth(str));
+            let md = '';
+
+            const headerRow = formattedData[0] || [];
+            md += '| ' + headerRow.map((cell, i) => pad(cell, colWidths[i])).join(' | ') + ' |\n';
+            md += '| ' + colWidths.map((w, i) => {
+                const dash = repeatChar('-', w);
+                return alignments[i] === ':' ? dash + ':' : dash + '-';
+            }).join(' | ') + ' |\n';
+
+            for (let i = 1; i < formattedData.length; i++) {
+                md += '| ' + formattedData[i].map((cell, c) => pad(cell, colWidths[c])).join(' | ') + ' |\n';
+            }
+            return md;
+        };
+
+        const generateKeisen = (data) => {
+            if (!data || data.length === 0) return '';
+
+            const flatData = data.map(row =>
+                row.map(col => String(col || '').replace(/\r?\n/g, " "))
+            );
+
+            const colCount = Math.max(...flatData.map(row => row.length));
+            const colWidths = new Array(colCount).fill(0);
+
+            flatData.forEach(row => {
+                for (let i = 0; i < colCount; i++) {
+                    colWidths[i] = Math.max(colWidths[i], getVisualWidth(row[i]));
+                }
+            });
+
+            const makeSeparator = (char = '-') => '+' + colWidths.map(w => repeatChar(char, w)).join('+') + '+';
+            const sep = makeSeparator('-');
+            let result = [];
+
+            result.push(sep);
+
+            if (flatData.length > 0) {
+                const headerRow = flatData[0];
+                const headerStr = '|' + Array.from({ length: colCount }).map((_, i) => {
+                    const cell = headerRow[i] || '';
+                    const spc = colWidths[i] - getVisualWidth(cell);
+                    return cell + repeatChar(" ", spc);
+                }).join('|') + '|';
+                result.push(headerStr);
+                result.push(sep);
+            }
+
+            for (let i = 1; i < flatData.length; i++) {
+                const row = flatData[i];
+                const rowStr = '|' + Array.from({ length: colCount }).map((_, idx) => {
+                    const cell = row[idx] || '';
+                    const spc = colWidths[idx] - getVisualWidth(cell);
+                    if (isNumeric(cell)) {
+                        return repeatChar(" ", spc) + cell;
+                    } else {
+                        return cell + repeatChar(" ", spc);
+                    }
+                }).join('|') + '|';
+                result.push(rowStr);
+            }
+            result.push(sep);
+            return result.join('\n');
+        };
+
+        const generateRedmine = (data) => {
+            if (!data || data.length === 0) return '';
+            const cols = data[0] || [];
+            const rows = data.slice(1);
+            const result = [];
+            result.push('|' + cols.map(c => "_. " + escapeDataToText(c)).join(" |") + " |");
+            rows.forEach(row => {
+                const escapedRow = row.map(v => escapeDataToText(v));
+                result.push("| " + escapedRow.join(" | ") + " |");
+            });
+            return result.join("\n");
+        };
+
+        const generateHTML = (data) => {
+            if (!data || data.length === 0) return '';
+            const cols = data[0] || [];
+            const rows = data.slice(1);
+            const result = ["<table border=\"1\">"];
+            result.push("  <tr><th>" + cols.map(escapeDataToText).join("</th><th>") + "</th></tr>");
+            rows.forEach(row => {
+                const escapedRow = row.map(v => escapeDataToText(v));
+                result.push("  <tr><td>" + escapedRow.join("</td><td>") + "</td></tr>");
+            });
+            result.push("</table>");
+            return result.join("\n");
+        };
+
+        const dataToObjects = (data) => {
+            if (!data || data.length < 2) return [];
+            const headers = data[0];
+            const rows = data.slice(1);
+
+            return rows.map(row => {
+                const obj = {};
+                headers.forEach((h, i) => {
+                    if (h) obj[h] = row[i] || "";
+                });
+                return obj;
+            });
+        };
+
+        const generateJSON = (data) => {
+            const result = dataToObjects(data);
+            return JSON.stringify(result, null, 2);
+        };
+
+        const generateJSONL = (data) => {
+            const result = dataToObjects(data);
+            return result.map(obj => JSON.stringify(obj)).join('\n');
+        };
+
+        const generateYAML = (data) => {
+            const result = dataToObjects(data);
+            if (typeof jsyaml === 'undefined') return 'Error: js-yaml library not loaded';
+            return jsyaml.dump(result);
+        };
+
+        const generateToon = async (data) => {
+            if (!data || data.length === 0) return '';
+            try {
+                // Dynamic import for Toon
+                const { encode } = await import('toon');
+                const result = dataToObjects(data);
+
+                if (typeof encode === 'function') {
+                    return encode(result);
+                } else {
+                    return "Error: Toon library loaded but 'encode' method not found.";
+                }
+            } catch (e) {
+                console.error("Toon generation error:", e);
+                return `Error loading Toon library: ${e.message}\nMake sure your network allows access to esm.sh`;
+            }
+        };
+
+        const generateTSV = (data) => {
+            if (!data || data.length === 0) return '';
+            return data.map(row => row.join('\t')).join('\n');
+        };
+
+        const generateCSV = (data) => {
+            if (!data || data.length === 0) return '';
+            const escapeCsvCell = (cell) => {
+                const str = String(cell || '');
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            };
+            return data.map(row => row.map(escapeCsvCell).join(',')).join('\n');
+        };
+
+        // --- Import Logic ---
+
+        const textToGrid = async (text, format) => {
+            if (!text) return [['']];
+
+            // YAML Logic
+            if (format === 'YAML') {
+                if (typeof jsyaml === 'undefined') return [['Error: js-yaml not loaded']];
+                try {
+                    const yamlObj = jsyaml.load(text);
+                    if (Array.isArray(yamlObj) && yamlObj.length > 0) {
+                        const headers = Object.keys(yamlObj[0]);
+                        const rows = yamlObj.map(obj => headers.map(h => {
+                            const val = obj[h];
+                            return val === null || val === undefined ? "" : String(val);
+                        }));
+                        return [headers, ...rows];
+                    }
+                } catch (e) {
+                    console.error("Invalid YAML", e);
+                    return [['Error: Invalid YAML']];
+                }
+                return [['']];
+            }
+
+            // Toon Logic
+            if (format === 'Toon') {
+                try {
+                    const { decode } = await import('toon');
+                    if (typeof decode === 'function') {
+                        const decoded = decode(text);
+                        let json = decoded;
+
+                        // Support Object root with array inside (e.g. { users: [...] })
+                        // Find the first value that is an array
+                        if (json && !Array.isArray(json) && typeof json === 'object') {
+                            const arrayValue = Object.values(json).find(v => Array.isArray(v));
+                            if (arrayValue) {
+                                json = arrayValue;
+                            }
+                        }
+
+                        if (Array.isArray(json) && json.length > 0) {
+                            const headers = Object.keys(json[0]);
+                            const rows = json.map(obj => headers.map(h => {
+                                const val = obj[h];
+                                return val === null || val === undefined ? "" : String(val);
+                            }));
+                            return [headers, ...rows];
+                        }
+                        return [['Error: Toon data must contain an array of objects']];
+                    } else {
+                        return [['Error: Toon library loaded but decode method not found.']];
+                    }
+                } catch (e) {
+                    console.error("Invalid Toon", e);
+                    return [['Error: Invalid Toon format or library error: ' + e.message]];
+                }
+            }
+
+            // JSON Logic
+            if (format === 'JSON') {
+                try {
+                    const json = JSON.parse(text);
+                    if (Array.isArray(json) && json.length > 0) {
+                        const headers = Object.keys(json[0]);
+                        const rows = json.map(obj => headers.map(h => {
+                            const val = obj[h];
+                            return val === null || val === undefined ? "" : String(val);
+                        }));
+                        return [headers, ...rows];
+                    }
+                } catch (e) {
+                    console.error("Invalid JSON", e);
+                    return [['Error: Invalid JSON']];
+                }
+                return [['']];
+            }
+
+            // JSONL Logic
+            if (format === 'JSONL') {
+                try {
+                    const lines = text.trim().split(/\r?\n/);
+                    const jsonRows = lines.map(l => JSON.parse(l));
+                    if (jsonRows.length > 0) {
+                        const headers = Object.keys(jsonRows[0]);
+                        const rows = jsonRows.map(obj => headers.map(h => {
+                            const val = obj[h];
+                            return val === null || val === undefined ? "" : String(val);
+                        }));
+                        return [headers, ...rows];
+                    }
+                } catch (e) {
+                    console.error("Invalid JSONL", e);
+                    return [['Error: Invalid JSONL']];
+                }
+                return [['']];
+            }
+
+            // TSV/CSV Logic
+            if (format === 'TSV') {
+                const lines = text.trim().split(/\r?\n/);
+                return lines.map(line => line.split('\t'));
+            }
+            
+            if (format === 'CSV') {
+                const lines = text.trim().split(/\r?\n/);
+                return lines.map(line => {
+                    const cols = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') {
+                            if (inQuotes && line[i + 1] === '"') {
+                                current += '"';
+                                i++;
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            cols.push(current);
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    cols.push(current);
+                    return cols;
+                });
+            }
+
+            // Text Logic (Synchronous part)
+            let lines = text.trim().split(/\r?\n/);
+
+            if (format === 'Keisen') {
+                lines = lines.filter(line => !/^\+[+\-]+\+$/.test(line.trim()));
+            }
+            else if (format === 'Markdown' || format === 'GitLab') {
+                lines = lines.filter(line => !/^\|?[\s\-:|+]+\|?$/.test(line.trim()));
+            }
+            else if (format === 'HTML') {
+                if (text.includes('<table')) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const table = doc.querySelector('table');
+                    if (table) {
+                        const rows = [];
+                        table.querySelectorAll('tr').forEach(tr => {
+                            const row = [];
+                            tr.querySelectorAll('td, th').forEach(td => row.push(td.innerText));
+                            rows.push(row);
+                        });
+                        return rows.length ? rows : [['']];
+                    }
+                }
+            }
+
+            const grid = lines.map(line => {
+                const cols = line.split('|');
+                if (cols.length >= 2 && line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                    return cols.slice(1, -1).map(col => unescapeTextToData(col));
+                } else {
+                    if (line.includes('\t')) return line.split('\t');
+                    return cols.map(col => unescapeTextToData(col));
+                }
+            });
+
+            if (format === 'Redmine' && grid.length > 0) {
+                grid[0] = grid[0].map(col => col.replace(/^_\.\s*/, '').trim());
+            }
+            return grid.length ? grid : [['']];
+        };
+
+        // --- Components ---
+
+        const Spreadsheet = ({ data, onChange }) => {
+            const [selectedCell, setSelectedCell] = useState(null);
+            const [colWidths, setColWidths] = useState({});
+            const resizingRef = useRef(null);
+            const containerRef = useRef(null);
+            const dragScrollRef = useRef({ isDown: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
+            useEffect(() => {
+                // Auto-fit logic could go here
+            }, []);
+
+            const getColWidth = (index) => colWidths[index] || 80;
+
+            const displayData = useMemo(() => {
+                const rows = Math.max(data.length, 25); // Minimum 25 rows to fill screen
+                const cols = Math.max(Math.max(...data.map(r => r.length), 0), 10); // Minimum 10 cols
+                return { rows, cols };
+            }, [data]);
+
+            const totalTableWidth = useMemo(() => {
+                let w = 40;
+                for (let i = 0; i < displayData.cols; i++) {
+                    w += getColWidth(i);
+                }
+                return w;
+            }, [displayData.cols, colWidths]);
+
+            // Resize Handlers
+            const startResize = (e, index) => {
+                e.preventDefault();
+                e.stopPropagation();
+                resizingRef.current = {
+                    index,
+                    startX: e.clientX,
+                    startWidth: getColWidth(index)
+                };
+                document.addEventListener('mousemove', handleResizeMove);
+                document.addEventListener('mouseup', handleResizeEnd);
+            };
+
+            const handleResizeMove = (e) => {
+                if (!resizingRef.current) return;
+                const { index, startX, startWidth } = resizingRef.current;
+                const diff = e.clientX - startX;
+                const newWidth = Math.max(40, startWidth + diff);
+                setColWidths(prev => ({ ...prev, [index]: newWidth }));
+            };
+
+            const handleResizeEnd = () => {
+                resizingRef.current = null;
+                document.removeEventListener('mousemove', handleResizeMove);
+                document.removeEventListener('mouseup', handleResizeEnd);
+            };
+
+            // Drag Scroll Handlers
+            const handleMouseDown = (e) => {
+                if (e.button !== 0 || resizingRef.current) return;
+                dragScrollRef.current = {
+                    isDown: true,
+                    startX: e.pageX - containerRef.current.offsetLeft,
+                    startY: e.pageY - containerRef.current.offsetTop,
+                    scrollLeft: containerRef.current.scrollLeft,
+                    scrollTop: containerRef.current.scrollTop
+                };
+            };
+
+            const handleMouseLeave = () => {
+                dragScrollRef.current.isDown = false;
+            };
+
+            const handleMouseUp = () => {
+                dragScrollRef.current.isDown = false;
+            };
+
+            const handleMouseMove = (e) => {
+                if (!dragScrollRef.current.isDown) return;
+                if (resizingRef.current) return;
+
+                const x = e.pageX - containerRef.current.offsetLeft;
+                const y = e.pageY - containerRef.current.offsetTop;
+                const walkX = (x - dragScrollRef.current.startX);
+                const walkY = (y - dragScrollRef.current.startY);
+
+                if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                    containerRef.current.scrollLeft = dragScrollRef.current.scrollLeft - walkX;
+                    containerRef.current.scrollTop = dragScrollRef.current.scrollTop - walkY;
+                }
+            };
+
+            const handlePaste = (e, rowIndex, colIndex) => {
+                e.preventDefault();
+                const pasteData = e.clipboardData.getData('text');
+                const rows = pasteData.split(/\r?\n/);
+                if (rows.length === 1 && !rows[0].includes('\t')) {
+                    const newData = [...data];
+                    if (!newData[rowIndex]) newData[rowIndex] = [];
+                    newData[rowIndex][colIndex] = rows[0];
+                    onChange(newData);
+                    return;
+                }
+                const newData = [...data];
+                rows.forEach((row, rIdx) => {
+                    if (!row && rIdx === rows.length - 1) return;
+                    const cols = row.split('\t');
+                    cols.forEach((cell, cIdx) => {
+                        const targetRow = rowIndex + rIdx;
+                        const targetCol = colIndex + cIdx;
+                        if (!newData[targetRow]) newData[targetRow] = [];
+                        newData[targetRow][targetCol] = cell;
+                    });
+                });
+                onChange(newData);
+            };
+
+            const handleChange = (val, r, c) => {
+                const newData = [...data];
+                if (!newData[r]) newData[r] = [];
+                newData[r][c] = val;
+                onChange(newData);
+            };
+
+            const addRow = () => {
+                const newData = [...data];
+                const targetIndex = selectedCell ? selectedCell.r + 1 : newData.length;
+                const colCount = Math.max(...newData.map(r => r.length), 3);
+                newData.splice(targetIndex, 0, new Array(colCount).fill(''));
+                onChange(newData);
+            };
+
+            const removeRow = () => {
+                if (!selectedCell) return;
+                const newData = data.filter((_, idx) => idx !== selectedCell.r);
+                if (newData.length === 0) newData.push([]);
+                onChange(newData);
+                setSelectedCell(null);
+            };
+
+            const addColumn = () => {
+                const newData = data.map(row => {
+                    const newRow = [...(row || [])];
+                    const targetIndex = selectedCell ? selectedCell.c + 1 : newRow.length;
+                    newRow.splice(targetIndex, 0, '');
+                    return newRow;
+                });
+                if (newData.length === 0) newData.push(['']);
+                onChange(newData);
+            };
+
+            const removeColumn = () => {
+                if (!selectedCell) return;
+                const newData = data.map(row => {
+                    const newRow = [...(row || [])];
+                    newRow.splice(selectedCell.c, 1);
+                    return newRow;
+                });
+                onChange(newData);
+                setSelectedCell(null);
+            };
+
+            return React.createElement("div", { className: "flex flex-col h-full w-full" },
+                // Toolbar
+                React.createElement("div", { className: "flex items-center gap-2 p-1 border-b bg-gray-50 text-xs shrink-0" },
+                    React.createElement("div", { className: "flex items-center gap-1 border-r pr-2" },
+                        React.createElement("span", { className: "text-gray-400 px-1" }, "Row:"),
+                        React.createElement("button", { onClick: addRow, className: "p-1 hover:bg-gray-200 rounded text-gray-700 flex items-center gap-1", title: "Add Row Below" }, React.createElement(PlusCircle, { size: 14 }), " Add"),
+                        React.createElement("button", { onClick: removeRow, disabled: !selectedCell, className: `p-1 rounded flex items-center gap-1 ${!selectedCell ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}`, title: "Remove Selected Row" }, React.createElement(MinusCircle, { size: 14 }), " Del")
+                    ),
+                    React.createElement("div", { className: "flex items-center gap-1" },
+                        React.createElement("span", { className: "text-gray-400 px-1" }, "Col:"),
+                        React.createElement("button", { onClick: addColumn, className: "p-1 hover:bg-gray-200 rounded text-gray-700 flex items-center gap-1", title: "Add Column Right" }, React.createElement(PlusCircle, { size: 14 }), " Add"),
+                        React.createElement("button", { onClick: removeColumn, disabled: !selectedCell, className: `p-1 rounded flex items-center gap-1 ${!selectedCell ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}`, title: "Remove Selected Column" }, React.createElement(MinusCircle, { size: 14 }), " Del")
+                    ),
+                    React.createElement("div", { className: "ml-auto text-gray-400 px-2" },
+                        selectedCell ? `Selected: ${String.fromCharCode(65 + (selectedCell.c % 26))}${selectedCell.r + 1}` : 'Select a cell to edit'
+                    )
+                ),
+                // Table Container
+                React.createElement("div", {
+                    ref: containerRef,
+                    onMouseDown: handleMouseDown,
+                    onMouseLeave: handleMouseLeave,
+                    onMouseUp: handleMouseUp,
+                    onMouseMove: handleMouseMove,
+                    className: "flex-1 bg-white relative cursor-cell overflow-auto grid-container",
+                },
+                    React.createElement("div", { style: { width: `${Math.max(totalTableWidth, 100)}px`, minWidth: '100%', height: '100%' } },
+                        React.createElement("table", { className: "border-collapse table-fixed bg-white w-full" },
+                            React.createElement("thead", null,
+                                React.createElement("tr", null,
+                                    React.createElement("th", { className: "w-10 bg-gray-100 border p-1 text-gray-500 font-normal sticky top-0 left-0 z-20 select-none border-b-gray-300 border-r-gray-300" }),
+                                    Array.from({ length: displayData.cols }).map((_, i) =>
+                                        React.createElement("th", {
+                                            key: i,
+                                            style: { width: `${getColWidth(i)}px` },
+                                            className: `bg-gray-100 border border-gray-300 p-1 text-gray-600 font-normal sticky top-0 z-10 group select-none ${selectedCell?.c === i ? 'bg-indigo-50 text-indigo-700 font-bold' : ''}`
+                                        },
+                                            String.fromCharCode(65 + (i % 26)),
+                                            React.createElement("div", {
+                                                onMouseDown: (e) => startResize(e, i),
+                                                className: "absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400 z-30"
+                                            })
+                                        )
+                                    )
+                                )
+                            ),
+                            React.createElement("tbody", null,
+                                Array.from({ length: displayData.rows }).map((_, r) =>
+                                    React.createElement("tr", { key: r },
+                                        React.createElement("td", { className: `bg-gray-50 border border-gray-300 text-center text-gray-500 text-xs sticky left-0 z-10 font-mono select-none ${selectedCell?.r === r ? 'bg-indigo-50 text-indigo-700 font-bold' : ''}` }, r + 1),
+                                        Array.from({ length: displayData.cols }).map((_, c) =>
+                                            React.createElement("td", {
+                                                key: `${r}-${c}`,
+                                                className: `border border-gray-200 p-0 relative overflow-hidden ${selectedCell?.r === r && selectedCell?.c === c ? 'ring-2 ring-indigo-400 z-0' : ''}`
+                                            },
+                                                React.createElement("input", {
+                                                    className: "w-full h-full px-2 py-1 outline-none focus:bg-blue-50 absolute inset-0 bg-transparent text-ellipsis",
+                                                    value: data[r]?.[c] || '',
+                                                    onChange: (e) => handleChange(e.target.value, r, c),
+                                                    onPaste: (e) => handlePaste(e, r, c),
+                                                    onFocus: () => setSelectedCell({ r, c })
+                                                })
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        const App = () => {
+            const [sheets, setSheets] = useState([
+                { id: 1, name: 'Sheet1', data: [['ID', 'Name', 'Description'], ['1', 'Apple', 'Red Fruit'], ['2', 'Banana', 'Yellow Fruit']] }
+            ]);
+            const [activeSheetId, setActiveSheetId] = useState(1);
+            const [outputMode, setOutputMode] = useState('GitLab');
+            const [outputText, setOutputText] = useState('');
+            const [viewMode, setViewMode] = useState('editor');
+            const [isSyncing, setIsSyncing] = useState(false);
+
+            const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
+
+            const updateSheetData = (newData) => {
+                setSheets(prev => prev.map(sheet =>
+                    sheet.id === activeSheetId ? { ...sheet, data: newData } : sheet
+                ));
+            };
+
+            const addSheet = () => {
+                const newId = Math.max(...sheets.map(s => s.id)) + 1;
+                setSheets([...sheets, { id: newId, name: `Sheet${newId}`, data: [['', '', '']] }]);
+                setActiveSheetId(newId);
+            };
+
+            const removeSheet = (e, id) => {
+                e.stopPropagation();
+                if (sheets.length === 1) return;
+                const newSheets = sheets.filter(s => s.id !== id);
+                setSheets(newSheets);
+                if (id === activeSheetId) {
+                    setActiveSheetId(newSheets[0].id);
+                }
+            };
+
+            useEffect(() => {
+                if (isSyncing) return;
+                const run = async () => {
+                    let result = '';
+                    switch (outputMode) {
+                        case 'GitLab':
+                        case 'Markdown': result = generateGitLab(activeSheet.data); break;
+                        case 'Keisen':
+                        case 'ASCII': result = generateKeisen(activeSheet.data); break;
+                        case 'Redmine': result = generateRedmine(activeSheet.data); break;
+                        case 'HTML': result = generateHTML(activeSheet.data); break;
+                        case 'JSON': result = generateJSON(activeSheet.data); break;
+                        case 'JSONL': result = generateJSONL(activeSheet.data); break;
+                        case 'YAML': result = generateYAML(activeSheet.data); break;
+                        case 'Toon': result = await generateToon(activeSheet.data); break;
+                        case 'TSV': result = generateTSV(activeSheet.data); break;
+                        case 'CSV': result = generateCSV(activeSheet.data); break;
+                        default: result = generateGitLab(activeSheet.data);
+                    }
+                    setOutputText(result);
+                };
+                run();
+            }, [activeSheet.data, outputMode]);
+
+            const handleReverseConvert = async () => {
+                setIsSyncing(true);
+                try {
+                    const grid = await textToGrid(outputText, outputMode);
+                    updateSheetData(grid);
+                } finally {
+                    setTimeout(() => setIsSyncing(false), 100);
+                }
+            };
+
+            /**
+             * execCommand('copy') を使ったフォールバック処理
+             * iframe環境などでnavigator.clipboardがブロックされる場合に作動
+             */
+            const copyUsingExecCommand = async (plainText,htmlText) => {
+                // 1. copyイベントを一時的にフックする
+                const listener = (e) => {
+                    e.preventDefault(); // デフォルトのコピー処理をキャンセル
+                    if (e.clipboardData) {
+                        e.clipboardData.setData('text/plain', plainText);
+                        e.clipboardData.setData('text/html', htmlText);
+                    }
+                };
+                document.addEventListener('copy', listener);
+
+                // 2. execCommandを発火させるためのダミー選択範囲を作る
+                const dummy = document.createElement('div');
+                dummy.textContent = 'dummy selection';
+                dummy.style.position = 'fixed';
+                dummy.style.opacity = '0';
+                dummy.style.pointerEvents = 'none';
+                document.body.appendChild(dummy);
+
+                const range = document.createRange();
+                range.selectNode(dummy);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                let success = false;
+                try {
+                    // ここでcopyイベントが発火し、上のlistenerが呼ばれる
+                    success = document.execCommand('copy');
+                    console.log("Fallback execCommand result:", success);
+                } catch (e) {
+                    console.warn("execCommand error:", e);
+                } finally {
+                    // 後始末
+                    document.removeEventListener('copy', listener);
+                    document.body.removeChild(dummy);
+                    selection.removeAllRanges();
+                }
+                return success;
+            }
+
+            const handleCopy = async () => {
+                try {
+                    if (outputMode === 'CSV' || outputMode === 'TSV') {
+                        // CSV/TSVの場合は、TSV形式とHTML TABLE形式の両方でコピー
+                        const tsvData = generateTSV(activeSheet.data);
+                        const htmlTableData = generateHTML(activeSheet.data);
+                        await copyUsingExecCommand(tsvData, htmlTableData);
+                    } else {
+                        // それ以外のフォーマットは通常通りテキストとしてコピー
+                        await navigator.clipboard.writeText(outputText);
+                    }
+                } catch (err) {
+                    console.error('コピーに失敗しました:', err);
+                    // フォールバック: 通常のテキストコピー
+                    navigator.clipboard.writeText(outputText);
+                }
+            };
+
+            const getMonacoLanguage = (mode) => {
+                switch (mode) {
+                    case 'HTML': return 'html';
+                    case 'Keisen':
+                    case 'ASCII': return 'plaintext';
+                    case 'GitLab':
+                    case 'Markdown': return 'markdown';
+                    case 'Redmine': return 'markdown';
+                    case 'JSON': return 'json';
+                    case 'JSONL': return 'json';
+                    case 'YAML': return 'yaml';
+                    case 'Toon': return 'plaintext';
+                    case 'TSV': return 'plaintext';
+                    case 'CSV': return 'plaintext';
+                    default: return 'plaintext';
+                }
+            };
+
+            // iframe用のプレビューHTML生成関数 (width: 2000pxを強制)
+            const getPreviewHtml = (content) => {
+                return `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { margin: 0; padding: 10px; min-width: 2000px; width: max-content; }
+                            table { border-collapse: collapse; width: 100%; min-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 14px; }
+                            th, td { border: 1px solid #dfe2e5; padding: 6px 13px; white-space: nowrap; }
+                            th { background-color: #f6f8fa; font-weight: 600; text-align: left;}
+                            tr:nth-child(2n) { background-color: #f6f8fa; }
+                            pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        ${content}
+                    </body>
+                    </html>
+                `;
+            };
+
+            // Markdownテーブルの簡易HTML変換（GitLab/Markdown用）
+            const convertMarkdownToHtmlTable = (mdText) => {
+                const lines = mdText.trim().split('\n').filter(l => !l.match(/^\|?[\s\-:|+]+\|?$/));
+                let html = '<table><thead>';
+                if (lines.length > 0) {
+                    const hCols = lines[0].split('|').slice(1, -1);
+                    html += '<tr>' + hCols.map(c => `<th>${c.trim()}</th>`).join('') + '</tr></thead><tbody>';
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split('|').slice(1, -1);
+                        html += '<tr>' + cols.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+                    }
+                    html += '</tbody></table>';
+                }
+                return html;
+            };
+
+
+            return React.createElement("div", { className: "h-screen flex flex-col bg-gray-50 text-slate-800 font-sans" },
+                // Header
+                React.createElement("header", { className: "bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0" },
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                        React.createElement("div", { className: "bg-indigo-600 p-1.5 rounded text-white" }, React.createElement(Table, { size: 20 })),
+                        React.createElement("h1", { className: "text-lg font-bold text-gray-800" }, "罫線さん2026")
+                    )
+                ),
+                // Main Content
+                React.createElement("div", { className: "flex-1 flex overflow-hidden" },
+                    // Left Pane (Grid)
+                    React.createElement("div", { className: "w-1/2 flex flex-col border-r bg-white" },
+                        React.createElement("div", { className: "p-2 border-b bg-gray-50" },
+                            React.createElement("div", { className: "flex items-center justify-between" },
+                                React.createElement("div", { className: "flex gap-1 overflow-x-auto no-scrollbar" },
+                                    sheets.map(sheet =>
+                                        React.createElement("div", {
+                                            key: sheet.id,
+                                            onClick: () => setActiveSheetId(sheet.id),
+                                            className: `group flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer border select-none ${activeSheetId === sheet.id ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium' : 'bg-white hover:bg-gray-50 border-transparent'}`
+                                        },
+                                            React.createElement(FileSpreadsheet, { size: 14 }),
+                                            sheet.name,
+                                            sheets.length > 1 && React.createElement("button", {
+                                                onClick: (e) => removeSheet(e, sheet.id),
+                                                className: "opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500"
+                                            }, React.createElement(Trash2, { size: 12 }))
+                                        )
+                                    ),
+                                    React.createElement("button", { onClick: addSheet, className: "p-1.5 hover:bg-gray-100 rounded text-gray-500" }, React.createElement(Plus, { size: 16 }))
+                                )
+                            )
+                        ),
+                        React.createElement("div", { className: "flex-1 overflow-hidden relative flex flex-col" },
+                            React.createElement(Spreadsheet, { data: activeSheet.data, onChange: updateSheetData })
+                        ),
+                        React.createElement("div", { className: "p-1 text-xs text-gray-400 bg-gray-50 border-t" }, "* Paste from Excel supported. Click a cell and Ctrl+V.")
+                    ),
+                    // Center Actions
+                    React.createElement("div", { className: "w-16 bg-gray-50 border-r flex flex-col items-center justify-center gap-8 z-10 py-8 relative flex-shrink-0" },
+                        React.createElement("div", { className: "h-full w-[1px] bg-gray-200 absolute left-1/2 transform -translate-x-1/2 -z-10" }),
+                        React.createElement("div", { className: "flex flex-col items-center gap-1 bg-white p-2 rounded-lg border shadow-sm z-20" },
+                            React.createElement("div", { className: "flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase" }, "Auto"),
+                            React.createElement(ArrowRight, { size: 24, className: "text-gray-400" })
+                        ),
+                        React.createElement("button", {
+                            onClick: handleReverseConvert,
+                            className: "flex flex-col items-center gap-1 p-2 bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 hover:border-indigo-400 rounded-lg shadow-sm z-20 transition-all active:scale-95 group",
+                            title: "Update Grid from Text"
+                        },
+                            React.createElement(ArrowLeft, { size: 24, className: "group-hover:-translate-x-1 transition-transform" }),
+                            React.createElement("span", { className: "text-[10px] font-bold uppercase" }, "Update")
+                        )
+                    ),
+                    // Right Pane (Editor)
+                    React.createElement("div", { className: "w-1/2 flex flex-col bg-white" },
+                        React.createElement("div", { className: "p-2 border-b bg-gray-50" },
+                            React.createElement("div", { className: "flex items-center justify-between bg-white p-1 rounded border overflow-hidden" },
+                                // Format Buttons (Flexible)
+                                React.createElement("div", { className: "flex items-center gap-2 overflow-x-auto no-scrollbar mask-linear-fade flex-1 min-w-0" },
+                                    React.createElement("span", { className: "text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1 whitespace-nowrap" }, "Fmt:"),
+                                    React.createElement("div", { className: "flex bg-white rounded border overflow-hidden shrink-0" },
+                                        ['GitLab', 'Keisen', 'TSV', 'CSV', 'Redmine', 'HTML', 'JSON', 'JSONL', 'YAML', 'Toon'].map((mode, i) =>
+                                            React.createElement(React.Fragment, { key: mode },
+                                                i > 0 && React.createElement("div", { className: "w-[1px] bg-gray-200" }),
+                                                React.createElement("button", {
+                                                    onClick: () => setOutputMode(mode),
+                                                    className: `px-2 py-1 text-xs font-medium whitespace-nowrap ${outputMode === mode ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-50'}`
+                                                }, mode)
+                                            )
+                                        )
+                                    )
+                                ),
+                                // Action Buttons (Fixed)
+                                React.createElement("div", { className: "flex gap-2 shrink-0 ml-2" },
+                                    React.createElement("button", {
+                                        onClick: () => setViewMode(viewMode === 'editor' ? 'preview' : 'editor'),
+                                        className: "p-1.5 text-gray-600 hover:text-indigo-600 rounded hover:bg-white",
+                                        title: viewMode === 'editor' ? "Show Preview" : "Show Code"
+                                    }, viewMode === 'editor' ? React.createElement(Eye, { size: 16 }) : React.createElement(Code, { size: 16 })),
+                                    React.createElement("button", {
+                                        onClick: handleCopy,
+                                        className: "p-1.5 text-gray-600 hover:text-indigo-600 rounded hover:bg-white",
+                                        title: "Copy to Clipboard"
+                                    }, React.createElement(Copy, { size: 16 }))
+                                )
+                            )
+                        ),
+                        React.createElement("div", { className: "flex-1 relative overflow-hidden" },
+                            viewMode === 'editor' ? React.createElement(Editor, {
+                                height: "100%",
+                                defaultLanguage: "markdown",
+                                language: getMonacoLanguage(outputMode),
+                                value: outputText,
+                                onChange: (value) => setOutputText(value || ''),
+                                options: {
+                                    minimap: { enabled: false },
+                                    scrollBeyondLastLine: false,
+                                    fontSize: 14,
+                                    wordWrap: 'off',
+                                }
+                            }) : React.createElement("div", { className: "w-full h-full bg-white overflow-hidden" },
+                                React.createElement("iframe", {
+                                    srcDoc: (outputMode === 'GitLab' || outputMode === 'Markdown')
+                                        ? getPreviewHtml(convertMarkdownToHtmlTable(outputText))
+                                        : (outputMode === 'HTML')
+                                            ? getPreviewHtml(outputText)
+                                            : getPreviewHtml(`<pre>${outputText}</pre>`),
+                                    className: "w-full h-full border-none bg-white"
+                                })
+                            ),
+                            viewMode === 'editor' && React.createElement("div", { className: "absolute bottom-1 right-4 text-xs text-gray-300 pointer-events-none z-10" },
+                                outputText.length + " chars"
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+
+</html>

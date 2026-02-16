@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid No-Code Builder</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Mermaid.js & Dagre -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+
+    <!-- PptxGenJS -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <!-- AG Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .ag-theme-alpine {
+            --ag-font-size: 13px;
+            --ag-font-family: 'Segoe UI';
+            /* 奇数行の背景色 */
+            --ag-odd-row-background-color: #f8fafc;
+            /* セルの区切り線 */
+            --ag-cell-horizontal-border: solid 1px #e5e7eb;
+            --ag-row-border-color: #e5e7eb;
+        }
+
+        /* 固定列のヘッダーのみ少し違う色に */
+        .ag-theme-alpine .ag-pinned-left-header {
+            background-color: #dbeafe;
+        }
+        .ag-theme-alpine .ag-pinned-left-header .ag-header-cell {
+            background-color: #dbeafe;
+        }
+
+        /* SVG Reset */
+        #mermaid-preview svg {
+            /* JavaScript側で制御するため、ここでは最低限のリセットのみ */
+            max-width: none !important;
+        }
+
+        .ag-header-cell-label {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .resizer-h {
+            height: 4px;
+            background: #e5e7eb;
+            cursor: row-resize;
+            z-index: 10;
+        }
+
+        .resizer-h:hover {
+            background: #3b82f6;
+        }
+
+        .resizer-v {
+            width: 4px;
+            background: #e5e7eb;
+            cursor: col-resize;
+            z-index: 10;
+        }
+
+        .resizer-v:hover {
+            background: #3b82f6;
+        }
+
+        .ag-body-viewport::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .ag-body-viewport::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        // --- Constants & Helper Functions ---
+        // Ensure IDs start with a letter to avoid Mermaid syntax issues
+        const generateId = (prefix = 'id') => prefix + '_' + Math.random().toString(36).substring(2, 9);
+
+        const SHAPES = {
+            rect: { label: "四角形 [ ]", open: "[", close: "]" },
+            rounded: { label: "角丸 ( )", open: "(", close: ")" },
+            stadium: { label: "スタジアム ([ ])", open: "([", close: "])" },
+            subroutine: { label: "サブルーチン [[ ]]", open: "[[", close: "]]" },
+            database: { label: "データベース [( )]", open: "[(", close: ")]" },
+            circle: { label: "円 (( ))", open: "((", close: "))" },
+            diamond: { label: "ひし形 { }", open: "{", close: "}" },
+            hexagon: { label: "六角形 {{ }}", open: "{{", close: "}}" },
+            parallelogram: { label: "平行四辺形 [/ /]", open: "[/", close: "/]" },
+            trapezoid: { label: "書類 [\\ \\]", open: "[\\", close: "\\]" },
+        };
+
+        const ARROWS = {
+            normal: { label: "実線矢印 -->", val: "-->" },
+            thick: { label: "太線矢印 ==>", val: "==>" },
+            dotted: { label: "点線矢印 -.->", val: "-.->" },
+            line: { label: "線のみ ---", val: "---" },
+            bi_normal: { label: "双方向 <-->", val: "<-->" }
+        };
+
+        const NODE_PRESETS = {
+            custom: { label: "カスタム", fill: "", stroke: "", color: "" },
+            blue: { label: "Blue", fill: "#4472C4", stroke: "#2F5597", color: "#FFFFFF" },
+            green: { label: "Green", fill: "#548235", stroke: "#385723", color: "#FFFFFF" },
+            orange: { label: "Orange", fill: "#ED7D31", stroke: "#C55A11", color: "#FFFFFF" },
+            gray: { label: "Gray", fill: "#7F7F7F", stroke: "#595959", color: "#FFFFFF" },
+            yellow: { label: "Yellow", fill: "#FFD966", stroke: "#BF9000", color: "#000000" },
+            white: { label: "White", fill: "#FFFFFF", stroke: "#000000", color: "#000000" },
+            red: { label: "Red", fill: "#C00000", stroke: "#820000", color: "#FFFFFF" },
+        };
+
+        const DEFAULT_THEME = {
+            name: "Office Blue",
+            primaryHex: "#4472C4",
+            primaryRGB: "RGB(68, 114, 196)",
+            borderHex: "#2F5597",
+            borderRGB: "RGB(47, 85, 151)",
+            textHex: "#FFFFFF",
+            textRGB: "RGB(255, 255, 255)",
+            clusterHex: "#FFFFDE",
+            clusterRGB: "RGB(255, 255, 222)",
+            clusterBorderHex: "#AAAAAA",
+            clusterBorderRGB: "RGB(170, 170, 170)",
+            clusterTextHex: "#333333",
+            clusterTextRGB: "RGB(51, 51, 51)"
+        };
+
+        // Theme Presets
+        const THEME_PRESETS = {
+            officeBlue: {
+                name: "Office Blue",
+                primaryHex: "#4472C4",
+                borderHex: "#2F5597",
+                textHex: "#FFFFFF",
+                clusterHex: "#FFFFDE",
+                clusterBorderHex: "#AAAAAA",
+                clusterTextHex: "#333333",
+                lineColorHex: "#333333",
+                lineLabelColorHex: "#333333"
+            },
+            dark: {
+                name: "Dark",
+                primaryHex: "#2D3748",
+                borderHex: "#1A202C",
+                textHex: "#FFFFFF",
+                clusterHex: "#4A5568",
+                clusterBorderHex: "#718096",
+                clusterTextHex: "#FFFFFF",
+                lineColorHex: "#E2E8F0",
+                lineLabelColorHex: "#E2E8F0"
+            },
+            forest: {
+                name: "Forest Green",
+                primaryHex: "#2F855A",
+                borderHex: "#276749",
+                textHex: "#FFFFFF",
+                clusterHex: "#C6F6D5",
+                clusterBorderHex: "#68D391",
+                clusterTextHex: "#22543D",
+                lineColorHex: "#22543D",
+                lineLabelColorHex: "#22543D"
+            },
+            sunset: {
+                name: "Sunset Orange",
+                primaryHex: "#DD6B20",
+                borderHex: "#C05621",
+                textHex: "#FFFFFF",
+                clusterHex: "#FEEBC8",
+                clusterBorderHex: "#F6AD55",
+                clusterTextHex: "#7B341E",
+                lineColorHex: "#7B341E",
+                lineLabelColorHex: "#7B341E"
+            },
+            neutral: {
+                name: "Neutral",
+                primaryHex: "#718096",
+                borderHex: "#4A5568",
+                textHex: "#FFFFFF",
+                clusterHex: "#EDF2F7",
+                clusterBorderHex: "#A0AEC0",
+                clusterTextHex: "#2D3748",
+                lineColorHex: "#2D3748",
+                lineLabelColorHex: "#2D3748"
+            }
+        };
+
+        // Helper to convert hex to RGB string for VBA
+        const hexToRgbString = (hex) => {
+            if (!hex) return "RGB(0, 0, 0)";
+            if (hex.length === 4) hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `RGB(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : "RGB(0, 0, 0)";
+        };
+
+        // Convert simple theme to full theme with RGB values
+        const expandTheme = (simpleTheme) => ({
+            ...simpleTheme,
+            // Set defaults for lineColor if not present (for backward compatibility)
+            lineColorHex: simpleTheme.lineColorHex || "#333333",
+            lineLabelColorHex: simpleTheme.lineLabelColorHex || "#333333",
+            primaryRGB: hexToRgbString(simpleTheme.primaryHex),
+            borderRGB: hexToRgbString(simpleTheme.borderHex),
+            textRGB: hexToRgbString(simpleTheme.textHex),
+            clusterRGB: hexToRgbString(simpleTheme.clusterHex),
+            clusterBorderRGB: hexToRgbString(simpleTheme.clusterBorderHex),
+            clusterTextRGB: hexToRgbString(simpleTheme.clusterTextHex),
+            lineColorRGB: hexToRgbString(simpleTheme.lineColorHex || "#333333"),
+            lineLabelColorRGB: hexToRgbString(simpleTheme.lineLabelColorHex || "#333333")
+        });
+
+        // --- Helper Functions ---
+        const hexToVbaRgb = (hex) => { if (!hex) return null; if (hex.length === 4) hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]; const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? `RGB(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null; };
+        const cleanHtmlLabel = (label) => { if (!label) return ""; let text = label; text = text.replace(/<br\s*\/?>/gi, "\n"); text = text.replace(/<\/?[^>]+(>|$)/g, ""); return text.trim(); };
+        const unquote = (str) => { if (!str) return str; const trimmed = str.trim(); if (trimmed.startsWith('"') && trimmed.endsWith('"')) return trimmed.slice(1, -1); return trimmed; };
+        const getTextWidth = (text) => { let width = 0; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if ((c >= 0x00 && c < 0x81) || (c === 0xf8f0) || (c >= 0xff61 && c < 0xffa0) || (c >= 0xf8f1 && c < 0xf8f4)) width += 1; else width += 2; } return width; };
+
+        // --- Initial Data ---
+        const INITIAL_NODES = [
+            { id: "Web", label: "Web Browser", shape: "rect", group: "Client", preset: "blue", fill: "#4472C4", stroke: "#2F5597", color: "#FFFFFF" },
+            { id: "App", label: "Mobile App", shape: "rect", group: "Client", preset: "blue", fill: "#4472C4", stroke: "#2F5597", color: "#FFFFFF" },
+            { id: "API", label: "API Server", shape: "rect", group: "Server", preset: "blue", fill: "#4472C4", stroke: "#2F5597", color: "#FFFFFF" },
+            { id: "DB", label: "User DB", shape: "database", group: "Server", preset: "blue", fill: "#4472C4", stroke: "#2F5597", color: "#FFFFFF" },
+        ];
+
+        const INITIAL_EDGES = [
+            { id: "e1", source: "Web", target: "API", label: "HTTPS", type: "normal", color: "#000000", lineColor: "#000000" },
+            { id: "e2", source: "App", target: "API", label: "HTTPS", type: "normal", color: "#000000", lineColor: "#000000" },
+            { id: "e3", source: "API", target: "DB", label: "SQL", type: "normal", color: "#000000", lineColor: "#000000" },
+        ];
+
+        // --- DSL Generation ---
+        const generateDSL = (nodes, edges, direction = 'TD', theme = null) => {
+            let dsl = '';
+            
+            // Add theme configuration at the beginning if theme is provided
+            if (theme) {
+                const isLightTheme = theme.clusterHex && theme.clusterHex.toLowerCase() !== '#4a5568' && theme.clusterTextHex !== '#FFFFFF';
+                const edgeLabelBg = isLightTheme ? '#FFFFFF' : 'transparent';
+                dsl += `%%{init: { "theme": "base", "themeVariables": { "primaryColor": "${theme.primaryHex}", "primaryBorderColor": "${theme.borderHex}", "primaryTextColor": "${theme.textHex}", "lineColor": "${theme.lineColorHex}", "clusterBkg": "${theme.clusterHex}", "clusterBorder": "${theme.clusterBorderHex}", "edgeLabelBackground": "${edgeLabelBg}", "edgeLabelColor": "${theme.lineLabelColorHex}", "tertiaryColor": "${theme.clusterHex}", "tertiaryTextColor": "${theme.clusterTextHex}", "titleColor": "${theme.clusterTextHex}" } } }%%\n`;
+            }
+            
+            dsl += `graph ${direction}\n`;
+            const groups = {}; const noGroupNodes = [];
+            nodes.forEach(n => { if (n.group && n.group.trim() !== "") { if (!groups[n.group]) groups[n.group] = []; groups[n.group].push(n); } else { noGroupNodes.push(n); } });
+
+            const safeId = (id) => {
+                if (!id) return generateId('node');
+                let v = String(id).trim();
+                v = v.replace(/[^a-zA-Z0-9_]/g, '_');
+                if (!/^[a-zA-Z]/.test(v)) v = 'n_' + v;
+                return v;
+            };
+            const nodeStr = (n) => { const s = SHAPES[n.shape] || SHAPES.rect; const safeLabel = (n.label || n.id).replace(/"/g, "#quot;"); const id = safeId(n.id); return `    ${id}${s.open}"${safeLabel}"${s.close}`; };
+            const styleStr = (n) => { if (!n.fill && !n.color && !n.stroke) return ""; const id = safeId(n.id); let style = `    style ${id} `; const styles = []; if (n.fill) styles.push(`fill:${n.fill}`); if (n.color) styles.push(`color:${n.color}`); if (n.stroke) styles.push(`stroke:${n.stroke}`); else if (n.fill) styles.push(`stroke:${n.fill}`); if (styles.length === 0) return ""; return style + styles.join(",") + "\n"; };
+
+            Object.keys(groups).forEach(gName => {
+                const safeGroupId = safeId(gName);
+                const safeGroupLabel = gName.replace(/"/g, '#quot;');
+                dsl += `    subgraph ${safeGroupId}["${safeGroupLabel}"]\n`;
+                groups[gName].forEach(n => { dsl += nodeStr(n) + "\n"; });
+                dsl += `    end\n`;
+            });
+            noGroupNodes.forEach(n => { dsl += nodeStr(n) + "\n"; });
+
+            dsl += "\n";
+
+            const validEdges = [];
+            edges.forEach((e, index) => {
+                if (!e.source || !e.target) return;
+                const arrow = ARROWS[e.type]?.val || "-->";
+                if (e.label) {
+                    const lbl = (e.label || '').replace(/"/g, '#quot;');
+                    dsl += `    ${safeId(e.source)} ${arrow}|"${lbl}"| ${safeId(e.target)}\n`;
+                } else {
+                    dsl += `    ${safeId(e.source)} ${arrow} ${safeId(e.target)}\n`;
+                }
+                    validEdges.push(e);
+                });
+
+                dsl += "\n";
+
+                // Restore per-edge linkStyle lines so edge colors are preserved
+                validEdges.forEach((e, index) => {
+                    const lineColor = e.lineColor || "#000000";
+                    const textColor = e.color || "#000000";
+                    dsl += `    linkStyle ${index} stroke:${lineColor},color:${textColor}\n`;
+                });
+
+                dsl += "\n";
+                nodes.forEach(n => { dsl += styleStr(n); });
+                return dsl;
+            };
+
+        const parseMermaidDSL = (dsl) => {
+            const cleanDsl = dsl.replace(/<\/?b>/gi, "");
+
+            const nodes = new Map();
+            const edges = [];
+            const subgraphs = new Map();
+            const classDefs = new Map();
+
+            const lines = cleanDsl.split(/\r?\n/);
+            let currentSubgraph = null;
+
+            const idPattern = '([a-zA-Z0-9_]+|"[^"]+")';
+            // Shape pattern: order matters - longer patterns first to avoid partial matches
+            // [[ ]] subroutine, [( )] database, ([ ]) stadium, (( )) circle, {{ }} hexagon, { } diamond, [ ] rect, ( ) rounded, [/ /] parallelogram, [\ \] trapezoid
+            const shapePattern = '(\\[\\[|\\[\\(|\\(\\[|\\(\\(|{{|\\{|\\[/|\\[\\\\/|\\[|\\()(.*?)(\\]\\]|\\)\\]|\\]\\)|\\)\\)|}}|\\}|/\\]|\\\\/\\]|\\]|\\))';
+
+            const nodeRegex = new RegExp(`^(\\s*)${idPattern}\\s*(?:${shapePattern})?`);
+            const linkRegex = new RegExp(`^\\s*${idPattern}\\s*(?:${shapePattern})?\\s*(-*\\>|-.+?-*\\>|==+>|<-*\\>)\\s*(?:\\|(.*?)\\|\\s*)?${idPattern}\\s*(?:${shapePattern})?`);
+
+            const subgraphStartRegex = /^\s*subgraph\s+("[^"]+"|[^ \[\{]+)(?:\[(.*?)\]|\s+(.*))?/;
+            const subgraphEndRegex = /^\s*end\s*$/;
+
+            const classDefRegex = /^\s*classDef\s+([a-zA-Z0-9_]+)\s+(.*)/;
+            const classApplyRegex = /^\s*class\s+(.+)\s+([a-zA-Z0-9_]+)/;
+            const styleRegex = /^\s*style\s+([a-zA-Z0-9_]+|"[^"]+")\s+(.*)/;
+
+            const cleanId = (rawId) => unquote(rawId);
+
+            const parseStyleString = (str) => {
+                const obj = {};
+                str.split(',').forEach(kv => {
+                    const [k, v] = kv.split(':').map(s => s.trim());
+                    if (k && v) obj[k] = v;
+                });
+                return obj;
+            };
+
+            const resolveNode = (id, label, startToken, endToken) => {
+                let shape = 'rect';
+                let cleanLabel = unquote(label) || cleanId(id);
+
+                // Debug: console.log('resolveNode:', { id, label, startToken, endToken });
+
+                // Subroutine [[ ]]
+                if (startToken === '[[' && (endToken === ']]' || endToken === ']')) {
+                    shape = 'subroutine';
+                    if (endToken === ']' && cleanLabel.endsWith(']')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                // Database [( )]
+                else if (startToken === '[(' && (endToken === ')]' || endToken === ')')) {
+                    shape = 'database';
+                    if (endToken === ')' && cleanLabel.endsWith(']')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                // Stadium ([ ])
+                else if (startToken === '([' && (endToken === '])' || endToken === ']')) {
+                    shape = 'stadium';
+                    if (endToken === ']' && cleanLabel.endsWith(')')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                // Circle (( ))
+                else if (startToken === '((' && (endToken === '))' || endToken === ')')) {
+                    shape = 'circle';
+                    if (endToken === ')' && cleanLabel.endsWith(')')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                // Hexagon {{ }}
+                else if (startToken === '{{' && (endToken === '}}' || endToken === '}')) {
+                    shape = 'hexagon';
+                    if (endToken === '}' && cleanLabel.endsWith('}')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                // Diamond { }
+                else if (startToken === '{' && endToken === '}') {
+                    shape = 'diamond';
+                }
+                // Parallelogram [/ /]
+                else if (startToken === '[/' && endToken === '/]') {
+                    shape = 'parallelogram';
+                }
+                // Trapezoid [\ \]
+                else if (startToken === '[\\' && endToken === '\\]') {
+                    shape = 'trapezoid';
+                }
+                // Rounded ( )
+                else if (startToken === '(' && endToken === ')') {
+                    shape = 'rounded';
+                }
+                // Rectangle [ ] (default case with brackets)
+                else if (startToken === '[' && endToken === ']') {
+                    shape = 'rect';
+                }
+                // If no shape detected but has label, keep rect
+                // If no startToken, it's just an ID reference
+
+                cleanLabel = cleanHtmlLabel(cleanLabel);
+
+                return { label: cleanLabel, shape };
+            };
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith("%%") || trimmed.startsWith("graph") || trimmed.startsWith("flowchart") || !trimmed) return;
+
+                const classDefMatch = line.match(classDefRegex);
+                if (classDefMatch) {
+                    classDefs.set(classDefMatch[1], parseStyleString(classDefMatch[2]));
+                    return;
+                }
+
+                const classApplyMatch = line.match(classApplyRegex);
+                if (classApplyMatch) {
+                    const targetIds = classApplyMatch[1].split(',').map(s => cleanId(s.trim()));
+                    const className = classApplyMatch[2];
+                    targetIds.forEach(tid => {
+                        if (nodes.has(tid)) {
+                            const n = nodes.get(tid);
+                            n.className = className;
+                        } else {
+                            nodes.set(tid, { id: tid, label: tid, shape: 'rect', className: className, parent: currentSubgraph });
+                        }
+                    });
+                    return;
+                }
+
+                const styleMatch = line.match(styleRegex);
+                if (styleMatch) {
+                    const id = cleanId(styleMatch[1]);
+                    const styleObj = parseStyleString(styleMatch[2]);
+                    if (nodes.has(id)) {
+                        const n = nodes.get(id);
+                        n.styles = { ...n.styles, ...styleObj };
+                    } else {
+                        nodes.set(id, { id, label: id, shape: 'rect', styles: styleObj, parent: currentSubgraph });
+                    }
+                    return;
+                }
+
+                const subMatch = line.match(subgraphStartRegex);
+                if (subMatch) {
+                    const id = cleanId(subMatch[1]);
+                    let label = subMatch[2] || subMatch[3] || id;
+                    label = unquote(label);
+                    currentSubgraph = id;
+                    subgraphs.set(id, { id, label });
+                    return;
+                }
+
+                if (subgraphEndRegex.test(trimmed)) {
+                    currentSubgraph = null;
+                    return;
+                }
+
+                const linkMatch = trimmed.match(linkRegex);
+                if (linkMatch) {
+                    const [_, rawId1, s1, l1, e1, arrow, label, rawId2, s2, l2, e2] = linkMatch;
+                    const id1 = cleanId(rawId1);
+                    const id2 = cleanId(rawId2);
+
+                    const info1 = resolveNode(id1, l1, s1, e1);
+                    if (!nodes.has(id1)) nodes.set(id1, { id: id1, label: info1.label, shape: info1.shape, parent: currentSubgraph });
+                    else if (l1) { const n = nodes.get(id1); n.label = info1.label; n.shape = info1.shape; if (!n.parent) n.parent = currentSubgraph; }
+
+                    const info2 = resolveNode(id2, l2, s2, e2);
+                    if (!nodes.has(id2)) nodes.set(id2, { id: id2, label: info2.label, shape: info2.shape, parent: currentSubgraph });
+                    else if (l2) { const n = nodes.get(id2); n.label = info2.label; n.shape = info2.shape; if (!n.parent) n.parent = currentSubgraph; }
+
+                    edges.push({ from: id1, to: id2, label: label ? cleanHtmlLabel(label.trim()) : "" });
+                    return;
+                }
+
+                const nodeMatch = trimmed.match(nodeRegex);
+                if (nodeMatch) {
+                    const [_, indent, rawId, startToken, label, endToken] = nodeMatch;
+                    if (rawId) {
+                        const id = cleanId(rawId);
+                        const info = resolveNode(id, label, startToken, endToken);
+                        if (!nodes.has(id)) nodes.set(id, { id: id, label: info.label, shape: info.shape, parent: currentSubgraph });
+                        else { const n = nodes.get(id); if (label) { n.label = info.label; n.shape = info.shape; } if (!n.parent) n.parent = currentSubgraph; }
+                    }
+                }
+            });
+
+            nodes.forEach(n => {
+                if (n.className && classDefs.has(n.className)) {
+                    n.styles = { ...classDefs.get(n.className), ...n.styles };
+                }
+            });
+
+            return { nodes: Array.from(nodes.values()), edges, subgraphs: Array.from(subgraphs.values()) };
+        };
+
+        // Convert parseMermaidDSL output to app data structure
+        const convertParsedToAppData = (parsed) => {
+            const { nodes: parsedNodes, edges: parsedEdges, subgraphs } = parsed;
+
+            // Build subgraph id->label map for group assignment
+            const subgraphMap = new Map();
+            subgraphs.forEach(sg => subgraphMap.set(sg.id, sg.label || sg.id));
+
+            // Convert nodes
+            const convertedNodes = parsedNodes.map(n => {
+                // Map roundRect to rounded (app uses 'rounded' internally)
+                let shape = n.shape;
+                if (shape === 'roundRect') shape = 'rounded';
+                // Validate shape exists in SHAPES, default to rect
+                if (!SHAPES[shape]) shape = 'rect';
+
+                // Extract styles
+                const styles = n.styles || {};
+                const fill = styles.fill || '#4472C4';
+                const stroke = styles.stroke || '#2F5597';
+                const color = styles.color || '#FFFFFF';
+
+                // Determine group from parent (subgraph)
+                let group = '';
+                if (n.parent && subgraphMap.has(n.parent)) {
+                    group = subgraphMap.get(n.parent);
+                }
+
+                return {
+                    id: n.id,
+                    label: n.label || n.id,
+                    shape: shape,
+                    group: group,
+                    preset: 'custom',
+                    fill: fill,
+                    stroke: stroke,
+                    color: color
+                };
+            });
+
+            // Convert edges
+            const convertedEdges = parsedEdges.map((e, idx) => {
+                return {
+                    id: generateId('e'),
+                    source: e.from,
+                    target: e.to,
+                    label: e.label || '',
+                    type: 'normal',
+                    color: '#000000',
+                    lineColor: '#000000'
+                };
+            });
+
+            return { nodes: convertedNodes, edges: convertedEdges };
+        };
+        
+        const NodesGrid = ({ rowData, onGridReady, onCellValueChanged, onSelectionChanged }) => {
+            const gridDiv = useRef(null);
+            const apiRef = useRef(null);
+
+            const handleCellValueChangedLocal = (params) => {
+                if (params.colDef && params.colDef.field === 'preset') {
+                    const preset = NODE_PRESETS[params.newValue];
+                    if (preset && params.newValue !== 'custom') {
+                        const updatedData = {
+                            ...params.data,
+                            fill: preset.fill,
+                            stroke: preset.stroke,
+                            color: preset.color
+                        };
+                        params.api.applyTransaction({ update: [updatedData] });
+                        params.api.refreshCells({ rowNodes: [params.node], columns: ['fill', 'stroke', 'color'] });
+                    }
+                }
+                if (typeof onCellValueChanged === 'function') onCellValueChanged(params);
+            };
+
+            useEffect(() => {
+                if (!gridDiv.current) return;
+                const gridOptions = {
+                    rowHeight: 32,
+                    headerHeight: 32,
+                    rowData: rowData,
+                    getRowId: (params) => params.data.id,
+                    columnDefs: [
+                        { field: "id", headerName: "ID", editable: true, width: 100, minWidth: 80, pinned: 'left' },
+                        { field: "label", headerName: "ラベル", editable: true, width: 150, minWidth: 120 },
+                        { field: "shape", headerName: "形状", editable: true, width: 140, minWidth: 120, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: Object.keys(SHAPES) }, valueFormatter: (params) => SHAPES[params.value]?.label || params.value },
+                        { field: "group", headerName: "グループ", editable: true, width: 120, minWidth: 100 },
+                        { field: "preset", headerName: "🎨 プリセット", editable: true, width: 120, minWidth: 110, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: Object.keys(NODE_PRESETS) }, valueFormatter: (params) => NODE_PRESETS[params.value]?.label || params.value },
+                        { field: "fill", headerName: "背景", editable: true, width: 100, minWidth: 80, cellRenderer: params => `<div style="display:flex; align-items:center; height:100%;"><div style="width:12px; height:12px; background-color:${params.value || '#fff'}; margin-right:4px; border:1px solid #ccc;"></div><span>${params.value || ''}</span></div>` },
+                        { field: "stroke", headerName: "枠線", editable: true, width: 100, minWidth: 80, cellRenderer: params => `<div style="display:flex; align-items:center; height:100%;"><div style="width:12px; height:12px; background-color:${params.value || '#000'}; margin-right:4px; border:1px solid #ccc;"></div><span>${params.value || ''}</span></div>` },
+                        { field: "color", headerName: "文字", editable: true, width: 100, minWidth: 80 }
+                    ],
+                    defaultColDef: { resizable: true },
+                    onCellValueChanged: handleCellValueChangedLocal,
+                    rowSelection: 'multiple',
+                    onSelectionChanged: (event) => {
+                        if (typeof onSelectionChanged === 'function') {
+                            const selectedRows = event.api.getSelectedRows();
+                            onSelectionChanged(selectedRows);
+                        }
+                    }
+                };
+                const api = agGrid.createGrid(gridDiv.current, gridOptions);
+                apiRef.current = api;
+                if (typeof onGridReady === 'function') onGridReady({ api });
+                return () => api.destroy();
+            }, []);
+
+            useEffect(() => {
+                if (apiRef.current) {
+                    try { apiRef.current.setGridOption('rowData', rowData); } catch (e) { /* ignore */ }
+                }
+            }, [rowData]);
+
+            return <div className="ag-theme-alpine h-full w-full" ref={gridDiv}></div>;
+        };
+
+        const EdgesGrid = ({ rowData, nodes, onGridReady, onCellValueChanged, onSelectionChanged }) => {
+            const gridDiv = useRef(null);
+            const apiRef = useRef(null);
+            const nodeIds = nodes.map(n => n.id);
+
+            useEffect(() => {
+                if (apiRef.current) {
+                    const colDefs = apiRef.current.getColumnDefs();
+                    colDefs.forEach(col => {
+                        if (col.field === 'source' || col.field === 'target') {
+                            col.cellEditorParams = { values: nodeIds };
+                        }
+                    });
+                    if (typeof apiRef.current.setColumnDefs === 'function') apiRef.current.setColumnDefs(colDefs);
+                    else apiRef.current.updateGridOptions({ columnDefs: colDefs });
+                }
+            }, [nodes]);
+
+            useEffect(() => {
+                if (!gridDiv.current) return;
+                const gridOptions = {
+                    rowHeight: 32,
+                    headerHeight: 32,
+                    rowData: rowData,
+                    getRowId: (params) => params.data.id,
+                    columnDefs: [
+                        { field: "source", headerName: "元", editable: true, width: 120, minWidth: 100, pinned: 'left', cellEditor: 'agSelectCellEditor', cellEditorParams: { values: nodeIds } },
+                        { field: "target", headerName: "先", editable: true, width: 120, minWidth: 100, pinned: 'left', cellEditor: 'agSelectCellEditor', cellEditorParams: { values: nodeIds } },
+                        { field: "type", headerName: "線種", editable: true, width: 140, minWidth: 120, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: Object.keys(ARROWS) }, valueFormatter: (params) => ARROWS[params.value]?.label || params.value },
+                        { field: "label", headerName: "線ラベル", editable: true, width: 150, minWidth: 120 },
+                        { field: "lineColor", headerName: "線色", editable: true, width: 100, minWidth: 80, cellRenderer: params => `<div style="display:flex; align-items:center; height:100%;"><div style="width:12px; height:12px; background-color:${params.value || '#000'}; margin-right:4px; border:1px solid #ccc;"></div><span>${params.value || ''}</span></div>` },
+                        { field: "color", headerName: "文字色", editable: true, width: 100, minWidth: 80, cellRenderer: params => `<div style="display:flex; align-items:center; height:100%;"><div style="width:12px; height:12px; background-color:${params.value || '#000'}; margin-right:4px; border:1px solid #ccc;"></div><span>${params.value || ''}</span></div>` }
+                    ],
+                    defaultColDef: { resizable: true },
+                    onCellValueChanged: onCellValueChanged,
+                    rowSelection: 'multiple',
+                    onSelectionChanged: (event) => {
+                        if (typeof onSelectionChanged === 'function') {
+                            const selectedRows = event.api.getSelectedRows();
+                            onSelectionChanged(selectedRows);
+                        }
+                    }
+                };
+                const api = agGrid.createGrid(gridDiv.current, gridOptions);
+                apiRef.current = api;
+                onGridReady({ api });
+                return () => api.destroy();
+            }, []);
+
+            useEffect(() => {
+                if (apiRef.current) {
+                    apiRef.current.setGridOption('rowData', rowData);
+                }
+            }, [rowData]);
+
+            return <div className="ag-theme-alpine h-full w-full" ref={gridDiv}></div>;
+        };
+
+        // ==========================================
+        // 3. VBA Generators
+        // ==========================================
+        const generateExcelVbaCode = (nodes, edges, subgraphs, theme, connectorType) => {
+            let vba = `Sub DrawMermaidFlowchart_Excel()\n    Dim ws As Worksheet\n    Set ws = ActiveSheet\n    Dim shp As Shape, conn As Shape, nodeMap As Object\n    Set nodeMap = CreateObject("Scripting.Dictionary")\n    Application.ScreenUpdating = False\n    Dim offsetX As Double, offsetY As Double\n    offsetX = 50\n    offsetY = 50\n`;
+            subgraphs.forEach(sg => {
+                const safeLabel = (sg.label || sg.id).replace(/"/g, '""');
+                vba += `    ' Group: ${sg.id}\n    Set shp = ws.Shapes.AddShape(msoShapeRectangle, offsetX + ${Math.round(sg.x - sg.width / 2)}, offsetY + ${Math.round(sg.y - sg.height / 2)}, ${Math.round(sg.width)}, ${Math.round(sg.height)})\n    shp.Name = "Group_${sg.id}"\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.TextFrame2.TextRange.Font.Size = 10\n    shp.TextFrame2.TextRange.Font.Bold = msoTrue\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${theme.clusterTextRGB}\n    shp.TextFrame2.VerticalAnchor = msoAnchorTop\n    shp.TextFrame2.MarginTop = 5\n    shp.Fill.ForeColor.RGB = ${theme.clusterRGB}\n    shp.Line.ForeColor.RGB = ${theme.clusterBorderRGB}\n    shp.Line.DashStyle = msoLineDash\n    shp.ZOrder msoSendToBack\n`;
+            });
+            nodes.forEach(n => {
+                let mso = "msoShapeRectangle";
+                if (n.shape === 'database') mso = "msoShapeCan";
+                else if (n.shape === 'circle') mso = "msoShapeOval";
+                else if (n.shape === 'diamond') mso = "msoShapeFlowchartDecision";
+                else if (n.shape === 'rounded' || n.shape === 'roundRect') mso = "msoShapeRoundedRectangle";
+                else if (n.shape === 'stadium') mso = "msoShapeFlowchartTerminator";
+                else if (n.shape === 'parallelogram') mso = "msoShapeParallelogram";
+                else if (n.shape === 'trapezoid') mso = "msoShapeFlowchartDocument";
+
+                const safeLabel = (n.label || n.id).replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "');
+
+                let fill = theme.primaryRGB;
+                let text = theme.textRGB;
+                let stroke = theme.borderRGB;
+
+                if (n.fill && n.fill.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.fill);
+                    if (res) fill = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+                if (n.color && n.color.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.color);
+                    if (res) text = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+                if (n.stroke && n.stroke.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.stroke);
+                    if (res) stroke = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+
+                vba += `    ' Node: ${n.id}\n    Set shp = ws.Shapes.AddShape(${mso}, offsetX + ${Math.round(n.x - n.width / 2)}, offsetY + ${Math.round(n.y - n.height / 2)}, ${Math.round(n.width)}, ${Math.round(n.height)})\n    shp.Name = "${n.id}"\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.Fill.ForeColor.RGB = ${fill}\n    shp.Line.ForeColor.RGB = ${stroke}\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${text}\n    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle\n    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter\n    nodeMap.Add "${n.id}", shp\n`;
+            });
+
+            let connMso = "msoConnectorElbow";
+            if (connectorType === 'curve') connMso = "msoConnectorCurve";
+            else if (connectorType === 'straight') connMso = "msoConnectorStraight";
+
+            edges.forEach(e => {
+                const safeLabel = (e.label || "").replace(/"/g, '""');
+                const textColor = (e.color && e.color.startsWith('#') ? hexToVbaRgb(e.color) : "RGB(0,0,0)") || "RGB(0,0,0)";
+                const lineColor = (e.lineColor && e.lineColor.startsWith('#') ? hexToVbaRgb(e.lineColor) : "RGB(0,0,0)") || "RGB(0,0,0)";
+
+                vba += `    Set conn = ws.Shapes.AddConnector(${connMso}, 0, 0, 0, 0)\n    conn.ConnectorFormat.BeginConnect nodeMap("${e.source}"), 1\n    conn.ConnectorFormat.EndConnect nodeMap("${e.target}"), 1\n    conn.RerouteConnections\n    conn.Line.ForeColor.RGB = ${lineColor}\n    conn.Line.EndArrowheadStyle = msoArrowheadTriangle\n`;
+                if (e.label) {
+                    vba += `    Set shp = ws.Shapes.AddTextbox(msoTextOrientationHorizontal, offsetX + ${Math.round(e.midX - 30)}, offsetY + ${Math.round(e.midY - 10)}, 60, 20)\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.Fill.ForeColor.RGB = RGB(255,255,255)\n    shp.Line.Visible = msoFalse\n    shp.TextFrame2.TextRange.Font.Size = 9\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${textColor}\n    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter\n`;
+                }
+            });
+            vba += `    Application.ScreenUpdating = True\n    MsgBox "Done"\nEnd Sub`;
+            return vba;
+        };
+
+        const generatePowerPointVbaCode = (nodes, edges, subgraphs, gw, gh, theme, connectorType) => {
+            let vba = `Sub DrawMermaidFlowchart_PPT()\n    Dim sld As Slide\n    Dim pres As Presentation\n    Set pres = ActivePresentation\n    On Error Resume Next\n    Set sld = ActiveWindow.View.Slide\n    If sld Is Nothing Then Set sld = pres.Slides(1)\n    On Error GoTo 0\n    Dim shp As Shape, conn As Shape, nodeMap As Object\n    Set nodeMap = CreateObject("Scripting.Dictionary")\n    Dim offsetX As Double, offsetY As Double\n    offsetX = 50\n    offsetY = 50\n`;
+
+            // PPT Auto Fit Logic (Included)
+            vba += `    ' Auto Fit\n    Dim slideW As Double, slideH As Double\n    slideW = pres.PageSetup.SlideWidth\n    slideH = pres.PageSetup.SlideHeight\n    Dim graphW As Double, graphH As Double\n    graphW = ${gw}\n    graphH = ${gh}\n    Dim margin As Double\n    margin = 40\n    Dim zoom As Double, zoomW As Double, zoomH As Double\n    zoomW = (slideW - margin * 2) / graphW\n    zoomH = (slideH - margin * 2) / graphH\n    If zoomW < zoomH Then zoom = zoomW Else zoom = zoomH\n    If zoom > 1.5 Then zoom = 1.5\n    offsetX = (slideW - (graphW * zoom)) / 2\n    offsetY = (slideH - (graphH * zoom)) / 2\n    Dim baseFontSize As Double\n    baseFontSize = 11 * zoom\n    If baseFontSize < 8 Then baseFontSize = 8\n    Dim lblFontSize As Double\n    lblFontSize = baseFontSize - 2\n    If lblFontSize < 7 Then lblFontSize = 7\n`;
+
+            subgraphs.forEach(sg => {
+                const safeLabel = (sg.label || sg.id).replace(/"/g, '""');
+                vba += `    Set shp = sld.Shapes.AddShape(msoShapeRectangle, ${Math.round(sg.x - sg.width / 2)} * zoom + offsetX, ${Math.round(sg.y - sg.height / 2)} * zoom + offsetY, ${Math.round(sg.width)} * zoom, ${Math.round(sg.height)} * zoom)\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.TextFrame2.TextRange.Font.Size = 10 * zoom\n    shp.TextFrame2.TextRange.Font.Bold = msoTrue\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${theme.clusterTextRGB}\n    shp.Fill.ForeColor.RGB = ${theme.clusterRGB}\n    shp.Line.ForeColor.RGB = ${theme.clusterBorderRGB}\n    shp.Line.DashStyle = msoLineDash\n    shp.TextFrame2.VerticalAnchor = msoAnchorTop\n    shp.TextFrame2.MarginTop = 5\n    shp.ZOrder msoSendToBack\n`;
+            });
+
+            nodes.forEach(n => {
+                let mso = "msoShapeRectangle";
+                if (n.shape === 'database') mso = "msoShapeCan";
+                else if (n.shape === 'circle') mso = "msoShapeOval";
+                else if (n.shape === 'diamond') mso = "msoShapeFlowchartDecision";
+                else if (n.shape === 'rounded' || n.shape === 'roundRect') mso = "msoShapeRoundedRectangle";
+                else if (n.shape === 'stadium') mso = "msoShapeFlowchartTerminator";
+                else if (n.shape === 'parallelogram') mso = "msoShapeParallelogram";
+                else if (n.shape === 'trapezoid') mso = "msoShapeFlowchartDocument";
+
+                const safeLabel = (n.label || n.id).replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "');
+                let fill = theme.primaryRGB; let text = theme.textRGB; let stroke = theme.borderRGB;
+
+                if (n.fill && n.fill.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.fill);
+                    if (res) fill = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+                if (n.color && n.color.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.color);
+                    if (res) text = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+                if (n.stroke && n.stroke.startsWith('#')) {
+                    const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(n.stroke);
+                    if (res) stroke = `RGB(${parseInt(res[1], 16)},${parseInt(res[2], 16)},${parseInt(res[3], 16)})`;
+                }
+
+                vba += `    Set shp = sld.Shapes.AddShape(${mso}, ${Math.round(n.x - n.width / 2)} * zoom + offsetX, ${Math.round(n.y - n.height / 2)} * zoom + offsetY, ${Math.round(n.width)} * zoom, ${Math.round(n.height)} * zoom)\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.Fill.ForeColor.RGB = ${fill}\n    shp.Line.ForeColor.RGB = ${stroke}\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${text}\n    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle\n    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter\n    shp.TextFrame2.TextRange.Font.Size = baseFontSize\n    nodeMap.Add "${n.id}", shp\n`;
+            });
+
+            let connMso = "msoConnectorElbow";
+            if (connectorType === 'curve') connMso = "msoConnectorCurve";
+            else if (connectorType === 'straight') connMso = "msoConnectorStraight";
+
+            edges.forEach(e => {
+                const safeLabel = (e.label || "").replace(/"/g, '""');
+                const textColor = (e.color && e.color.startsWith('#') ? hexToVbaRgb(e.color) : "RGB(0,0,0)") || "RGB(0,0,0)";
+                const lineColor = (e.lineColor && e.lineColor.startsWith('#') ? hexToVbaRgb(e.lineColor) : "RGB(0,0,0)") || "RGB(0,0,0)";
+
+                vba += `    Set conn = sld.Shapes.AddConnector(${connMso}, 0, 0, 0, 0)\n    conn.ConnectorFormat.BeginConnect nodeMap("${e.from}"), 1\n    conn.ConnectorFormat.EndConnect nodeMap("${e.target}"), 1\n    conn.RerouteConnections\n    conn.Line.ForeColor.RGB = ${lineColor}\n    conn.Line.EndArrowheadStyle = msoArrowheadTriangle\n`;
+                if (e.label) {
+                    vba += `    Set shp = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, ${Math.round(e.midX - 30)} * zoom + offsetX, ${Math.round(e.midY - 10)} * zoom + offsetY, 60 * zoom, 20 * zoom)\n    shp.TextFrame2.TextRange.Text = "${safeLabel}"\n    shp.Fill.ForeColor.RGB = RGB(255,255,255)\n    shp.Line.Visible = msoFalse\n    shp.TextFrame2.TextRange.Font.Size = lblFontSize\n    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = ${textColor}\n    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter\n`;
+                }
+            });
+            vba += `    MsgBox "Done"\nEnd Sub`;
+            return vba;
+        };
+
+        // ==========================================
+        // 4. Main App
+        // ==========================================
+        const App = () => {
+            const [nodeData, setNodeData] = useState(INITIAL_NODES);
+            const [edgeData, setEdgeData] = useState(INITIAL_EDGES);
+            const [dsl, setDsl] = useState(() => generateDSL(INITIAL_NODES, INITIAL_EDGES, 'TD', expandTheme(THEME_PRESETS.officeBlue)));
+
+            const [leftSplit, setLeftSplit] = useState(window.innerWidth * 0.4);
+            const [leftVerticalSplit, setLeftVerticalSplit] = useState(50);
+
+            const previewRef = useRef(null);
+            const dslEditorRef = useRef(null);
+            const [autoFit, setAutoFit] = useState(false);
+            const [scale, setScale] = useState(1.0);
+            // Add useRef for scale to avoid closure issues in loops
+            const scaleRef = useRef(1.0);
+            useEffect(() => { scaleRef.current = scale; }, [scale]);
+
+            const [connectorType, setConnectorType] = useState("curve");
+            const [direction, setDirection] = useState("TD");
+
+            const gridApiNodes = useRef(null);
+            const gridApiEdges = useRef(null);
+            const fileInputRef = useRef(null);
+
+            const [vbaCode, setVbaCode] = useState("");
+            const [showModal, setShowModal] = useState(false);
+            const [modalTitle, setModalTitle] = useState("");
+
+            // Mermaid DSL Import Modal state
+            const [showDslImportModal, setShowDslImportModal] = useState(false);
+            const [dslImportText, setDslImportText] = useState("");
+
+            // Theme state
+            const [theme, setTheme] = useState(() => expandTheme(THEME_PRESETS.officeBlue));
+            const [showThemeModal, setShowThemeModal] = useState(false);
+            const [themeEditorText, setThemeEditorText] = useState("");
+            const [selectedThemePreset, setSelectedThemePreset] = useState("officeBlue");
+
+            const isDraggingH = useRef(false);
+            const isDraggingV = useRef(false);
+
+            // SVG highlight functions
+            const highlightSvgNodes = useCallback((selectedNodeIds) => {
+                if (!previewRef.current) return;
+                const svg = previewRef.current.querySelector('svg');
+                if (!svg) return;
+
+                // Remove previous highlights
+                svg.querySelectorAll('g.node').forEach(g => {
+                    g.classList.remove('svg-selected');
+                });
+
+                // Add highlight to selected nodes
+                selectedNodeIds.forEach(nodeId => {
+                    // Build safeId version
+                    let safeId = String(nodeId).trim().replace(/[^a-zA-Z0-9_]/g, '_');
+                    if (!/^[a-zA-Z]/.test(safeId)) safeId = 'n_' + safeId;
+
+                    svg.querySelectorAll('g.node').forEach(g => {
+                        const gId = g.getAttribute('id') || '';
+                        const match = gId.match(/^flowchart-(.+?)-\d+$/);
+                        const extractedId = match ? match[1] : gId;
+                        if (extractedId === safeId || extractedId === nodeId) {
+                            g.classList.add('svg-selected');
+                        }
+                    });
+                });
+            }, []);
+
+            const highlightSvgEdges = useCallback((selectedEdgeIndices) => {
+                if (!previewRef.current) return;
+                const svg = previewRef.current.querySelector('svg');
+                if (!svg) return;
+
+                // Remove previous highlights
+                svg.querySelectorAll('g.edgePath, g.edgeLabel').forEach(g => {
+                    g.classList.remove('svg-selected');
+                });
+
+                // Add highlight to selected edges
+                const edgePaths = svg.querySelectorAll('g.edgePath');
+                const edgeLabels = svg.querySelectorAll('g.edgeLabel');
+
+                selectedEdgeIndices.forEach(idx => {
+                    if (edgePaths[idx]) edgePaths[idx].classList.add('svg-selected');
+                    if (edgeLabels[idx]) edgeLabels[idx].classList.add('svg-selected');
+                });
+            }, []);
+
+            const onNodeSelectionChanged = useCallback((selectedRows) => {
+                const selectedIds = selectedRows.map(r => r.id);
+                highlightSvgNodes(selectedIds);
+            }, [highlightSvgNodes]);
+
+            const onEdgeSelectionChanged = useCallback((selectedRows) => {
+                // Get edge indices directly from the grid to ensure we use current order
+                if (!gridApiEdges.current) return;
+                const selectedIndices = [];
+                const selectedIds = new Set(selectedRows.map(r => r.id));
+                let idx = 0;
+                gridApiEdges.current.forEachNode(node => {
+                    if (selectedIds.has(node.data.id)) {
+                        selectedIndices.push(idx);
+                    }
+                    idx++;
+                });
+                highlightSvgEdges(selectedIndices);
+            }, [highlightSvgEdges]);
+
+            // ... (Drag handlers)
+            useEffect(() => { const handleMove = (e) => { if (isDraggingH.current) setLeftSplit(Math.max(300, Math.min(e.clientX, document.body.clientWidth - 300))); if (isDraggingV.current) { const h = window.innerHeight - 50; const p = (e.clientY - 50) / h * 100; setLeftVerticalSplit(Math.max(20, Math.min(p, 80))); } }; const handleUp = () => { isDraggingH.current = false; isDraggingV.current = false; document.body.style.cursor = 'default'; document.body.style.userSelect = 'auto'; }; document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleUp); return () => { document.removeEventListener('mousemove', handleMove); document.removeEventListener('mouseup', handleUp); }; }, []);
+
+            // Generate DSL
+            const generateDSLCallback = useCallback(() => { const newDsl = generateDSL(nodeData, edgeData, direction, theme); setDsl(newDsl); if (dslEditorRef.current && dslEditorRef.current.getValue() !== newDsl) dslEditorRef.current.setValue(newDsl); }, [nodeData, edgeData, direction, theme]);
+            useEffect(() => { generateDSLCallback(); }, [generateDSLCallback]);
+
+            // Initialize Monaco
+            useEffect(() => { require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } }); require(['vs/editor/editor.main'], function () { if (!dslEditorRef.current) { const container = document.getElementById('dsl-viewer-container'); if (container) { dslEditorRef.current = monaco.editor.create(container, { value: dsl, language: 'markdown', theme: 'vs', readOnly: true, minimap: { enabled: false }, automaticLayout: true, fontSize: 12, lineNumbers: 'off' }); } } }); }, []);
+
+            // Initialize Mermaid (do not auto start; we control rendering)
+            useEffect(() => { mermaid.initialize({ startOnLoad: false, theme: 'base', flowchart: { useMaxWidth: false } }); }, []);
+
+            // Auto Fit Logic (Robust Version)
+            const fitToContainer = useCallback((retryCount = 0) => {
+                if (!previewRef.current) return;
+                const performFit = () => {
+                    const svg = previewRef.current.querySelector('svg');
+                    if (!svg) { if (retryCount < 10) { /* retry removed to prevent loops, call only after render */ } return; }
+
+                    // Error Guard
+                    if (svg.getAttribute('aria-roledescription') === 'error' || svg.querySelector('.error-icon')) {
+                        // Reset style to allow visibility
+                        svg.style.maxWidth = 'none';
+                        svg.style.width = '100%';
+                        svg.style.height = 'auto';
+                        return;
+                    }
+
+                    svg.style.maxWidth = 'none';
+                    svg.style.width = '';
+                    svg.style.height = '';
+
+                    let contentW = 0;
+                    try { const bbox = svg.getBBox(); if (bbox.width > 0) contentW = bbox.width; } catch (e) { }
+                    if (!contentW && svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0) { contentW = svg.viewBox.baseVal.width; svg.setAttribute('width', contentW); svg.setAttribute('height', svg.viewBox.baseVal.height); }
+                    if (!contentW) { const rect = svg.getBoundingClientRect(); contentW = rect.width; }
+
+                    // If width is 0, do not retry here, as it might loop. Just give up for this frame.
+
+                    if (autoFit) {
+                        const container = previewRef.current.parentElement?.parentElement;
+                        if (container && contentW > 0) {
+                            const cw = container.clientWidth - 60;
+                            const s = Math.min(Math.max(cw / contentW, 0.1), 5.0) * 0.9;
+                            if (Math.abs(s - scaleRef.current) > 0.01) setScale(s);
+                        }
+                    }
+                };
+                requestAnimationFrame(performFit);
+            }, [autoFit]);
+
+            // Resize Observer
+            useEffect(() => {
+                if (!previewRef.current || !previewRef.current.parentElement?.parentElement) return;
+                const container = previewRef.current.parentElement.parentElement;
+                const resizeObserver = new ResizeObserver(() => { if (autoFit) fitToContainer(); });
+                resizeObserver.observe(container);
+                return () => resizeObserver.disconnect();
+            }, [autoFit, fitToContainer]);
+
+            useEffect(() => {
+                if (autoFit) {
+                    fitToContainer();
+                } else {
+                    setScale(1.0);
+                    fitToContainer();
+                }
+            }, [autoFit, fitToContainer]);
+
+            // Render Mermaid
+            useEffect(() => {
+                const render = async () => {
+                    if (previewRef.current) {
+                        try {
+                            previewRef.current.innerHTML = ''; previewRef.current.removeAttribute('data-processed');
+
+                            console.log("[Mermaid Debug] Rendering DSL:", dsl);
+
+                            // Create Temp Div and use textContent to avoid HTML parsing issues (CRITICAL FIX)
+                            // Theme is already included in the DSL from generateDSL function
+                            const tempDiv = document.createElement('div');
+                            tempDiv.textContent = dsl; // Use textContent!
+
+                            previewRef.current.appendChild(tempDiv);
+
+                            await mermaid.run({ nodes: [tempDiv] });
+
+                            // 3. Move SVG to preview
+                            const svg = tempDiv.querySelector('svg');
+                            if (svg) {
+                                // Post-process SVG to ensure label text is readable across browsers (Edge fix)
+                                try {
+                                    // edge label texts are often within elements with class 'edgeLabel' or 'edgeLabelText'
+                                    // Select probable edge label text nodes only
+                                    const texts = svg.querySelectorAll('g.edgeLabel text, g[class*="edgeLabel"] text, .edgeLabel text, .edgeLabelText text');
+                                    texts.forEach(t => {
+                                        try { t.setAttribute('fill', theme.lineLabelColorHex); t.style.fill = theme.lineLabelColorHex; } catch (e) { }
+                                    });
+                                } catch (err) { /* ignore */ }
+
+                                // Post-process edge paths to apply per-edge line colors
+                                try {
+                                    // Get valid edges (same logic as generateDSL)
+                                    const validEdges = edgeData.filter(e => e.source && e.target);
+                                    
+                                    // Find all edge path elements
+                                    const edgePaths = svg.querySelectorAll('g.edgePath');
+                                    edgePaths.forEach((p, idx) => {
+                                        try {
+                                            const edge = validEdges[idx];
+                                            const lineColor = edge?.lineColor || '#000000';
+                                            const pathEl = p.querySelector('path');
+                                            if (pathEl) {
+                                                pathEl.setAttribute('stroke', lineColor);
+                                                pathEl.style.stroke = lineColor;
+                                            }
+                                        } catch (e) { }
+                                    });
+                                    
+                                    // Update markers (arrowheads) - need to handle multiple markers for different colors
+                                    // For simplicity, use the first edge's color for all markers or create unique markers
+                                    const defaultLineColor = validEdges[0]?.lineColor || '#000000';
+                                    const markers = svg.querySelectorAll('marker path, marker polygon, defs marker path');
+                                    markers.forEach(m => {
+                                        try {
+                                            m.setAttribute('fill', defaultLineColor);
+                                            m.setAttribute('stroke', defaultLineColor);
+                                            m.style.fill = defaultLineColor;
+                                            m.style.stroke = defaultLineColor;
+                                        } catch (e) { }
+                                    });
+                                } catch (err) { /* ignore */ }
+
+                                // Post-process cluster (subgraph) labels to ensure visibility
+                                try {
+                                    // Mermaid v10+ uses foreignObject with div for cluster labels
+                                    // Also try direct text/tspan elements
+                                    const clusterTexts = svg.querySelectorAll('.cluster-label text, .cluster-label tspan, g.cluster text, g.cluster tspan, .cluster text, .cluster tspan, [class*="cluster"] text, [class*="cluster"] tspan');
+                                    clusterTexts.forEach(t => {
+                                        try { t.setAttribute('fill', theme.clusterTextHex); t.style.fill = theme.clusterTextHex; t.style.fontWeight = 'bold'; } catch (e) { }
+                                    });
+                                    // Handle foreignObject based labels (Mermaid v10+)
+                                    const clusterForeignObjects = svg.querySelectorAll('.cluster-label foreignObject, g.cluster foreignObject, [class*="cluster"] foreignObject');
+                                    clusterForeignObjects.forEach(fo => {
+                                        try {
+                                            const divs = fo.querySelectorAll('div, span, p');
+                                            divs.forEach(d => { d.style.color = theme.clusterTextHex; d.style.fontWeight = 'bold'; });
+                                        } catch (e) { }
+                                    });
+                                    // Also handle any rect inside cluster that might have the label background
+                                    // and ensure span elements inside cluster labels are visible
+                                    const clusterSpans = svg.querySelectorAll('.cluster-label span, g.cluster span, [class*="cluster"] span');
+                                    clusterSpans.forEach(s => {
+                                        try { s.style.color = theme.clusterTextHex; s.style.fontWeight = 'bold'; } catch (e) { }
+                                    });
+                                } catch (err) { /* ignore */ }
+
+                                try {
+                                    // Inject a small <style> inside the SVG for cluster labels and hover/selection effects
+                                    // Note: Edge line colors are applied via DOM manipulation above, not via CSS
+                                    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                                    styleEl.textContent = `
+                                        g.edgeLabel text, .edgeLabel text, .edgeLabelText text, g[class*="edgeLabel"] text, g.edgeLabel tspan, .edgeLabel tspan { fill: ${theme.lineLabelColorHex} !important; }
+                                        .cluster-label text, .cluster-label tspan, g.cluster text, g.cluster tspan, .cluster text, .cluster tspan, [class*="cluster"] text, [class*="cluster"] tspan { fill: ${theme.clusterTextHex} !important; font-weight: bold !important; }
+                                        .cluster-label span, g.cluster span, [class*="cluster"] span, .cluster-label div, g.cluster div, [class*="cluster"] div { color: ${theme.clusterTextHex} !important; font-weight: bold !important; }
+                                        .cluster-label foreignObject *, g.cluster foreignObject *, [class*="cluster"] foreignObject * { color: ${theme.clusterTextHex} !important; }
+                                        g.node { cursor: pointer; transition: filter 0.15s ease, transform 0.15s ease; }
+                                        g.node:hover { filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+                                        g.node.svg-selected { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 4px rgba(59, 130, 246, 0.6)); }
+                                        g.node.svg-selected rect, g.node.svg-selected circle, g.node.svg-selected polygon, g.node.svg-selected path, g.node.svg-selected ellipse { stroke: #3b82f6 !important; stroke-width: 3px !important; }
+                                        g.edgePath { cursor: pointer; }
+                                        g.edgePath:hover path { stroke-width: 3px !important; }
+                                        g.edgePath:hover { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
+                                        g.edgePath.svg-selected path { stroke: #3b82f6 !important; stroke-width: 3px !important; }
+                                        g.edgePath.svg-selected { filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7)); }
+                                        g.edgeLabel { cursor: pointer; transition: filter 0.15s ease; }
+                                        g.edgeLabel:hover { filter: brightness(0.9) drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+                                        g.edgeLabel.svg-selected { filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7)); }
+                                        g.edgeLabel.svg-selected rect { stroke: #3b82f6 !important; stroke-width: 2px !important; }
+                                    `;
+                                    svg.insertBefore(styleEl, svg.firstChild);
+                                } catch (err) { /* ignore */ }
+
+                                previewRef.current.innerHTML = '';
+                                previewRef.current.appendChild(svg);
+
+                                // 5. Add click handlers to SVG nodes for grid selection
+                                try {
+                                    const nodeGroups = svg.querySelectorAll('g.node');
+                                    nodeGroups.forEach(g => {
+                                        // Mermaid generates IDs like "flowchart-NodeId-123" or just the node ID
+                                        const gId = g.getAttribute('id') || '';
+                                        // Extract node ID from the element ID
+                                        let nodeId = gId;
+                                        // Handle flowchart-{id}-{number} format
+                                        const match = gId.match(/^flowchart-(.+?)-\d+$/);
+                                        if (match) {
+                                            nodeId = match[1];
+                                        }
+                                        // Also check data-id attribute if present
+                                        const dataId = g.getAttribute('data-id');
+                                        if (dataId) nodeId = dataId;
+
+                                        // Style cursor
+                                        g.style.cursor = 'pointer';
+
+                                        // Add click handler
+                                        g.addEventListener('click', (e) => {
+                                            e.stopPropagation();
+                                            if (gridApiNodes.current) {
+                                                // Find matching row by comparing with safeId version
+                                                let foundNode = null;
+                                                gridApiNodes.current.forEachNode(rowNode => {
+                                                    const rowId = rowNode.data.id;
+                                                    // Compare with sanitized ID (same logic as safeId in generateDSL)
+                                                    let safeRowId = String(rowId).trim().replace(/[^a-zA-Z0-9_]/g, '_');
+                                                    if (!/^[a-zA-Z]/.test(safeRowId)) safeRowId = 'n_' + safeRowId;
+                                                    
+                                                    if (safeRowId === nodeId || rowId === nodeId) {
+                                                        foundNode = rowNode;
+                                                    }
+                                                });
+
+                                                if (foundNode) {
+                                                    // Toggle selection: if already selected, deselect; otherwise select
+                                                    const isSelected = foundNode.isSelected();
+                                                    gridApiNodes.current.deselectAll();
+                                                    if (!isSelected) {
+                                                        foundNode.setSelected(true);
+                                                        // Scroll to the selected row
+                                                        gridApiNodes.current.ensureNodeVisible(foundNode);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    });
+                                } catch (err) {
+                                    console.warn('Failed to attach click handlers to SVG nodes:', err);
+                                }
+
+                                // 6. Add click handlers to SVG edges for grid selection
+                                try {
+                                    // Mermaid renders edges as paths within g.edgePath or similar
+                                    // We need to find edge paths and their associated labels
+                                    const edgePaths = svg.querySelectorAll('g.edgePath, g.flowchart-link, path.flowchart-link');
+                                    
+                                    // Build a map of edge index to edge data for matching
+                                    // Edges are rendered in order, so we can use index
+                                    let edgeIndex = 0;
+                                    edgePaths.forEach(edgePath => {
+                                        const currentIndex = edgeIndex;
+                                        edgeIndex++;
+
+                                        // Style cursor
+                                        edgePath.style.cursor = 'pointer';
+
+                                        // Make the path easier to click by increasing stroke width on hover (handled by CSS)
+                                        edgePath.addEventListener('click', (e) => {
+                                            e.stopPropagation();
+                                            if (gridApiEdges.current && edgeData[currentIndex]) {
+                                                let foundEdge = null;
+                                                let foundIdx = 0;
+                                                gridApiEdges.current.forEachNode((rowNode, idx) => {
+                                                    if (idx === currentIndex) {
+                                                        foundEdge = rowNode;
+                                                        foundIdx = idx;
+                                                    }
+                                                });
+
+                                                if (foundEdge) {
+                                                    const isSelected = foundEdge.isSelected();
+                                                    gridApiEdges.current.deselectAll();
+                                                    if (!isSelected) {
+                                                        foundEdge.setSelected(true);
+                                                        gridApiEdges.current.ensureNodeVisible(foundEdge);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    });
+
+                                    // Also make edge labels clickable
+                                    const edgeLabels = svg.querySelectorAll('g.edgeLabel');
+                                    let labelIndex = 0;
+                                    edgeLabels.forEach(label => {
+                                        const currentIndex = labelIndex;
+                                        labelIndex++;
+
+                                        label.style.cursor = 'pointer';
+
+                                        label.addEventListener('click', (e) => {
+                                            e.stopPropagation();
+                                            if (gridApiEdges.current && edgeData[currentIndex]) {
+                                                let foundEdge = null;
+                                                gridApiEdges.current.forEachNode((rowNode, idx) => {
+                                                    if (idx === currentIndex) {
+                                                        foundEdge = rowNode;
+                                                    }
+                                                });
+
+                                                if (foundEdge) {
+                                                    const isSelected = foundEdge.isSelected();
+                                                    gridApiEdges.current.deselectAll();
+                                                    if (!isSelected) {
+                                                        foundEdge.setSelected(true);
+                                                        gridApiEdges.current.ensureNodeVisible(foundEdge);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    });
+                                } catch (err) {
+                                    console.warn('Failed to attach click handlers to SVG edges:', err);
+                                }
+
+                                // 7. Call Fit (No Timeout, immediate after render)
+                                fitToContainer();
+                            } else {
+                                // Error case where run failed but didn't throw?
+                                console.warn("Mermaid run finished but no SVG produced.");
+                            }
+
+                        } catch (e) { console.error("Mermaid Render Error:", e); }
+                    }
+                }; render();
+            }, [dsl, autoFit, fitToContainer, theme, edgeData]);
+
+            const onNodesChanged = () => { const rows = []; if (gridApiNodes.current) gridApiNodes.current.forEachNode(n => rows.push(n.data)); setNodeData(rows); };
+            const onEdgesChanged = () => { const rows = []; if (gridApiEdges.current) gridApiEdges.current.forEachNode(n => rows.push(n.data)); setEdgeData(rows); };
+            const addNode = () => { if (gridApiNodes.current) { const newId = `Node${nodeData.length + 1}`; gridApiNodes.current.applyTransaction({ add: [{ id: newId, label: newId, shape: 'rect', group: '', preset: 'blue', fill: '#4472C4', stroke: '#2F5597', color: '#FFFFFF' }] }); onNodesChanged(); } };
+            const deleteNode = () => { if (gridApiNodes.current) { const sel = gridApiNodes.current.getSelectedRows(); gridApiNodes.current.applyTransaction({ remove: sel }); onNodesChanged(); } };
+            const addEdge = () => { if (gridApiEdges.current) { gridApiEdges.current.applyTransaction({ add: [{ id: generateId(), source: "", target: "", label: "", type: "normal", color: "#000000", lineColor: "#000000" }] }); onEdgesChanged(); } };
+            const deleteEdge = () => { if (gridApiEdges.current) { const sel = gridApiEdges.current.getSelectedRows(); gridApiEdges.current.applyTransaction({ remove: sel }); onEdgesChanged(); } };
+
+            const duplicateNode = () => {
+                if (gridApiNodes.current) {
+                    const selectedNodes = gridApiNodes.current.getSelectedRows();
+                    if (selectedNodes.length === 0) { alert("複製する行を選択してください。"); return; }
+                    const existingIds = new Set(nodeData.map(n => n.id));
+                    const newNodes = [];
+                    selectedNodes.forEach((node, index) => {
+                        let newIdCounter = nodeData.length + 1 + index;
+                        let newId = `Node${newIdCounter}`;
+                        while (existingIds.has(newId)) { newIdCounter++; newId = `Node${newIdCounter}`; }
+                        existingIds.add(newId);
+                        newNodes.push({ ...node, id: newId });
+                    });
+                    gridApiNodes.current.applyTransaction({ add: newNodes });
+                    onNodesChanged();
+                }
+            };
+            const duplicateEdge = () => {
+                if (gridApiEdges.current) {
+                    const selectedEdges = gridApiEdges.current.getSelectedRows();
+                    if (selectedEdges.length === 0) { alert("複製する行を選択してください。"); return; }
+                    const newEdges = selectedEdges.map(edge => ({ ...edge, id: generateId() }));
+                    gridApiEdges.current.applyTransaction({ add: newEdges });
+                    onEdgesChanged();
+                }
+            };
+
+            // 行の上下移動（Nodes）
+            const moveNodeUp = () => {
+                if (!gridApiNodes.current) return;
+                const selectedNodes = gridApiNodes.current.getSelectedNodes();
+                if (selectedNodes.length === 0) return;
+                const allRows = [];
+                gridApiNodes.current.forEachNode(n => allRows.push(n.data));
+                const selectedIds = new Set(selectedNodes.map(n => n.data.id));
+                const indices = allRows.map((r, i) => selectedIds.has(r.id) ? i : -1).filter(i => i >= 0).sort((a, b) => a - b);
+                if (indices[0] === 0) return;
+                for (const idx of indices) {
+                    [allRows[idx - 1], allRows[idx]] = [allRows[idx], allRows[idx - 1]];
+                }
+                setNodeData([...allRows]);
+                setTimeout(() => {
+                    if (gridApiNodes.current) {
+                        gridApiNodes.current.forEachNode(node => {
+                            if (selectedIds.has(node.data.id)) node.setSelected(true);
+                        });
+                    }
+                }, 50);
+            };
+
+            const moveNodeDown = () => {
+                if (!gridApiNodes.current) return;
+                const selectedNodes = gridApiNodes.current.getSelectedNodes();
+                if (selectedNodes.length === 0) return;
+                const allRows = [];
+                gridApiNodes.current.forEachNode(n => allRows.push(n.data));
+                const selectedIds = new Set(selectedNodes.map(n => n.data.id));
+                const indices = allRows.map((r, i) => selectedIds.has(r.id) ? i : -1).filter(i => i >= 0).sort((a, b) => b - a);
+                if (indices[0] === allRows.length - 1) return;
+                for (const idx of indices) {
+                    [allRows[idx], allRows[idx + 1]] = [allRows[idx + 1], allRows[idx]];
+                }
+                setNodeData([...allRows]);
+                setTimeout(() => {
+                    if (gridApiNodes.current) {
+                        gridApiNodes.current.forEachNode(node => {
+                            if (selectedIds.has(node.data.id)) node.setSelected(true);
+                        });
+                    }
+                }, 50);
+            };
+
+            // 行の上下移動（Edges）
+            const moveEdgeUp = () => {
+                if (!gridApiEdges.current) return;
+                const selectedEdges = gridApiEdges.current.getSelectedNodes();
+                if (selectedEdges.length === 0) return;
+                const allRows = [];
+                gridApiEdges.current.forEachNode(n => allRows.push(n.data));
+                const selectedIds = new Set(selectedEdges.map(n => n.data.id));
+                const indices = allRows.map((r, i) => selectedIds.has(r.id) ? i : -1).filter(i => i >= 0).sort((a, b) => a - b);
+                if (indices[0] === 0) return;
+                for (const idx of indices) {
+                    [allRows[idx - 1], allRows[idx]] = [allRows[idx], allRows[idx - 1]];
+                }
+                setEdgeData([...allRows]);
+                setTimeout(() => {
+                    if (gridApiEdges.current) {
+                        gridApiEdges.current.forEachNode(node => {
+                            if (selectedIds.has(node.data.id)) node.setSelected(true);
+                        });
+                    }
+                }, 50);
+            };
+
+            const moveEdgeDown = () => {
+                if (!gridApiEdges.current) return;
+                const selectedEdges = gridApiEdges.current.getSelectedNodes();
+                if (selectedEdges.length === 0) return;
+                const allRows = [];
+                gridApiEdges.current.forEachNode(n => allRows.push(n.data));
+                const selectedIds = new Set(selectedEdges.map(n => n.data.id));
+                const indices = allRows.map((r, i) => selectedIds.has(r.id) ? i : -1).filter(i => i >= 0).sort((a, b) => b - a);
+                if (indices[0] === allRows.length - 1) return;
+                for (const idx of indices) {
+                    [allRows[idx], allRows[idx + 1]] = [allRows[idx + 1], allRows[idx]];
+                }
+                setEdgeData([...allRows]);
+                setTimeout(() => {
+                    if (gridApiEdges.current) {
+                        gridApiEdges.current.forEachNode(node => {
+                            if (selectedIds.has(node.data.id)) node.setSelected(true);
+                        });
+                    }
+                }, 50);
+            };
+
+            const handleClearAll = () => {
+                if (window.confirm("すべてのノードとエッジを削除してもよろしいですか？")) {
+                    setNodeData([]); setEdgeData([]);
+                    if (gridApiNodes.current) gridApiNodes.current.setGridOption('rowData', []);
+                    if (gridApiEdges.current) gridApiEdges.current.setGridOption('rowData', []);
+                }
+            };
+
+            const handleJsonExport = () => { 
+                const themeData = { name: theme.name, primaryHex: theme.primaryHex, borderHex: theme.borderHex, textHex: theme.textHex, clusterHex: theme.clusterHex, clusterBorderHex: theme.clusterBorderHex, clusterTextHex: theme.clusterTextHex };
+                const data = { nodes: nodeData, edges: edgeData, meta: { direction, connectorType }, theme: themeData }; 
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); 
+                const url = URL.createObjectURL(blob); 
+                const a = document.createElement('a'); 
+                a.href = url; 
+                a.download = "mermaid_data.json"; 
+                a.click(); 
+                URL.revokeObjectURL(url); 
+            };
+            const handleJsonImport = () => { if (fileInputRef.current) fileInputRef.current.click(); };
+
+            // Mermaid DSL Import handlers
+            const handleOpenDslImport = () => {
+                setDslImportText('');
+                setShowDslImportModal(true);
+            };
+
+            const handleDslImport = () => {
+                if (!dslImportText.trim()) {
+                    alert('Mermaid DSLを入力してください。');
+                    return;
+                }
+                try {
+                    const parsed = parseMermaidDSL(dslImportText);
+                    const { nodes, edges } = convertParsedToAppData(parsed);
+                    setNodeData(nodes);
+                    setEdgeData(edges);
+                    setShowDslImportModal(false);
+                } catch (err) {
+                    console.error('DSL Parse Error:', err);
+                }
+            };
+            const onFileChange = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { try { const data = JSON.parse(evt.target.result); if (data.nodes) setNodeData(data.nodes); if (data.edges) setEdgeData(data.edges); if (data.meta) { if (data.meta.direction) setDirection(data.meta.direction); if (data.meta.connectorType) setConnectorType(data.meta.connectorType); } if (data.theme) { setTheme(expandTheme(data.theme)); } } catch (err) { console.error('JSON Import Error:', err); } e.target.value = null; }; reader.readAsText(file); };
+
+            // Export Logic (Consolidated)
+            const handleExport = (type) => {
+                const g = new dagre.graphlib.Graph({ compound: true });
+                g.setGraph({ rankdir: direction, nodesep: 50, ranksep: 80 });
+                g.setDefaultEdgeLabel(() => ({}));
+                const groups = {}; nodeData.forEach(n => { if (n.group) { if (!groups[n.group]) groups[n.group] = { id: n.group, label: n.group, width: 100, height: 100 }; } });
+                Object.values(groups).forEach(sg => { g.setNode(sg.id, { label: sg.label, clusterLabelPos: 'top', ...sg }); });
+                const getTextWidth = (text) => { let w = 0; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); w += ((c >= 0 && c < 129)) ? 1 : 2; } return w; };
+                nodeData.forEach(n => { const lines = (n.label || n.id).split('\n'); const w = Math.max(120, Math.max(...lines.map(l => getTextWidth(l))) * 9); const h = Math.max(60, lines.length * 20 + 20); g.setNode(n.id, { width: w, height: h, ...n }); if (n.group) g.setParent(n.id, n.group); });
+                edgeData.forEach(e => { if (e.source && e.target) { g.setEdge(e.source, e.target, { ...e, label: e.label }); } });
+                dagre.layout(g);
+                const nodesLayout = nodeData.map(n => { const node = g.node(n.id); return node ? { ...n, x: node.x, y: node.y, width: node.width, height: node.height } : n; }).filter(n => n.x !== undefined);
+                const subgraphsLayout = Object.values(groups).map(sg => { const node = g.node(sg.id); return node ? { ...sg, x: node.x, y: node.y, width: node.width, height: node.height } : sg; });
+                const edgesLayout = edgeData.map(e => { if (!e.source || !e.target) return null; const edge = g.edge(e.source, e.target); let midX = 0, midY = 0; if (edge && edge.points && edge.points.length > 0) { const midIdx = Math.floor(edge.points.length / 2); midX = edge.points[midIdx].x; midY = edge.points[midIdx].y; } else { const s = g.node(e.source); const t = g.node(e.target); if (s && t) { midX = (s.x + t.x) / 2; midY = (s.y + t.y) / 2; } } return { ...e, from: e.source, to: e.target, midX, midY }; }).filter(e => e !== null);
+                const gw = g.graph().width; const gh = g.graph().height;
+                let code = "";
+                if (type === 'excel') { code = generateExcelVbaCode(nodesLayout, edgesLayout, subgraphsLayout, theme, connectorType); setModalTitle("Excel VBA"); }
+                else { code = generatePowerPointVbaCode(nodesLayout, edgesLayout, subgraphsLayout, gw, gh, theme, connectorType); setModalTitle("PPT VBA"); }
+                setVbaCode(code); setShowModal(true);
+            };
+
+            // 【修正】App内で関数定義
+            const copyToClipboard = () => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(vbaCode);
+                } else {
+                    fallbackCopyTextToClipboard(vbaCode);
+                }
+            };
+
+            const fallbackCopyTextToClipboard = (text) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus(); textArea.select();
+                try { document.execCommand('copy'); }
+                catch (err) { console.error('Copy failed:', err); }
+                document.body.removeChild(textArea);
+            };
+
+            // Theme Editor handlers
+            const handleOpenThemeEditor = () => {
+                const simpleTheme = {
+                    name: theme.name,
+                    primaryHex: theme.primaryHex,
+                    borderHex: theme.borderHex,
+                    textHex: theme.textHex,
+                    clusterHex: theme.clusterHex,
+                    clusterBorderHex: theme.clusterBorderHex,
+                    clusterTextHex: theme.clusterTextHex,
+                    lineColorHex: theme.lineColorHex,
+                    lineLabelColorHex: theme.lineLabelColorHex
+                };
+                setThemeEditorText(JSON.stringify(simpleTheme, null, 2));
+                setShowThemeModal(true);
+            };
+
+            const handleThemePresetChange = (presetKey) => {
+                setSelectedThemePreset(presetKey);
+                const preset = THEME_PRESETS[presetKey];
+                if (preset) {
+                    setThemeEditorText(JSON.stringify(preset, null, 2));
+                }
+            };
+
+            const handleApplyTheme = () => {
+                try {
+                    const parsed = JSON.parse(themeEditorText);
+                    if (!parsed.name || !parsed.primaryHex) {
+                        alert('name と primaryHex は必須です。');
+                        return;
+                    }
+                    setTheme(expandTheme(parsed));
+                    setShowThemeModal(false);
+                } catch (err) {
+                    console.error('Theme Parse Error:', err);
+                    alert('JSONの形式が正しくありません。');
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen bg-gray-100">
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={onFileChange} />
+
+                    <header className="bg-slate-800 text-white p-2 px-4 flex justify-between items-center shadow z-30 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-th text-xl text-blue-400"></i>
+                            <h1 className="font-bold text-lg">Mermaid No-Code Builder</h1>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                            <div className="flex gap-1 mr-4">
+                                <button onClick={handleJsonImport} className="bg-gray-600 hover:bg-gray-700 px-2 py-1 rounded text-xs flex items-center gap-1" title="JSONインポート"><i className="fas fa-file-import"></i> 読込</button>
+                                <button onClick={handleJsonExport} className="bg-gray-600 hover:bg-gray-700 px-2 py-1 rounded text-xs flex items-center gap-1" title="JSONエクスポート"><i className="fas fa-file-export"></i> 保存</button>
+                                <button onClick={handleOpenDslImport} className="bg-purple-600 hover:bg-purple-700 px-2 py-1 rounded text-xs flex items-center gap-1" title="Mermaid DSL取込"><i className="fas fa-code"></i> Mermaid.js取込</button>
+                                <button onClick={handleClearAll} className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs flex items-center gap-1" title="全消去"><i className="fas fa-trash"></i> クリア</button>
+                            </div>
+                            <div className="mr-2 flex items-center bg-slate-700 rounded px-2 py-1 text-xs">
+                                <span className="mr-2 text-gray-300">向き:</span>
+                                <select value={direction} onChange={(e) => setDirection(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer"><option value="TD">縦 (TD)</option><option value="LR">横 (LR)</option></select>
+                            </div>
+                            <div className="mr-4 flex items-center bg-slate-700 rounded px-2 py-1 text-xs">
+                                <span className="mr-2 text-gray-300">線:</span>
+                                <select value={connectorType} onChange={(e) => setConnectorType(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer"><option value="curve">曲線</option><option value="elbow">カギ線</option><option value="straight">直線</option></select>
+                            </div>
+                            <button onClick={handleOpenThemeEditor} className="bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded text-xs flex items-center gap-1" title="テーマ編集"><i className="fas fa-palette"></i> テーマ</button>
+                            <button onClick={() => handleExport('excel')} className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition shadow"><i className="fas fa-file-excel"></i> Excel VBA</button>
+                            <button onClick={() => handleExport('ppt')} className="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition shadow"><i className="fas fa-file-powerpoint"></i> PPT VBA</button>
+                        </div>
+                    </header>
+
+                    <div className="flex-1 flex overflow-hidden">
+                        <div style={{ width: leftSplit }} className="flex flex-col border-r border-gray-300 bg-white flex-shrink-0">
+                            <div style={{ height: `${leftVerticalSplit}%` }} className="flex flex-col min-h-[150px]">
+                                <div className="p-2 bg-gray-100 border-b border-gray-300 flex justify-between items-center">
+                                    <div className="font-bold text-gray-700 text-sm"><i className="fas fa-shapes text-blue-600 mr-1"></i> Nodes (要素)</div>
+                                    <div className="flex gap-1">
+                                        <button onClick={addNode} className="text-blue-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition"><i className="fas fa-plus"></i> 追加</button>
+                                        <button onClick={duplicateNode} className="text-indigo-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を複製"><i className="fas fa-copy"></i> 複製</button>
+                                        <button onClick={deleteNode} className="text-red-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition"><i className="fas fa-trash"></i> 削除</button>
+                                        <span className="border-l border-gray-300 mx-1"></span>
+                                        <button onClick={moveNodeUp} className="text-gray-600 hover:bg-white px-1.5 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を上へ移動"><i className="fas fa-arrow-up"></i></button>
+                                        <button onClick={moveNodeDown} className="text-gray-600 hover:bg-white px-1.5 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を下へ移動"><i className="fas fa-arrow-down"></i></button>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <NodesGrid rowData={nodeData} onGridReady={params => gridApiNodes.current = params.api} onCellValueChanged={onNodesChanged} onSelectionChanged={onNodeSelectionChanged} />
+                                </div>
+                            </div>
+                            <div className="resizer-h w-full" onMouseDown={() => { isDraggingV.current = true; document.body.style.cursor = 'row-resize'; }}></div>
+                            <div className="flex-1 flex flex-col min-h-[150px]">
+                                <div className="p-2 bg-gray-100 border-b border-gray-300 border-t flex justify-between items-center">
+                                    <div className="font-bold text-gray-700 text-sm"><i className="fas fa-share-alt text-green-600 mr-1"></i> Edges (関連)</div>
+                                    <div className="flex gap-1">
+                                        <button onClick={addEdge} className="text-blue-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition"><i className="fas fa-plus"></i> 追加</button>
+                                        <button onClick={duplicateEdge} className="text-indigo-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を複製"><i className="fas fa-copy"></i> 複製</button>
+                                        <button onClick={deleteEdge} className="text-red-600 hover:bg-white px-2 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition"><i className="fas fa-trash"></i> 削除</button>
+                                        <span className="border-l border-gray-300 mx-1"></span>
+                                        <button onClick={moveEdgeUp} className="text-gray-600 hover:bg-white px-1.5 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を上へ移動"><i className="fas fa-arrow-up"></i></button>
+                                        <button onClick={moveEdgeDown} className="text-gray-600 hover:bg-white px-1.5 py-0.5 rounded text-xs border border-transparent hover:border-gray-300 transition" title="選択行を下へ移動"><i className="fas fa-arrow-down"></i></button>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <EdgesGrid rowData={edgeData} nodes={nodeData} onGridReady={params => gridApiEdges.current = params.api} onCellValueChanged={onEdgesChanged} onSelectionChanged={onEdgeSelectionChanged} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="resizer-v h-full" onMouseDown={() => { isDraggingH.current = true; document.body.style.cursor = 'col-resize'; }}></div>
+                        <div className="flex-1 flex flex-col bg-gray-50 min-w-0">
+                            <div className="p-2 bg-white border-b flex justify-between items-center shadow-sm z-10">
+                                <span className="font-bold text-gray-600 text-sm">Live Preview</span>
+                                <div className="flex items-center gap-4">
+                                    <label className="text-xs flex items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" checked={autoFit} onChange={e => { setAutoFit(e.target.checked); }} className="rounded border-gray-300 text-blue-600" /> 自動幅合わせ
+                                    </label>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => { setAutoFit(false); setScale(s => Math.max(0.1, s - 0.1)); }} className="bg-white border px-2 rounded hover:bg-gray-100 text-xs h-6 w-6 flex items-center justify-center"><i className="fas fa-minus"></i></button>
+                                        <span className="text-xs w-10 text-center font-mono">{Math.round(scale * 100)}%</span>
+                                        <button onClick={() => { setAutoFit(false); setScale(s => s + 0.1); }} className="bg-white border px-2 rounded hover:bg-gray-100 text-xs h-6 w-6 flex items-center justify-center"><i className="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-auto p-8 bg-slate-50">
+                                <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
+                                    <div id="mermaid-preview" ref={previewRef} className="mermaid bg-white p-4 rounded shadow-lg inline-block"></div>
+                                </div>
+                            </div>
+                            <div className="h-40 flex flex-col bg-white border-t-4 border-gray-200 flex-shrink-0">
+                                <div className="p-1 px-2 bg-gray-100 border-b text-xs font-bold text-gray-500 flex justify-between">
+                                    <span>Generated Mermaid DSL (Read Only)</span>
+                                    <button onClick={() => { navigator.clipboard.writeText(dsl); }} className="text-blue-500 hover:text-blue-700"><i className="far fa-copy"></i> Copy</button>
+                                </div>
+                                <div id="dsl-viewer-container" className="flex-1 relative"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {showModal && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-10">
+                            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col">
+                                <div className="p-4 bg-gray-800 text-white font-bold flex justify-between rounded-t-lg">
+                                    <span>{modalTitle}</span>
+                                    <button onClick={() => setShowModal(false)}><i className="fas fa-times"></i></button>
+                                </div>
+                                <textarea readOnly className="flex-1 p-4 font-mono text-xs bg-gray-100 resize-none focus:outline-none" value={vbaCode}></textarea>
+                                <div className="p-4 bg-gray-100 flex justify-end gap-3 rounded-b-lg">
+                                    <button onClick={() => { copyToClipboard(); setShowModal(false); }} className="px-6 py-2 text-white font-bold rounded shadow bg-blue-600 hover:bg-blue-700">クリップボードにコピー</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showDslImportModal && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-10">
+                            <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl h-full max-h-[80vh] flex flex-col">
+                                <div className="p-4 bg-purple-700 text-white font-bold flex justify-between rounded-t-lg">
+                                    <span><i className="fas fa-code mr-2"></i>Mermaid.js DSL 取込</span>
+                                    <button onClick={() => setShowDslImportModal(false)}><i className="fas fa-times"></i></button>
+                                </div>
+                                <div className="p-4 text-sm text-gray-600 bg-gray-50 border-b">
+                                    Mermaid.js の DSL（graph TD / flowchart TD 形式）を下のテキストエリアに貼り付けて「取り込み」ボタンを押してください。
+                                </div>
+                                <textarea
+                                    className="flex-1 p-4 font-mono text-xs bg-gray-100 resize-none focus:outline-none border-none"
+                                    placeholder={`例:\ngraph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[OK]\n    B -->|No| D[Cancel]`}
+                                    value={dslImportText}
+                                    onChange={(e) => setDslImportText(e.target.value)}
+                                ></textarea>
+                                <div className="p-4 bg-gray-100 flex justify-end gap-3 rounded-b-lg">
+                                    <button onClick={() => setShowDslImportModal(false)} className="px-4 py-2 text-gray-700 font-bold rounded border border-gray-300 hover:bg-gray-200">キャンセル</button>
+                                    <button onClick={handleDslImport} className="px-6 py-2 text-white font-bold rounded shadow bg-purple-600 hover:bg-purple-700"><i className="fas fa-download mr-1"></i> 取り込み</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showThemeModal && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-10">
+                            <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-full max-h-[80vh] flex flex-col">
+                                <div className="p-4 bg-indigo-700 text-white font-bold flex justify-between rounded-t-lg">
+                                    <span><i className="fas fa-palette mr-2"></i>テーマ編集</span>
+                                    <button onClick={() => setShowThemeModal(false)}><i className="fas fa-times"></i></button>
+                                </div>
+                                <div className="p-4 text-sm text-gray-600 bg-gray-50 border-b flex items-center gap-4">
+                                    <span className="text-gray-700 font-medium">プリセット:</span>
+                                    <select
+                                        value={selectedThemePreset}
+                                        onChange={(e) => handleThemePresetChange(e.target.value)}
+                                        className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    >
+                                        <option value="">-- 選択してください --</option>
+                                        <option value="officeBlue">Office Blue（デフォルト）</option>
+                                        <option value="dark">Dark</option>
+                                        <option value="forest">Forest</option>
+                                        <option value="sunset">Sunset</option>
+                                        <option value="neutral">Neutral</option>
+                                    </select>
+                                    <span className="text-xs text-gray-500">※プリセットを選択するとエディタに反映されます</span>
+                                </div>
+                                <div className="p-3 text-xs text-gray-500 bg-gray-50 border-b">
+                                    JSON形式でテーマ設定を編集できます。lineColorHex（矢印の線）, lineLabelColorHex（矢印ラベル）も設定可能です。
+                                </div>
+                                <textarea
+                                    className="flex-1 p-4 font-mono text-xs bg-gray-100 resize-none focus:outline-none border-none"
+                                    placeholder='{"primaryColor": "#4472C4", "lineColor": "#333333", ...}'
+                                    value={themeEditorText}
+                                    onChange={(e) => setThemeEditorText(e.target.value)}
+                                ></textarea>
+                                <div className="p-4 bg-gray-100 flex justify-end gap-3 rounded-b-lg">
+                                    <button onClick={() => setShowThemeModal(false)} className="px-4 py-2 text-gray-700 font-bold rounded border border-gray-300 hover:bg-gray-200">キャンセル</button>
+                                    <button onClick={handleApplyTheme} className="px-6 py-2 text-white font-bold rounded shadow bg-indigo-600 hover:bg-indigo-700"><i className="fas fa-check mr-1"></i> 適用</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

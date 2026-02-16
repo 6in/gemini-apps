@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid to Excel/PPT VBA Converter</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
+    <!-- Dagre (グラフ計算ライブラリ) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+
+    <!-- PptxGenJS -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <!-- FontAwesome (アイコン) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .editor-container {
+            height: calc(100vh - 80px);
+        }
+
+        #mermaid-preview svg {
+            max-width: none !important;
+            height: auto;
+        }
+
+        .resizer:hover {
+            background-color: #3b82f6;
+            width: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ==========================================
+        // 0. Theme & Utils
+        // ==========================================
+        const DEFAULT_THEME = {
+            name: "Office Blue",
+            primaryHex: "#4472C4",
+            primaryRGB: "RGB(68, 114, 196)",
+            borderHex: "#2F5597",
+            borderRGB: "RGB(47, 85, 151)",
+            textHex: "#FFFFFF",
+            textRGB: "RGB(255, 255, 255)",
+            clusterHex: "#FFFFDE",
+            clusterRGB: "RGB(255, 255, 222)",
+            clusterBorderHex: "#AAAAAA",
+            clusterBorderRGB: "RGB(170, 170, 170)"
+        };
+
+        const hexToVbaRgb = (hex) => {
+            if (!hex) return null;
+            if (hex.length === 4) {
+                hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+            }
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `RGB(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+        };
+
+        const cleanHtmlLabel = (label) => {
+            if (!label) return "";
+            let text = label;
+            text = text.replace(/<br\s*\/?>/gi, "\n");
+            text = text.replace(/<\/?[^>]+(>|$)/g, "");
+            return text.trim();
+        };
+
+        const unquote = (str) => {
+            if (!str) return str;
+            const trimmed = str.trim();
+            if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+                return trimmed.slice(1, -1);
+            }
+            return trimmed;
+        };
+
+        const getTextWidth = (text) => {
+            let width = 0;
+            for (let i = 0; i < text.length; i++) {
+                const c = text.charCodeAt(i);
+                if ((c >= 0x00 && c < 0x81) || (c === 0xf8f0) || (c >= 0xff61 && c < 0xffa0) || (c >= 0xf8f1 && c < 0xf8f4)) {
+                    width += 1;
+                } else {
+                    width += 2;
+                }
+            }
+            return width;
+        };
+
+        // ==========================================
+        // 1. Mermaid Parser Logic
+        // ==========================================
+        const parseMermaidDSL = (dsl) => {
+            const cleanDsl = dsl.replace(/<\/?b>/gi, "");
+
+            const nodes = new Map();
+            const edges = [];
+            const subgraphs = new Map();
+            const classDefs = new Map();
+
+            const lines = cleanDsl.split(/\r?\n/);
+            let currentSubgraph = null;
+
+            const idPattern = '([a-zA-Z0-9_]+|"[^"]+")';
+            const shapePattern = '(\\[\\[|\\[\\(|\\[|{{|\\(\\(|>|\\{p|\\{|\\/|\\\\)(.*?)(\\]\\]|\\]\\)|\\]|}}|\\]\\)|]|\}|\\/|\\\\)';
+
+            const nodeRegex = new RegExp(`^(\\s*)${idPattern}\\s*(?:${shapePattern})?`);
+            const linkRegex = new RegExp(`^\\s*${idPattern}\\s*(?:${shapePattern})?\\s*(-*\\>|-.+?-*\\>|==+>)\\s*(?:\\|(.*?)\\|\\s*)?${idPattern}\\s*(?:${shapePattern})?`);
+
+            const subgraphStartRegex = /^\s*subgraph\s+("[^"]+"|[^ \[\{]+)(?:\[(.*?)\]|\s+(.*))?/;
+            const subgraphEndRegex = /^\s*end\s*$/;
+
+            const classDefRegex = /^\s*classDef\s+([a-zA-Z0-9_]+)\s+(.*)/;
+            const classApplyRegex = /^\s*class\s+(.+)\s+([a-zA-Z0-9_]+)/;
+            const styleRegex = /^\s*style\s+([a-zA-Z0-9_]+|"[^"]+")\s+(.*)/;
+
+            const cleanId = (rawId) => unquote(rawId);
+
+            const parseStyleString = (str) => {
+                const obj = {};
+                str.split(',').forEach(kv => {
+                    const [k, v] = kv.split(':').map(s => s.trim());
+                    if (k && v) obj[k] = v;
+                });
+                return obj;
+            };
+
+            const resolveNode = (id, label, startToken, endToken) => {
+                let shape = 'rect';
+                let cleanLabel = unquote(label) || cleanId(id);
+
+                if (startToken === '[(') {
+                    if (endToken === ')]' || endToken === ']') {
+                        shape = 'database';
+                        if (endToken === ']' && cleanLabel.endsWith(')')) cleanLabel = cleanLabel.slice(0, -1);
+                    }
+                } else if (startToken === '((' && (endToken === '))' || endToken === ')')) {
+                    shape = 'circle';
+                    if (endToken === ')' && cleanLabel.endsWith(')')) cleanLabel = cleanLabel.slice(0, -1);
+                } else if (startToken === '{' && endToken === '}') shape = 'diamond';
+                else if (startToken === '([' && (endToken === '])' || endToken === ']')) {
+                    shape = 'stadium';
+                    if (endToken === ']' && cleanLabel.endsWith(')')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                else if (startToken === '[[' && (endToken === ']]' || endToken === ']')) {
+                    shape = 'subroutine';
+                    if (endToken === ']' && cleanLabel.endsWith(']')) cleanLabel = cleanLabel.slice(0, -1);
+                }
+                else if (startToken === '/' && endToken === '/') shape = 'parallelogram';
+                else if (startToken === '(' && endToken === ')') shape = 'roundRect';
+
+                cleanLabel = cleanHtmlLabel(cleanLabel);
+
+                return { label: cleanLabel, shape };
+            };
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith("%%") || trimmed.startsWith("graph") || trimmed.startsWith("flowchart") || !trimmed) return;
+
+                const classDefMatch = line.match(classDefRegex);
+                if (classDefMatch) {
+                    classDefs.set(classDefMatch[1], parseStyleString(classDefMatch[2]));
+                    return;
+                }
+
+                const classApplyMatch = line.match(classApplyRegex);
+                if (classApplyMatch) {
+                    const targetIds = classApplyMatch[1].split(',').map(s => cleanId(s.trim()));
+                    const className = classApplyMatch[2];
+                    targetIds.forEach(tid => {
+                        if (nodes.has(tid)) {
+                            const n = nodes.get(tid);
+                            n.className = className;
+                        } else {
+                            nodes.set(tid, { id: tid, label: tid, shape: 'rect', className: className, parent: currentSubgraph });
+                        }
+                    });
+                    return;
+                }
+
+                const styleMatch = line.match(styleRegex);
+                if (styleMatch) {
+                    const id = cleanId(styleMatch[1]);
+                    const styleObj = parseStyleString(styleMatch[2]);
+                    if (nodes.has(id)) {
+                        const n = nodes.get(id);
+                        n.styles = { ...n.styles, ...styleObj };
+                    } else {
+                        nodes.set(id, { id, label: id, shape: 'rect', styles: styleObj, parent: currentSubgraph });
+                    }
+                    return;
+                }
+
+                const subMatch = line.match(subgraphStartRegex);
+                if (subMatch) {
+                    const id = cleanId(subMatch[1]);
+                    let label = subMatch[2] || subMatch[3] || id;
+                    label = unquote(label);
+                    currentSubgraph = id;
+                    subgraphs.set(id, { id, label });
+                    return;
+                }
+
+                if (subgraphEndRegex.test(trimmed)) {
+                    currentSubgraph = null;
+                    return;
+                }
+
+                const linkMatch = trimmed.match(linkRegex);
+                if (linkMatch) {
+                    const [_, rawId1, s1, l1, e1, arrow, label, rawId2, s2, l2, e2] = linkMatch;
+                    const id1 = cleanId(rawId1);
+                    const id2 = cleanId(rawId2);
+
+                    const info1 = resolveNode(id1, l1, s1, e1);
+                    if (!nodes.has(id1)) nodes.set(id1, { id: id1, label: info1.label, shape: info1.shape, parent: currentSubgraph });
+                    else if (l1) { const n = nodes.get(id1); n.label = info1.label; n.shape = info1.shape; if (!n.parent) n.parent = currentSubgraph; }
+
+                    const info2 = resolveNode(id2, l2, s2, e2);
+                    if (!nodes.has(id2)) nodes.set(id2, { id: id2, label: info2.label, shape: info2.shape, parent: currentSubgraph });
+                    else if (l2) { const n = nodes.get(id2); n.label = info2.label; n.shape = info2.shape; if (!n.parent) n.parent = currentSubgraph; }
+
+                    edges.push({ from: id1, to: id2, label: label ? cleanHtmlLabel(label.trim()) : "" });
+                    return;
+                }
+
+                const nodeMatch = trimmed.match(nodeRegex);
+                if (nodeMatch) {
+                    const [_, indent, rawId, startToken, label, endToken] = nodeMatch;
+                    if (rawId) {
+                        const id = cleanId(rawId);
+                        const info = resolveNode(id, label, startToken, endToken);
+                        if (!nodes.has(id)) nodes.set(id, { id: id, label: info.label, shape: info.shape, parent: currentSubgraph });
+                        else { const n = nodes.get(id); if (label) { n.label = info.label; n.shape = info.shape; } if (!n.parent) n.parent = currentSubgraph; }
+                    }
+                }
+            });
+
+            nodes.forEach(n => {
+                if (n.className && classDefs.has(n.className)) {
+                    n.styles = { ...classDefs.get(n.className), ...n.styles };
+                }
+            });
+
+            return { nodes: Array.from(nodes.values()), edges, subgraphs: Array.from(subgraphs.values()) };
+        };
+
+        // ==========================================
+        // 2. Logic to Generate VBA (Excel)
+        // ==========================================
+        const generateExcelVbaCode = (nodes, edges, subgraphs, theme, connectorType) => {
+            let vba = `Sub DrawMermaidFlowchart_Excel()
+    ' ==========================================
+    ' Generated by Mermaid to VBA Converter (Excel)
+    ' Connector: ${connectorType}
+    ' ==========================================
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    
+    Dim shp As Shape
+    Dim conn As Shape
+    Dim nodeMap As Object
+    Set nodeMap = CreateObject("Scripting.Dictionary")
+    
+    Application.ScreenUpdating = False
+    
+    Dim offsetX As Double, offsetY As Double
+    offsetX = 50
+    offsetY = 50
+
+`;
+            if (subgraphs && subgraphs.length > 0) {
+                vba += `    ' --- Subgraphs ---\n`;
+                subgraphs.forEach(sg => {
+                    const left = Math.round(sg.x - sg.width / 2);
+                    const top = Math.round(sg.y - sg.height / 2);
+                    const w = Math.round(sg.width);
+                    const h = Math.round(sg.height);
+                    const safeLabel = sg.label.replace(/"/g, '""');
+
+                    vba += `    Set shp = ws.Shapes.AddShape(msoShapeRectangle, offsetX + ${left}, offsetY + ${top}, ${w}, ${h})
+    shp.Name = "Group_${sg.id}"
+    shp.TextFrame2.TextRange.Text = "${safeLabel}"
+    shp.TextFrame2.TextRange.Font.Size = 10
+    shp.TextFrame2.TextRange.Font.Bold = msoTrue
+    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(100, 100, 100)
+    shp.TextFrame2.VerticalAnchor = msoAnchorTop
+    shp.TextFrame2.MarginTop = 5
+    With shp.Fill
+        .ForeColor.RGB = ${theme.clusterRGB}
+        .Transparency = 0
+    End With
+    With shp.Line
+        .ForeColor.RGB = ${theme.clusterBorderRGB}
+        .DashStyle = msoLineDash
+        .Weight = 1
+    End With
+    shp.ZOrder msoSendToBack
+`;
+                });
+            }
+
+            nodes.forEach(n => {
+                let msoShape = "msoShapeRectangle";
+                switch (n.shape) {
+                    case 'database': msoShape = "msoShapeCan"; break;
+                    case 'circle': msoShape = "msoShapeOval"; break;
+                    case 'diamond': msoShape = "msoShapeFlowchartDecision"; break;
+                    case 'roundRect': msoShape = "msoShapeRoundedRectangle"; break;
+                    case 'stadium': msoShape = "msoShapeFlowchartTerminator"; break;
+                    case 'subroutine': msoShape = "msoShapeFlowchartPredefinedProcess"; break;
+                    case 'hexagon': msoShape = "msoShapeHexagon"; break;
+                    case 'trapezoid': msoShape = "msoShapeFlowchartManualOperation"; break;
+                    case 'parallelogram': msoShape = "msoShapeFlowchartData"; break;
+                    default: msoShape = "msoShapeRectangle";
+                }
+
+                const left = Math.round(n.x - n.width / 2);
+                const top = Math.round(n.y - n.height / 2);
+                const w = Math.round(n.width);
+                const h = Math.round(n.height);
+                const safeLabel = n.label.replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "');
+
+                let fillRGB = theme.primaryRGB;
+                let strokeRGB = theme.borderRGB;
+                let textRGB = theme.textRGB;
+                let fontWeight = "msoFalse";
+
+                if (n.styles) {
+                    if (n.styles.fill) {
+                        const rgb = hexToVbaRgb(n.styles.fill);
+                        if (rgb) {
+                            fillRGB = rgb;
+                            if (!n.styles.color && n.styles.fill.toLowerCase() !== '#000' && n.styles.fill.length > 0) {
+                                textRGB = "RGB(0,0,0)";
+                            }
+                        }
+                    }
+                    if (n.styles.stroke) {
+                        const rgb = hexToVbaRgb(n.styles.stroke);
+                        if (rgb) strokeRGB = rgb;
+                    }
+                    if (n.styles.color) {
+                        const rgb = hexToVbaRgb(n.styles.color);
+                        if (rgb) textRGB = rgb;
+                    }
+                    if (n.styles['font-weight'] === 'bold') {
+                        fontWeight = "msoTrue";
+                    }
+                }
+
+                vba += `    Set shp = ws.Shapes.AddShape(${msoShape}, offsetX + ${left}, offsetY + ${top}, ${w}, ${h})
+    shp.Name = "${n.id}"
+    shp.TextFrame2.TextRange.Text = "${safeLabel}"
+    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle
+    shp.TextFrame2.TextRange.Font.Bold = ${fontWeight}
+    With shp.Fill
+        .ForeColor.RGB = ${fillRGB}
+    End With
+    With shp.Line
+        .ForeColor.RGB = ${strokeRGB}
+        .Weight = 1.5
+    End With
+    With shp.TextFrame2.TextRange
+        .Font.Fill.ForeColor.RGB = ${textRGB}
+        .ParagraphFormat.Alignment = msoAlignCenter
+        .Font.Size = 11
+    End With
+    nodeMap.Add "${n.id}", shp
+`;
+            });
+
+            vba += `    ' --- Connectors ---\n`;
+            edges.forEach((e, index) => {
+                const safeEdgeLabel = e.label ? e.label.replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "') : "";
+                vba += `    Set conn = ws.Shapes.AddConnector(${connectorType === 'curve' ? "msoConnectorCurve" : connectorType === 'straight' ? "msoConnectorStraight" : "msoConnectorElbow"}, 0, 0, 0, 0)
+    conn.ConnectorFormat.BeginConnect nodeMap("${e.from}"), 1
+    conn.ConnectorFormat.EndConnect nodeMap("${e.to}"), 1
+    conn.RerouteConnections
+    With conn.Line
+        .ForeColor.RGB = RGB(89, 89, 89)
+        .EndArrowheadStyle = msoArrowheadTriangle
+        .Weight = 1
+    End With
+`;
+                if (safeEdgeLabel && e.midX && e.midY) {
+                    const lblLeft = Math.round(e.midX - 30);
+                    const lblTop = Math.round(e.midY - 10);
+                    vba += `    Set shp = ws.Shapes.AddTextbox(msoTextOrientationHorizontal, offsetX + ${lblLeft}, offsetY + ${lblTop}, 60, 20)
+    shp.TextFrame2.TextRange.Text = "${safeEdgeLabel}"
+    shp.Fill.ForeColor.RGB = RGB(255, 255, 255)
+    shp.Line.Visible = msoFalse
+    shp.TextFrame2.TextRange.Font.Size = 9
+    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(0, 0, 0)
+    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter
+    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle
+`;
+                }
+            });
+
+            vba += `
+    Application.ScreenUpdating = True
+    MsgBox "描画完了！", vbInformation
+End Sub`;
+            return vba;
+        };
+
+        // ==========================================
+        // 3. Logic to Generate VBA (PowerPoint)
+        // ==========================================
+        const generatePowerPointVbaCode = (nodes, edges, subgraphs, graphW, graphH, theme, connectorType) => {
+            let vba = `Sub DrawMermaidFlowchart_PPT_Fit()
+    ' ==========================================
+    ' Generated by Mermaid to VBA Converter (PowerPoint)
+    ' Connector: ${connectorType}
+    ' ==========================================
+    Dim sld As Slide
+    Dim pres As Presentation
+    Set pres = ActivePresentation
+    
+    On Error Resume Next
+    Set sld = ActiveWindow.View.Slide
+    If sld Is Nothing Then Set sld = pres.Slides(1)
+    On Error GoTo 0
+    
+    Dim shp As Shape
+    Dim conn As Shape
+    Dim nodeMap As Object
+    Set nodeMap = CreateObject("Scripting.Dictionary")
+    
+    ' --- Auto Fit Calculation ---
+    Dim slideW As Double, slideH As Double
+    slideW = pres.PageSetup.SlideWidth
+    slideH = pres.PageSetup.SlideHeight
+    
+    Dim graphW As Double, graphH As Double
+    graphW = ${graphW}
+    graphH = ${graphH}
+    
+    Dim margin As Double
+    margin = 40 
+    
+    Dim zoom As Double
+    Dim zoomW As Double, zoomH As Double
+    
+    zoomW = (slideW - margin * 2) / graphW
+    zoomH = (slideH - margin * 2) / graphH
+    
+    If zoomW < zoomH Then
+        zoom = zoomW
+    Else
+        zoom = zoomH
+    End If
+    
+    If zoom > 1.5 Then zoom = 1.5
+    
+    Dim offsetX As Double, offsetY As Double
+    offsetX = (slideW - (graphW * zoom)) / 2
+    offsetY = (slideH - (graphH * zoom)) / 2
+    
+    Dim baseFontSize As Double
+    baseFontSize = 11 * zoom
+    If baseFontSize < 8 Then baseFontSize = 8
+    
+    Dim lblFontSize As Double
+
+`;
+            if (subgraphs && subgraphs.length > 0) {
+                vba += `    ' --- Subgraphs ---\n`;
+                subgraphs.forEach(sg => {
+                    const left = sg.x - sg.width / 2;
+                    const top = sg.y - sg.height / 2;
+
+                    const vbaLeft = `(${left} * zoom + offsetX)`;
+                    const vbaTop = `(${top} * zoom + offsetY)`;
+                    const vbaW = `(${sg.width} * zoom)`;
+                    const vbaH = `(${sg.height} * zoom)`;
+                    const safeLabel = sg.label.replace(/"/g, '""');
+
+                    vba += `    Set shp = sld.Shapes.AddShape(msoShapeRectangle, ${vbaLeft}, ${vbaTop}, ${vbaW}, ${vbaH})
+    shp.Name = "Group_${sg.id}"
+    shp.TextFrame2.TextRange.Text = "${safeLabel}"
+    shp.TextFrame2.TextRange.Font.Size = baseFontSize
+    shp.TextFrame2.TextRange.Font.Bold = msoTrue
+    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(100, 100, 100)
+    shp.TextFrame2.VerticalAnchor = msoAnchorTop
+    shp.TextFrame2.MarginTop = 5
+    With shp.Fill
+        .ForeColor.RGB = ${theme.clusterRGB}
+        .Transparency = 0
+    End With
+    With shp.Line
+        .ForeColor.RGB = ${theme.clusterBorderRGB}
+        .DashStyle = msoLineDash
+        .Weight = 1
+    End With
+    shp.ZOrder msoSendToBack
+`;
+                });
+            }
+
+            nodes.forEach(n => {
+                let msoShape = "msoShapeRectangle";
+                switch (n.shape) {
+                    case 'database': msoShape = "msoShapeCan"; break;
+                    case 'circle': msoShape = "msoShapeOval"; break;
+                    case 'diamond': msoShape = "msoShapeFlowchartDecision"; break;
+                    case 'roundRect': msoShape = "msoShapeRoundedRectangle"; break;
+                    case 'stadium': msoShape = "msoShapeFlowchartTerminator"; break;
+                    case 'subroutine': msoShape = "msoShapeFlowchartPredefinedProcess"; break;
+                    case 'hexagon': msoShape = "msoShapeHexagon"; break;
+                    case 'trapezoid': msoShape = "msoShapeFlowchartManualOperation"; break;
+                    case 'parallelogram': msoShape = "msoShapeFlowchartData"; break;
+                    default: msoShape = "msoShapeRectangle";
+                }
+
+                const left = n.x - n.width / 2;
+                const top = n.y - n.height / 2;
+                const vbaLeft = `(${left} * zoom + offsetX)`;
+                const vbaTop = `(${top} * zoom + offsetY)`;
+                const vbaW = `(${n.width} * zoom)`;
+                const vbaH = `(${n.height} * zoom)`;
+                const safeLabel = n.label.replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "');
+
+                let fillRGB = theme.primaryRGB;
+                let strokeRGB = theme.borderRGB;
+                let textRGB = theme.textRGB;
+                let fontWeight = "msoFalse";
+
+                if (n.styles) {
+                    if (n.styles.fill) {
+                        const rgb = hexToVbaRgb(n.styles.fill);
+                        if (rgb) {
+                            fillRGB = rgb;
+                            if (!n.styles.color && n.styles.fill.toLowerCase() !== '#000' && n.styles.fill.length > 0) {
+                                textRGB = "RGB(0,0,0)";
+                            }
+                        }
+                    }
+                    if (n.styles.stroke) {
+                        const rgb = hexToVbaRgb(n.styles.stroke);
+                        if (rgb) strokeRGB = rgb;
+                    }
+                    if (n.styles.color) {
+                        const rgb = hexToVbaRgb(n.styles.color);
+                        if (rgb) textRGB = rgb;
+                    }
+                    if (n.styles['font-weight'] === 'bold') {
+                        fontWeight = "msoTrue";
+                    }
+                }
+
+                vba += `    Set shp = sld.Shapes.AddShape(${msoShape}, ${vbaLeft}, ${vbaTop}, ${vbaW}, ${vbaH})
+    shp.Name = "${n.id}"
+    shp.TextFrame2.TextRange.Text = "${safeLabel}"
+    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle
+    shp.TextFrame2.TextRange.Font.Bold = ${fontWeight}
+    With shp.Fill
+        .ForeColor.RGB = ${fillRGB}
+    End With
+    With shp.Line
+        .ForeColor.RGB = ${strokeRGB}
+        .Weight = 1.5
+    End With
+    With shp.TextFrame2.TextRange
+        .Font.Fill.ForeColor.RGB = ${textRGB}
+        .ParagraphFormat.Alignment = msoAlignCenter
+        .Font.Size = baseFontSize
+    End With
+    nodeMap.Add "${n.id}", shp
+`;
+            });
+
+            edges.forEach((e, index) => {
+                const safeEdgeLabel = e.label ? e.label.replace(/"/g, '""').replace(/\n/g, '" & vbCrLf & "') : "";
+                vba += `    Set conn = sld.Shapes.AddConnector(${connectorType === 'curve' ? "msoConnectorCurve" : connectorType === 'straight' ? "msoConnectorStraight" : "msoConnectorElbow"}, 0, 0, 0, 0)
+    conn.ConnectorFormat.BeginConnect nodeMap("${e.from}"), 1
+    conn.ConnectorFormat.EndConnect nodeMap("${e.to}"), 1
+    conn.RerouteConnections
+    With conn.Line
+        .ForeColor.RGB = RGB(89, 89, 89)
+        .EndArrowheadStyle = msoArrowheadTriangle
+        .Weight = 1
+    End With
+`;
+                if (safeEdgeLabel && e.midX && e.midY) {
+                    const lblLeft = e.midX - 30;
+                    const lblTop = e.midY - 10;
+                    const vbaLblLeft = `(${lblLeft} * zoom + offsetX)`;
+                    const vbaLblTop = `(${lblTop} * zoom + offsetY)`;
+
+                    vba += `    Set shp = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, ${vbaLblLeft}, ${vbaLblTop}, 60 * zoom, 20 * zoom)
+    shp.TextFrame2.TextRange.Text = "${safeEdgeLabel}"
+    shp.Fill.ForeColor.RGB = RGB(255, 255, 255)
+    shp.Line.Visible = msoFalse
+    lblFontSize = baseFontSize - 2
+    If lblFontSize < 7 Then lblFontSize = 7
+    shp.TextFrame2.TextRange.Font.Size = lblFontSize
+    shp.TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(0, 0, 0)
+    shp.TextFrame2.TextRange.ParagraphFormat.Alignment = msoAlignCenter
+    shp.TextFrame2.VerticalAnchor = msoAnchorMiddle
+`;
+                }
+            });
+
+            vba += `
+    MsgBox "描画完了！ (Zoom: " & Round(zoom, 2) & ")", vbInformation
+End Sub`;
+            return vba;
+        };
+
+        // ==========================================
+        // 4. Main Application Component
+        // ==========================================
+        const App = () => {
+            // Default DSL with Subgraph
+            const defaultDSL = `graph TD
+    %% 概念図用スタイル定義
+    classDef concept fill:#e8f4fd,stroke:#1f77b4,stroke-width:3px,color:#000,font-weight:bold
+    classDef dataflow fill:#e6ffe6,stroke:#2ca02c,stroke-width:3px,color:#000,font-weight:bold
+    classDef interface fill:#fff2e8,stroke:#ff7f0e,stroke-width:3px,color:#000,font-weight:bold
+    classDef control fill:#f8e8f8,stroke:#9467bd,stroke-width:3px,color:#000,font-weight:bold
+
+    %% 制御レイヤー
+    subgraph "制御レイヤー"
+        DPR["<b>BH0210BD.dpr</b><br>プログラムエントリポイント"]
+        MAIN["<b>Main_Proc(U_BH0210_Main.pas)</b><br>全体制御処理"]
+        AP_PROC["<b>AP_Proc(U_BH0210_Main.pas)</b><br>業務処理統括"]
+    end
+
+    %% 機能処理
+    subgraph "機能処理"
+        INIT["<b>Init_Proc(U_BH0210_Main.pas)</b><br>初期化処理"]
+        DB_OPEN["<b>DB_Open(U_BH0210_Func.pas)</b><br>DB接続処理"]
+        EXEC_SP["<b>ExecStoredProc(U_BH0210_Func.pas)</b><br>ストアドプロシージャ実行"]
+        PRINT_SEND["<b>ExecPrintSendProc(U_BH0210_Func.pas)</b><br>帳票送信処理"]
+        RENAME["<b>ReNameProc(U_BH0210_Func.pas)</b><br>ファイルリネーム"]
+        EXIT["<b>Exit_Proc(U_BH0210_Main.pas)</b><br>終了処理"]
+    end
+
+    %% 設定ファイル群
+    CONFIG_FILES["<b>設定ファイル群</b><br><b>where.ini</b> 場所設定<br><b>GENESIS.ini</b> システム設定<br><b>BH0210.ini</b> アプリケーション設定<br><b>SITE.ini</b> サイト設定"]
+
+    %% データベース層
+    subgraph "データベース層"
+        SA_SP["<b>SA_BH0210_00</b><br>配送実績チェック"]
+        MASTER_TABLES["<b>マスタテーブル群</b><br><b>BSKANRIZEN</b> 出荷管理テーブル<br><b>HSCHGDT</b> 配送変更テーブル<br><b>BSADDON</b> 付加情報テーブル<br><b>SAGYOZENHD</b> 作業ヘッダー<br><b>SAGYOZENDT</b> 作業明細"]
+        WORK_TABLE["<b>SYUKKAMEISAIWK</b><br>出荷明細ワーク"]
+    end
+
+    %% ファイル処理
+    INPUT_FILE["<b>HSJSK{LBCD}{日}{JobNo}.dat</b><br>配送実績データ"]
+    OUTPUT_FILE["<b>HSUNMAT{LBCD}{日}{JobNo}.dat</b><br>アンマッチリスト"]
+
+    %% 外部システム
+    EXTERNAL_SYS["<b>外部システム連携</b><br><b>RCS</b> 帳票制御システム<br><b>MCS</b> メッセージ通信システム"]
+
+    %% ログシステム
+    LOG_TABLES["<b>ログテーブル群</b><br><b>EOSTALOG</b> EOSシステムログ<br><b>JCSTALOG</b> JCSシステムログ"]
+
+    %% 共通ライブラリ
+    COMMON_LIB["<b>共通ライブラリ</b><br><b>D_LogFunc.dll</b> ログ機能<br><b>D_MsgFunc</b> メッセージ機能<br><b>StrFunc</b> 文字列処理"]
+
+    %% メインフロー
+    DPR --> |制御| MAIN
+    MAIN --> |制御| INIT
+    MAIN --> |制御| AP_PROC
+    MAIN --> |制御| EXIT
+
+    %% 初期化フロー
+    INIT --> |READ| CONFIG_FILES
+
+    %% 業務処理フロー
+    AP_PROC --> |制御| DB_OPEN
+    AP_PROC --> |制御| EXEC_SP
+    AP_PROC --> |制御| PRINT_SEND
+    AP_PROC --> |制御| RENAME
+
+    %% ストアドプロシージャ処理
+    EXEC_SP --> |実行| SA_SP
+    SA_SP --> |READ| INPUT_FILE
+    SA_SP --> |WRITE| OUTPUT_FILE
+    SA_SP --> |SELECT| MASTER_TABLES
+    SA_SP --> |SELECT| WORK_TABLE
+
+    %% TAログ処理
+    AP_PROC --> |SELECT/INSERT| LOG_TABLES
+
+    %% 帳票送信処理
+    PRINT_SEND --> |READ| OUTPUT_FILE
+    PRINT_SEND --> |SEND| EXTERNAL_SYS
+
+    %% ファイル処理
+    RENAME --> |RENAME| INPUT_FILE
+    RENAME --> |RENAME| OUTPUT_FILE
+
+    %% 共通ライブラリ使用
+    INIT -.-> |使用| COMMON_LIB
+    EXEC_SP -.-> |使用| COMMON_LIB
+    PRINT_SEND -.-> |使用| COMMON_LIB
+    EXIT -.-> |使用| COMMON_LIB
+
+    %% スタイル適用
+    class DPR,MAIN,AP_PROC control
+    class INIT,DB_OPEN,EXEC_SP,PRINT_SEND,RENAME,EXIT concept
+    class MASTER_TABLES,WORK_TABLE,SA_SP,LOG_TABLES dataflow
+    class INPUT_FILE,OUTPUT_FILE,CONFIG_FILES,EXTERNAL_SYS,COMMON_LIB interface`;
+
+            const [dsl, setDsl] = useState(defaultDSL);
+            const previewRef = useRef(null);
+            const editorRef = useRef(null);
+            const [status, setStatus] = useState("");
+            const [scale, setScale] = useState(1.0);
+            // 【修正】初期値をtrueに変更
+            const [autoFit, setAutoFit] = useState(true);
+            const [editorWidth, setEditorWidth] = useState(400);
+            const isDragging = useRef(false);
+
+            const currentTheme = DEFAULT_THEME;
+            const [connectorType, setConnectorType] = useState("curve");
+
+            const [vbaCode, setVbaCode] = useState("");
+            const [vbaModalTitle, setVbaModalTitle] = useState("");
+            const [showVbaModal, setShowVbaModal] = useState(false);
+
+            // Drag Handler
+            const handleMouseDown = (e) => {
+                isDragging.current = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            };
+            const handleMouseMove = (e) => {
+                if (!isDragging.current) return;
+                const newWidth = Math.max(200, Math.min(e.clientX, document.body.clientWidth - 200));
+                setEditorWidth(newWidth);
+            };
+            const handleMouseUp = () => {
+                isDragging.current = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            };
+            useEffect(() => {
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+                return () => {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                };
+            }, []);
+
+            // Suppress ResizeObserver loop errors
+            useEffect(() => {
+                const observerErrorHandler = (e) => {
+                    if (e.message && (e.message.includes('ResizeObserver') || e.message.includes('undelivered'))) {
+                        e.stopImmediatePropagation();
+                        return;
+                    }
+                };
+                window.addEventListener('error', observerErrorHandler);
+                return () => window.removeEventListener('error', observerErrorHandler);
+            }, []);
+
+            useEffect(() => {
+                mermaid.initialize({ startOnLoad: true, theme: 'base' });
+            }, []);
+
+            useEffect(() => {
+                require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+                require(['vs/editor/editor.main'], function () {
+                    if (!editorRef.current) {
+                        const container = document.getElementById('monaco-editor-container');
+                        if (container) {
+                            editorRef.current = monaco.editor.create(container, {
+                                value: dsl,
+                                language: 'markdown',
+                                theme: 'vs',
+                                minimap: { enabled: true },
+                                automaticLayout: true,
+                                scrollBeyondLastLine: false,
+                                fontSize: 13
+                            });
+                            editorRef.current.onDidChangeModelContent(() => {
+                                setDsl(editorRef.current.getValue());
+                            });
+                        }
+                    }
+                });
+                return () => {
+                    if (editorRef.current) {
+                        editorRef.current.dispose();
+                        editorRef.current = null;
+                    }
+                };
+            }, []);
+
+            // Auto Fit Function
+            const fitToContainer = (retryCount = 0) => {
+                if (!previewRef.current) return;
+
+                const performFit = () => {
+                    const svg = previewRef.current.querySelector('svg');
+                    if (!svg) {
+                        if (retryCount < 10) {
+                            setTimeout(() => fitToContainer(retryCount + 1), 100);
+                        }
+                        return;
+                    }
+
+                    const container = previewRef.current.parentElement?.parentElement;
+                    if (!container) return;
+
+                    let contentWidth = 0;
+
+                    if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0) {
+                        contentWidth = svg.viewBox.baseVal.width;
+                    }
+                    else if (typeof svg.getBBox === 'function') {
+                        try {
+                            const bbox = svg.getBBox();
+                            contentWidth = bbox.width;
+                        } catch (e) { }
+                    }
+
+                    if (!contentWidth || contentWidth <= 0) {
+                        contentWidth = svg.getBoundingClientRect().width;
+                    }
+
+                    if (contentWidth <= 0 && retryCount < 10) {
+                        setTimeout(() => fitToContainer(retryCount + 1), 100);
+                        return;
+                    }
+
+                    // SVGのレスポンシブ解除と固定幅設定
+                    if (svg.viewBox && svg.viewBox.baseVal) {
+                        const origWidth = svg.viewBox.baseVal.width;
+                        const origHeight = svg.viewBox.baseVal.height;
+                        if (origWidth > 0 && origHeight > 0) {
+                            svg.setAttribute('width', origWidth);
+                            svg.setAttribute('height', origHeight);
+                            svg.style.maxWidth = 'none';
+                        }
+                    }
+
+                    // ここでScale計算（AutoFitがOFFなら計算しない）
+                    if (autoFit) {
+                        const containerWidth = container.clientWidth - 60;
+                        if (contentWidth > 0 && containerWidth > 0) {
+                            const fitScale = containerWidth / contentWidth;
+                            const newScale = Math.min(Math.max(fitScale, 0.1), 5.0);
+                            if (Math.abs(newScale - scale) > 0.01) {
+                                setScale(newScale);
+                            }
+                        }
+                    }
+                };
+
+                requestAnimationFrame(performFit);
+            };
+
+            // Resize Observer
+            useEffect(() => {
+                if (!previewRef.current || !previewRef.current.parentElement?.parentElement) return;
+
+                const container = previewRef.current.parentElement.parentElement;
+                const resizeObserver = new ResizeObserver(() => {
+                    fitToContainer();
+                });
+
+                resizeObserver.observe(container);
+                return () => resizeObserver.disconnect();
+            }, [autoFit, scale]);
+
+            // Trigger fit when autoFit toggled
+            useEffect(() => {
+                if (autoFit) {
+                    fitToContainer();
+                } else {
+                    setScale(1.0);
+                    // OFF時もSVGサイズを固定値にしてスクロールさせるためにfitToContainerを呼ぶ（scale計算はスキップされる）
+                    fitToContainer();
+                }
+            }, [autoFit]);
+
+            // Render Preview
+            useEffect(() => {
+                const renderMermaid = async () => {
+                    if (previewRef.current) {
+                        try {
+                            previewRef.current.removeAttribute('data-processed');
+
+                            let dslWithTheme = dsl;
+                            if (dsl.trim().startsWith('graph') || dsl.trim().startsWith('flowchart')) {
+                                const themeConfig = `%%{init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '${currentTheme.primaryHex}', 'primaryBorderColor': '${currentTheme.borderHex}', 'primaryTextColor': '${currentTheme.textHex}', 'lineColor': '#595959', 'clusterBkg': '${currentTheme.clusterHex}', 'clusterBorder': '${currentTheme.clusterBorderHex}' } } }%%`;
+                                dslWithTheme = themeConfig + '\n' + dsl;
+                            }
+
+                            previewRef.current.innerHTML = dslWithTheme;
+                            await mermaid.run({ nodes: [previewRef.current] });
+
+                            // 描画完了後にサイズ調整
+                            setTimeout(() => fitToContainer(0), 100);
+
+                            setStatus("");
+                        } catch (e) {
+                        }
+                    }
+                };
+                renderMermaid();
+            }, [dsl]);
+
+            // ... (Dagre Layout, Prepare Data, Export Functions are same)
+            const runDagreLayout = (data, isTB) => {
+                const g = new dagre.graphlib.Graph({ compound: true });
+                g.setGraph({ rankdir: isTB ? 'TB' : 'LR', nodesep: 50, ranksep: 80 });
+                g.setDefaultEdgeLabel(() => ({}));
+                const NODE_W = 120; const NODE_H = 60;
+                data.nodes.forEach(n => { g.setNode(n.id, { label: n.label, width: NODE_W, height: NODE_H, shape: n.shape, ...n }); if (n.parent) g.setParent(n.id, n.parent); });
+                if (data.subgraphs) { data.subgraphs.forEach(sg => { g.setNode(sg.id, { label: sg.label, clusterLabelPos: 'top', width: 100, height: 100, ...sg }); }); }
+                data.edges.forEach(e => { g.setEdge(e.from, e.to, { label: e.label, ...e }); });
+                dagre.layout(g);
+                return g;
+            };
+
+            const prepareLayoutData = () => {
+                const data = parseMermaidDSL(dsl);
+                if (data.nodes.length === 0) { alert("ノードがありません"); return null; }
+                const isLR = dsl.includes("graph LR") || dsl.includes("flowchart LR");
+                const isTB = !isLR;
+                const g = runDagreLayout(data, isTB);
+                const nodesWithLayout = data.nodes.map(n => { const node = g.node(n.id); return { id: n.id, ...n, x: node.x, y: node.y, width: node.width, height: node.height }; });
+                const subgraphsWithLayout = data.subgraphs.map(sg => { const node = g.node(sg.id); return { id: sg.id, ...sg, x: node.x, y: node.y, width: node.width, height: node.height }; });
+                const edgesWithLayout = data.edges.map(e => {
+                    const edgeData = g.edge(e.from, e.to);
+                    let midX = 0, midY = 0;
+                    if (edgeData.points && edgeData.points.length > 0) { const midIdx = Math.floor(edgeData.points.length / 2); midX = edgeData.points[midIdx].x; midY = edgeData.points[midIdx].y; }
+                    else { const s = g.node(e.from); const t = g.node(e.to); midX = (s.x + t.x) / 2; midY = (s.y + t.y) / 2; }
+                    return { from: e.from, to: e.to, label: e.label, midX: midX, midY: midY };
+                });
+                const graphWidth = g.graph().width || 1000; const graphHeight = g.graph().height || 800;
+                return { nodes: nodesWithLayout, edges: edgesWithLayout, subgraphs: subgraphsWithLayout, width: graphWidth, height: graphHeight };
+            }
+
+            const handleExportPPTX = async () => {
+                const layoutData = prepareLayoutData(); if (!layoutData) return;
+                const pptx = new PptxGenJS(); const PX_TO_INCH = 1 / 96;
+                const slideW = Math.max(10, (layoutData.width * PX_TO_INCH) + 2); const slideH = Math.max(7.5, (layoutData.height * PX_TO_INCH) + 2);
+                pptx.defineLayout({ name: 'MERMAID', width: slideW, height: slideH }); pptx.layout = 'MERMAID';
+                const slide = pptx.addSlide(); const OFFSET = 1.0;
+                layoutData.subgraphs.forEach(sg => { slide.addShape(pptx.ShapeType.rect, { x: (sg.x - sg.width / 2) * PX_TO_INCH + OFFSET, y: (sg.y - sg.height / 2) * PX_TO_INCH + OFFSET, w: sg.width * PX_TO_INCH, h: sg.height * PX_TO_INCH, fill: { color: "F0F0F0" }, line: { color: "AAAAAA", dashType: 'dash' } }); slide.addText(sg.label, { x: (sg.x - sg.width / 2) * PX_TO_INCH + OFFSET, y: (sg.y - sg.height / 2) * PX_TO_INCH + OFFSET, w: sg.width * PX_TO_INCH, h: 0.3, align: 'left', fontSize: 10, bold: true, color: '666666' }); });
+                layoutData.nodes.forEach(n => {
+                    const x = (n.x - n.width / 2) * PX_TO_INCH + OFFSET; const y = (n.y - n.height / 2) * PX_TO_INCH + OFFSET;
+                    let shape = pptx.ShapeType.rect;
+                    if (n.shape === 'database') shape = pptx.ShapeType.can;
+                    if (n.shape === 'circle') shape = pptx.ShapeType.ellipse;
+                    if (n.shape === 'diamond') shape = pptx.ShapeType.diamond;
+                    let fillColor = currentTheme.primaryHex.replace('#', '');
+                    if (n.styles && n.styles.fill) fillColor = n.styles.fill.replace('#', '');
+                    slide.addShape(shape, { x: x, y: y, w: n.width * PX_TO_INCH, h: n.height * PX_TO_INCH, fill: { color: fillColor } });
+                    slide.addText(n.label, { x: x, y: y, w: n.width * PX_TO_INCH, h: n.height * PX_TO_INCH, align: 'center', color: currentTheme.textHex.replace('#', '') });
+                });
+                layoutData.edges.forEach(e => { const s = layoutData.nodes.find(n => n.id === e.from); const t = layoutData.nodes.find(n => n.id === e.to); if (s && t) { slide.addShape(pptx.ShapeType.line, { x: s.x * PX_TO_INCH + OFFSET, y: s.y * PX_TO_INCH + OFFSET, w: (t.x - s.x) * PX_TO_INCH, h: (t.y - s.y) * PX_TO_INCH, line: { color: "595959", width: 1, endArrowType: "triangle" } }); } });
+                pptx.writeFile({ fileName: "Mermaid_Export.pptx" });
+            };
+
+            const handleExportExcelVBA = () => {
+                try {
+                    const layoutData = prepareLayoutData(); if (!layoutData) return;
+                    const code = generateExcelVbaCode(layoutData.nodes, layoutData.edges, layoutData.subgraphs, currentTheme, connectorType);
+                    setVbaCode(code); setVbaModalTitle(`Excel VBA (${currentTheme.name})`); setShowVbaModal(true);
+                } catch (e) { console.error(e); }
+            };
+
+            const handleExportPowerPointVBA = () => {
+                try {
+                    const layoutData = prepareLayoutData(); if (!layoutData) return;
+                    const code = generatePowerPointVbaCode(layoutData.nodes, layoutData.edges, layoutData.subgraphs, layoutData.width, layoutData.height, currentTheme, connectorType);
+                    setVbaCode(code); setVbaModalTitle(`PowerPoint VBA (${currentTheme.name})`); setShowVbaModal(true);
+                } catch (e) { console.error(e); }
+            };
+
+            const copyToClipboard = () => {
+                if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(vbaCode).then(() => alert("コピーしました！")); }
+                else { const ta = document.createElement("textarea"); ta.value = vbaCode; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); alert("コピーしました！"); }
+            };
+
+            return (
+                <div className="flex flex-col h-screen relative">
+                    {/* Header */}
+                    <header className="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-20 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-project-diagram text-2xl"></i>
+                            <div>
+                                <h1 className="text-xl font-bold">Mermaid to XLSX/PPTX VBA</h1>
+                                <p className="text-xs text-blue-200">Generate Native Shapes via VBA</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button onClick={handleExportPPTX} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow flex items-center gap-1 text-sm transition"><i className="fas fa-file-powerpoint"></i> PPTX DL</button>
+                            <button onClick={handleExportExcelVBA} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded shadow flex items-center gap-1 font-bold transition border border-green-400 text-sm"><i className="fas fa-file-excel"></i> Excel VBA</button>
+                            <button onClick={handleExportPowerPointVBA} className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded shadow flex items-center gap-1 font-bold transition border border-orange-400 text-sm"><i className="fas fa-file-powerpoint"></i> PPT VBA</button>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-1 flex overflow-hidden">
+                        {/* Editor */}
+                        <div style={{ width: editorWidth }} className="flex flex-col bg-white shadow-lg z-10 flex-shrink-0 relative">
+                            <div className="p-2 bg-gray-100 border-b text-sm font-semibold text-gray-600 flex justify-between items-center flex-shrink-0">
+                                <span>Mermaid DSL Editor</span>
+                                <span className="text-xs text-gray-400">Monaco</span>
+                            </div>
+                            <div id="monaco-editor-container" className="flex-1 overflow-hidden"></div>
+                        </div>
+                        {/* Splitter */}
+                        <div className="w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize transition-colors z-20 flex-shrink-0 resizer" onMouseDown={handleMouseDown}></div>
+                        {/* Preview */}
+                        <div className="flex-1 bg-gray-50 flex flex-col relative overflow-hidden min-w-0">
+                            <div className="p-2 bg-gray-100 border-b text-sm font-semibold flex justify-between z-10 shadow-sm items-center flex-shrink-0">
+                                <span>Live Preview</span>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center bg-gray-200 rounded px-2 py-1">
+                                        <span className="text-xs mr-1 text-gray-600"><i className="fas fa-bezier-curve"></i> 線:</span>
+                                        <select
+                                            className="bg-gray-200 text-gray-700 text-xs outline-none border-none cursor-pointer font-bold"
+                                            value={connectorType}
+                                            onChange={(e) => setConnectorType(e.target.value)}
+                                        >
+                                            <option value="elbow">カギ線</option>
+                                            <option value="curve">曲線</option>
+                                            <option value="straight">直線</option>
+                                        </select>
+                                    </div>
+                                    <label className="flex items-center gap-1 text-xs cursor-pointer hover:text-blue-600">
+                                        <input
+                                            type="checkbox"
+                                            checked={autoFit}
+                                            onChange={e => { setAutoFit(e.target.checked); }}
+                                            className="rounded border-gray-300 text-blue-600"
+                                        />
+                                        自動幅合わせ
+                                    </label>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => { setAutoFit(false); setScale(s => Math.max(0.1, s - 0.1)); }} className="bg-white border px-2 rounded hover:bg-gray-100 text-xs h-6 w-6 flex items-center justify-center"><i className="fas fa-minus"></i></button>
+                                        <span className="text-xs w-12 text-center font-mono">{Math.round(scale * 100)}%</span>
+                                        <button onClick={() => { setAutoFit(false); setScale(s => s + 0.1); }} className="bg-white border px-2 rounded hover:bg-gray-100 text-xs h-6 w-6 flex items-center justify-center"><i className="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-auto p-8 relative">
+                                <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', transition: 'transform 0.3s' }}>
+                                    <div id="mermaid-preview" ref={previewRef} className="mermaid bg-white p-4 rounded shadow-sm inline-block"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Modal */}
+                    {showVbaModal && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-10">
+                            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col">
+                                <div className={`p-4 text-white font-bold flex justify-between rounded-t-lg ${vbaModalTitle.includes("Excel") ? "bg-green-700" : "bg-orange-700"}`}>
+                                    <span>{vbaModalTitle}</span>
+                                    <button onClick={() => setShowVbaModal(false)}><i className="fas fa-times"></i></button>
+                                </div>
+                                <textarea readOnly className="flex-1 p-4 font-mono text-xs bg-gray-900 text-green-400 resize-none focus:outline-none" value={vbaCode}></textarea>
+                                <div className="p-4 bg-gray-100 flex justify-end gap-3 rounded-b-lg">
+                                    <button onClick={copyToClipboard} className="px-6 py-2 text-white font-bold rounded shadow bg-blue-600 hover:bg-blue-700">クリップボードにコピー</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
