@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Interval Snapper (Light Mode)</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Dexie.js (IndexedDBラッパー) -->
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+
+    <!-- Cropper.js (画像編集) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* カスタムスクロールバー (Light) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .cropper-container {
+            max-height: 100% !important;
+            height: 100% !important;
+        }
+
+        .cropper-wrap-box,
+        .cropper-canvas,
+        .cropper-drag-box,
+        .cropper-crop-box {
+            max-height: 100%;
+        }
+
+        /* クロップボックスの枠線を赤・3pxに */
+        .cropper-view-box {
+            outline: 3px solid #ef4444 !important;
+            outline-color: #ef4444 !important;
+        }
+
+        .cropper-dashed {
+            border-color: #ef4444 !important;
+        }
+
+        .cropper-line {
+            background-color: #ef4444 !important;
+            opacity: 1 !important;
+        }
+
+        .cropper-line.line-n,
+        .cropper-line.line-s {
+            height: 3px !important;
+        }
+
+        .cropper-line.line-w,
+        .cropper-line.line-e {
+            width: 3px !important;
+        }
+
+        .cropper-point {
+            background-color: #ef4444 !important;
+            width: 10px !important;
+            height: 10px !important;
+        }
+
+        /* 市松模様（画像背景用） */
+        .bg-checkerboard {
+            background-color: #eee;
+            background-image:
+                linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+                linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        // --- 1. 定数・ユーティリティ ---
+
+        const THUMBNAIL_MAX_SIZE = 320; // サムネイルの最大幅/高さ
+
+        const workerCode = `
+            const THUMBNAIL_MAX_SIZE = 320;
+            let opfsRoot = null;
+            let snapshotsDir = null;
+            
+            // OPFSの初期化
+            async function initOPFS() {
+                if (!opfsRoot) {
+                    opfsRoot = await navigator.storage.getDirectory();
+                    snapshotsDir = await opfsRoot.getDirectoryHandle('snapshots', { create: true });
+                    console.log('[OPFS] Initialized snapshots directory');
+                }
+                return snapshotsDir;
+            }
+            
+            // OPFSにBlobを保存（同期API使用）
+            async function saveToOPFS(blob, filename) {
+                const startTime = performance.now();
+                const dir = await initOPFS();
+                const fileHandle = await dir.getFileHandle(filename, { create: true });
+                
+                // 同期アクセスハンドルを取得（Worker内のみ使用可能）
+                const syncHandle = await fileHandle.createSyncAccessHandle();
+                
+                // BlobをArrayBufferに変換
+                const buffer = await blob.arrayBuffer();
+                const data = new Uint8Array(buffer);
+                
+                // ファイルに書き込み
+                syncHandle.truncate(0); // ファイルをクリア
+                syncHandle.write(data, { at: 0 });
+                syncHandle.flush();
+                syncHandle.close();
+                
+                const elapsed = performance.now() - startTime;
+                console.log('[OPFS] Saved ' + filename + ' (' + (buffer.byteLength / 1024).toFixed(1) + 'KB) in ' + elapsed.toFixed(1) + 'ms');
+                
+                return filename;
+            }
+            
+            // OPFSのsnapshotsディレクトリをクリア
+            async function clearOPFS() {
+                try {
+                    const dir = await initOPFS();
+                    // ディレクトリ内のファイルを列挙して削除
+                    for await (const [name, handle] of dir) {
+                        await dir.removeEntry(name);
+                    }
+                    console.log('[OPFS] Cleared snapshots directory');
+                } catch (err) {
+                    console.error('[OPFS] Clear failed:', err);
+                }
+            }
+            
+            // 画像データをBlobに変換
+            async function createBlob(imageData, width, height) {
+                const canvas = new OffscreenCanvas(width, height);
+                const ctx = canvas.getContext('2d');
+                const imgData = new ImageData(new Uint8ClampedArray(imageData), width, height);
+                ctx.putImageData(imgData, 0, 0);
+                
+                const blob = await canvas.convertToBlob({ type: 'image/png' });
+                return blob;
+            }
+            
+            // MD5ハッシュを計算する関数
+            async function calculateMD5(data) {
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data); // MD5の代わりにSHA-256を使用
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            
+            // サムネイルBlobを生成（ハッシュ付き）
+            async function createThumbnail(imageData, width, height) {
+                // 元のcanvasを作成
+                const srcCanvas = new OffscreenCanvas(width, height);
+                const srcCtx = srcCanvas.getContext('2d');
+                const imgData = new ImageData(new Uint8ClampedArray(imageData), width, height);
+                srcCtx.putImageData(imgData, 0, 0);
+                
+                // サムネイルサイズを計算
+                let thumbWidth, thumbHeight;
+                if (width > height) {
+                    thumbWidth = Math.min(width, THUMBNAIL_MAX_SIZE);
+                    thumbHeight = Math.round(height * (thumbWidth / width));
+                } else {
+                    thumbHeight = Math.min(height, THUMBNAIL_MAX_SIZE);
+                    thumbWidth = Math.round(width * (thumbHeight / height));
+                }
+                
+                // サムネイル用canvasに縮小描画
+                const thumbCanvas = new OffscreenCanvas(thumbWidth, thumbHeight);
+                const thumbCtx = thumbCanvas.getContext('2d');
+                thumbCtx.drawImage(srcCanvas, 0, 0, thumbWidth, thumbHeight);
+                
+                // サムネイルのピクセルデータでハッシュを計算（高速化のため）
+                const thumbImageData = thumbCtx.getImageData(0, 0, thumbWidth, thumbHeight);
+                const hash = await calculateMD5(thumbImageData.data.buffer);
+                
+                // JPEG形式で軽量化（品質80%）
+                const blob = await thumbCanvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+                return { blob, hash };
+            }
+            
+            self.onmessage = async function(e) {
+                if (e.data.command === 'start') {
+                    // 既存タイマーをクリア
+                    if (self.tickTimerId) clearInterval(self.tickTimerId);
+                    if (self.progressTimerId) clearInterval(self.progressTimerId);
+                    
+                    const interval = e.data.interval;
+                    self.startTime = Date.now();
+                    self.interval = interval;
+                    
+                    // メインのtickタイマー
+                    self.tickTimerId = setInterval(() => {
+                        self.startTime = Date.now();
+                        self.postMessage({ type: 'tick' });
+                    }, interval);
+                    
+                    // プログレス通知タイマー（100ms間隔）
+                    self.progressTimerId = setInterval(() => {
+                        const elapsed = Date.now() - self.startTime;
+                        const progress = Math.min((elapsed / self.interval) * 100, 100);
+                        self.postMessage({ type: 'progress', progress: progress });
+                    }, 100);
+                    
+                } else if (e.data.command === 'stop') {
+                    if (self.tickTimerId) clearInterval(self.tickTimerId);
+                    if (self.progressTimerId) clearInterval(self.progressTimerId);
+                    self.tickTimerId = null;
+                    self.progressTimerId = null;
+                    
+                } else if (e.data.command === 'clearOPFS') {
+                    // OPFSクリアコマンド
+                    await clearOPFS();
+                    self.postMessage({ type: 'opfsCleared' });
+                    
+                } else if (e.data.command === 'createBlob') {
+                    // Blob生成処理（フル画像 + サムネイル + ハッシュ）
+                    try {
+                        const { imageData, width, height, timestamp } = e.data;
+                        // imageDataをコピーしてサムネイル用にも使う
+                        const imageDataCopy = imageData.slice(0);
+                        
+                        // 並列でフル画像とサムネイル（ハッシュ付き）を生成
+                        const [blob, thumbnailResult] = await Promise.all([
+                            createBlob(imageData, width, height),
+                            createThumbnail(imageDataCopy, width, height)
+                        ]);
+                        
+                        const thumbnailBlob = thumbnailResult.blob;
+                        const frameHash = thumbnailResult.hash;
+                        
+                        // OPFSにも並列で保存
+                        const ts = timestamp || Date.now();
+                        const opfsStartTime = performance.now();
+                        const [mainFile, thumbFile] = await Promise.all([
+                            saveToOPFS(blob, ts + '.png'),
+                            saveToOPFS(thumbnailBlob, ts + '_thumb.jpg')
+                        ]);
+                        const opfsElapsed = performance.now() - opfsStartTime;
+                        console.log('[OPFS] Total save time: ' + opfsElapsed.toFixed(1) + 'ms');
+                        
+                        // Blob、OPFSファイル名、ハッシュをメインスレッドに返す
+                        self.postMessage({ 
+                            type: 'blobCreated', 
+                            blob, 
+                            thumbnailBlob,
+                            opfsFiles: { main: mainFile, thumb: thumbFile },
+                            frameHash: frameHash,
+                            timestamp: ts
+                        });
+                    } catch (err) {
+                        console.error('Blob creation failed in worker:', err);
+                        self.postMessage({ type: 'blobError', error: err.message });
+                    }
+                }
+            };
+        `;
+
+        // OPFSからファイルを読み込む関数
+        const loadFromOPFS = async (filename) => {
+            const startTime = performance.now();
+            try {
+                const root = await navigator.storage.getDirectory();
+                const snapshotsDir = await root.getDirectoryHandle('snapshots', { create: false });
+                const fileHandle = await snapshotsDir.getFileHandle(filename);
+                const file = await fileHandle.getFile();
+                const elapsed = performance.now() - startTime;
+                console.log('[OPFS] Loaded', filename, '(' + (file.size / 1024).toFixed(1) + 'KB) in', elapsed.toFixed(1) + 'ms');
+                return file;
+            } catch (err) {
+                console.warn('[OPFS] Load failed for', filename, err.message);
+                return null;
+            }
+        };
+
+        const playShutterSound = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + 0.1);
+            } catch (e) {
+                console.error("Audio play failed", e);
+            }
+        };
+
+        // --- 2. データベース設定 ---
+        const db = new Dexie("SnapperDB");
+        // バージョン30: 以前のタブ機能(v3)で作成されたDBとの互換性のため
+        // tabsテーブルは使わないがスキーマには含める（削除するとエラー）
+        db.version(30).stores({
+            snapshots: '++id, timestamp',
+            settings: 'key',
+            tabs: '++id, name, projectId, createdAt' // 互換性のため残す（未使用）
+        });
+
+        // ImageEditorDBへの接続（プロジェクト連携用）
+        const editorDb = new Dexie("ImageEditorDB");
+        editorDb.version(1).stores({
+            projects: "++id, name, updatedAt",
+            projectData: "projectId"
+        });
+
+        // --- 3. メインコンポーネント ---
+        function App() {
+            const [isCapturing, setIsCapturing] = useState(false);
+            const [intervalSec, setIntervalSec] = useState(3);
+            const [maxDurationMin, setMaxDurationMin] = useState(5); // 最大キャプチャ時間（分）
+            const [soundEnabled, setSoundEnabled] = useState(true);
+            const [snapshots, setSnapshots] = useState([]);
+            const [selectedImage, setSelectedImage] = useState(null);
+            const [captureCount, setCaptureCount] = useState(0);
+            const [currentProjectId, setCurrentProjectId] = useState(null);
+            const [currentProjectName, setCurrentProjectName] = useState(null);
+            const [allProjects, setAllProjects] = useState([]); // 全プロジェクト一覧
+            const [selectedProjectId, setSelectedProjectId] = useState(null); // プレビューで選択中のプロジェクト
+            const [captureProgress, setCaptureProgress] = useState(0);
+            const [autoAdvance, setAutoAdvance] = useState(true);
+            const [elapsedTime, setElapsedTime] = useState(0); // 経過時間（秒）
+            const [skipDuplicates, setSkipDuplicates] = useState(true); // 重複スキップ機能
+            const [skippedCount, setSkippedCount] = useState(0); // スキップした回数
+
+            const videoRef = useRef(null);
+            const streamRef = useRef(null);
+            const workerRef = useRef(null);
+            const autoStopTimerRef = useRef(null); // 自動停止タイマー
+            const elapsedTimerRef = useRef(null); // 経過時間タイマー
+            const captureStartTimeRef = useRef(null); // キャプチャ開始時刻
+            const isProcessingRef = useRef(false); // スナップショット処理中フラグ
+            const soundEnabledRef = useRef(true); // サウンド設定の最新値を保持
+            const lastFrameHashRef = useRef(null); // 前フレームのMD5ハッシュ値
+            
+            // エディタの状態を保持（親で管理）
+            const editorStateRef = useRef({
+                cropBoxData: null,
+                canvasData: null,
+                zoomRatio: null
+            });
+
+            useEffect(() => {
+                lucide.createIcons();
+                const blob = new Blob([workerCode], { type: "application/javascript" });
+                const workerUrl = URL.createObjectURL(blob);
+                workerRef.current = new Worker(workerUrl);
+                workerRef.current.onmessage = handleWorkerMessage;
+                // ワンタイムで古いBlobフィールドをクリアして容量を解放
+                removeBlobsFromDb().then(() => loadSnapshots()).catch(() => loadSnapshots());
+                loadProjectSettings();
+                loadAllProjects();
+                loadEditorState();
+                loadAutoAdvanceSetting();
+                loadMaxDurationSetting();
+                loadSkipDuplicatesSetting();
+
+                return () => {
+                    stopCapture();
+                    if (workerRef.current) workerRef.current.terminate();
+                    URL.revokeObjectURL(workerUrl);
+                };
+            }, []);
+
+            // プロジェクト設定の読み込み
+            const loadProjectSettings = async () => {
+                try {
+                    const setting = await db.settings.get('currentProject');
+                    if (setting) {
+                        // プロジェクトがまだ存在するか確認
+                        const project = await editorDb.projects.get(setting.projectId);
+                        if (project) {
+                            setCurrentProjectId(setting.projectId);
+                            setCurrentProjectName(setting.projectName);
+                        } else {
+                            // プロジェクトが削除されていた場合は設定をクリア
+                            await db.settings.delete('currentProject');
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load project settings", e);
+                }
+            };
+
+            // プロジェクト設定の保存
+            const saveProjectSettings = async (projectId, projectName) => {
+                try {
+                    await db.settings.put({
+                        key: 'currentProject',
+                        projectId: projectId,
+                        projectName: projectName
+                    });
+                } catch (e) {
+                    console.error("Failed to save project settings", e);
+                }
+            };
+
+            // 全プロジェクト一覧の読み込み
+            const loadAllProjects = async () => {
+                try {
+                    const projects = await editorDb.projects.orderBy('updatedAt').reverse().toArray();
+                    setAllProjects(projects);
+                } catch (e) {
+                    console.error("Failed to load all projects", e);
+                }
+            };
+
+            // エディタ状態の保存
+            const saveEditorState = async (state) => {
+                try {
+                    await db.settings.put({
+                        key: 'editorState',
+                        ...state
+                    });
+                } catch (e) {
+                    console.error("Failed to save editor state", e);
+                }
+            };
+
+            // エディタ状態の読み込み
+            const loadEditorState = async () => {
+                try {
+                    const state = await db.settings.get('editorState');
+                    if (state) {
+                        editorStateRef.current = {
+                            cropBoxData: state.cropBoxData || null,
+                            canvasData: state.canvasData || null,
+                            zoomRatio: state.zoomRatio || null
+                        };
+                    }
+                } catch (e) {
+                    console.error("Failed to load editor state", e);
+                }
+            };
+
+            // 自動進行設定の保存
+            const saveAutoAdvanceSetting = async (value) => {
+                try {
+                    await db.settings.put({ key: 'autoAdvance', value: value });
+                } catch (e) {
+                    console.error("Failed to save auto advance setting", e);
+                }
+            };
+
+            // 自動進行設定の読み込み
+            const loadAutoAdvanceSetting = async () => {
+                try {
+                    const setting = await db.settings.get('autoAdvance');
+                    if (setting !== undefined) {
+                        setAutoAdvance(setting.value);
+                    }
+                } catch (e) {
+                    console.error("Failed to load auto advance setting", e);
+                }
+            };
+
+            // autoAdvanceが変更されたら保存
+            const handleAutoAdvanceChange = (value) => {
+                setAutoAdvance(value);
+                saveAutoAdvanceSetting(value);
+            };
+
+            // 最大時間設定の保存
+            const saveMaxDurationSetting = async (value) => {
+                try {
+                    await db.settings.put({ key: 'maxDuration', value: value });
+                } catch (e) {
+                    console.error("Failed to save max duration setting", e);
+                }
+            };
+
+            // 最大時間設定の読み込み
+            const loadMaxDurationSetting = async () => {
+                try {
+                    const setting = await db.settings.get('maxDuration');
+                    if (setting !== undefined) {
+                        setMaxDurationMin(setting.value);
+                    }
+                } catch (e) {
+                    console.error("Failed to load max duration setting", e);
+                }
+            };
+
+            // maxDurationMinが変更されたら保存
+            const handleMaxDurationChange = (value) => {
+                setMaxDurationMin(value);
+                saveMaxDurationSetting(value);
+            };
+
+            // 重複スキップ設定の保存
+            const saveSkipDuplicatesSetting = async (value) => {
+                try {
+                    await db.settings.put({ key: 'skipDuplicates', value: value });
+                } catch (e) {
+                    console.error("Failed to save skip duplicates setting", e);
+                }
+            };
+
+            // 重複スキップ設定の読み込み
+            const loadSkipDuplicatesSetting = async () => {
+                try {
+                    const setting = await db.settings.get('skipDuplicates');
+                    if (setting !== undefined) {
+                        setSkipDuplicates(setting.value);
+                    }
+                } catch (e) {
+                    console.error("Failed to load skip duplicates setting", e);
+                }
+            };
+
+            // skipDuplicatesが変更されたら保存
+            const handleSkipDuplicatesChange = (value) => {
+                setSkipDuplicates(value);
+                saveSkipDuplicatesSetting(value);
+                if (!value) {
+                    // スキップ機能を無効にしたらハッシュをリセット
+                    lastFrameHashRef.current = null;
+                }
+            };
+
+            // 経過時間のフォーマット (MM:SS)
+            const formatElapsedTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, [snapshots, selectedImage]);
+
+            // soundEnabledの変更をrefに同期（コールバック内で最新値を参照するため）
+            useEffect(() => {
+                soundEnabledRef.current = soundEnabled;
+            }, [soundEnabled]);
+
+            const loadSnapshots = async () => {
+                try {
+                    const items = await db.snapshots.orderBy('timestamp').toArray();
+
+                    // 正規化: 古いレコードはblob/thumbnailBlobを持っている可能性がある。
+                    // 新しいワークフローではblobは保存しないため、stateではopfsファイル名を優先する。
+                    const normalized = items.map(it => ({
+                        id: it.id,
+                        timestamp: it.timestamp,
+                        opfsMain: it.opfsMain || null,
+                        opfsThumb: it.opfsThumb || null,
+                        blob: it.blob || null,
+                        thumbnailBlob: it.thumbnailBlob || null
+                    }));
+
+                    setSnapshots(normalized);
+                    setCaptureCount(normalized.length);
+                } catch (e) {
+                    console.error("Failed to load snapshots", e);
+                }
+            };
+
+            // 既存のIndexedDBレコードから大きなBlobフィールドを削除して容量を解放する（ワンタイムマイグレーション）
+            const removeBlobsFromDb = async () => {
+                try {
+                    const items = await db.snapshots.toArray();
+                    let count = 0;
+                    for (const it of items) {
+                        if (it.blob || it.thumbnailBlob) {
+                            await db.snapshots.update(it.id, { blob: null, thumbnailBlob: null });
+                            count++;
+                        }
+                    }
+                    if (count > 0) console.log('[DB] Removed blob fields from', count, 'records');
+                } catch (err) {
+                    console.error('[DB] Blob cleanup failed:', err);
+                }
+            };
+
+            // 新しいスナップショットを追加（全件読み込みを避ける）
+            const addSnapshot = (newRecord) => {
+                const normalized = {
+                    id: newRecord.id,
+                    timestamp: newRecord.timestamp,
+                    opfsMain: newRecord.opfsMain || null,
+                    opfsThumb: newRecord.opfsThumb || null,
+                    blob: newRecord.blob || null,
+                    thumbnailBlob: newRecord.thumbnailBlob || null
+                };
+                setSnapshots(prev => [...prev, normalized]);
+                setCaptureCount(prev => prev + 1);
+            };
+
+            const startCapture = async () => {
+                try {
+                    // 既存のスナップショットをすべて消去
+                    await db.snapshots.clear();
+                    setSnapshots([]);
+                    setCaptureCount(0);
+                    setSkippedCount(0);
+                    lastFrameHashRef.current = null; // ハッシュをリセット
+                    
+                    // OPFSもクリア
+                    workerRef.current.postMessage({ command: 'clearOPFS' });
+
+                    // ImageEditorDBに新規プロジェクトを作成
+                    const now = new Date();
+                    const projectName = `キャプチャ ${now.toLocaleDateString('ja-JP')} ${now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
+                    
+                    const projectId = await editorDb.projects.add({
+                        name: projectName,
+                        updatedAt: now
+                    });
+                    
+                    // 空のプロジェクトデータを作成
+                    await editorDb.projectData.put({
+                        projectId: projectId,
+                        tabsData: [],
+                        tabCounter: 0,
+                        currentTabId: null
+                    });
+                    
+                    setCurrentProjectId(projectId);
+                    setCurrentProjectName(projectName);
+                    setSelectedProjectId(projectId); // 選択中プロジェクトも更新
+                    
+                    // プロジェクト一覧を更新
+                    loadAllProjects();
+                    
+                    // プロジェクト設定を永続化
+                    await saveProjectSettings(projectId, projectName);
+
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false
+                    });
+
+                    streamRef.current = stream;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                        await videoRef.current.play();
+                    }
+
+                    stream.getVideoTracks()[0].onended = () => {
+                        stopCapture();
+                    };
+
+                    setIsCapturing(true);
+                    setElapsedTime(0);
+                    captureStartTimeRef.current = Date.now();
+
+                    // 経過時間タイマー開始（1秒ごとに更新）
+                    elapsedTimerRef.current = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - captureStartTimeRef.current) / 1000);
+                        setElapsedTime(elapsed);
+                    }, 1000);
+
+                    // 自動停止タイマー設定
+                    const maxDurationMs = maxDurationMin * 60 * 1000;
+                    autoStopTimerRef.current = setTimeout(() => {
+                        stopCapture();
+                    }, maxDurationMs);
+
+                    workerRef.current.postMessage({
+                        command: 'start',
+                        interval: intervalSec * 1000
+                    });
+
+                } catch (err) {
+                    console.error("Error starting capture:", err);
+                    alert("画面共有の開始に失敗しました: " + err.message);
+                }
+            };
+
+            const stopCapture = () => {
+                if (workerRef.current) {
+                    workerRef.current.postMessage({ command: 'stop' });
+                }
+                if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                    streamRef.current = null;
+                }
+                if (videoRef.current) {
+                    videoRef.current.srcObject = null;
+                }
+                // 自動停止タイマーをクリア
+                if (autoStopTimerRef.current) {
+                    clearTimeout(autoStopTimerRef.current);
+                    autoStopTimerRef.current = null;
+                }
+                // 経過時間タイマーをクリア
+                if (elapsedTimerRef.current) {
+                    clearInterval(elapsedTimerRef.current);
+                    elapsedTimerRef.current = null;
+                }
+                // 処理中フラグをリセット
+                isProcessingRef.current = false;
+                setIsCapturing(false);
+                setCaptureProgress(0);
+            };
+
+            const handleWorkerMessage = async (e) => {
+                if (e.data.type === 'tick') {
+                    // 前の処理がまだ完了していない場合はスキップ
+                    if (isProcessingRef.current) {
+                        console.log('Previous capture still processing, skipping this tick');
+                        return;
+                    }
+                    
+                    // 処理開始
+                    isProcessingRef.current = true;
+                    
+                    // requestVideoFrameCallbackは画面に変化がないと呼ばれないことがある
+                    // タイムアウト付きで使用し、100ms以内に呼ばれなければ直接キャプチャ
+                    if (videoRef.current && 'requestVideoFrameCallback' in videoRef.current) {
+                        let captured = false;
+                        const timeoutId = setTimeout(() => {
+                            if (!captured) {
+                                captured = true;
+                                takeSnapshot();
+                            }
+                        }, 100); // 100ms待っても新フレームが来なければ直接キャプチャ
+                        
+                        videoRef.current.requestVideoFrameCallback(() => {
+                            if (!captured) {
+                                captured = true;
+                                clearTimeout(timeoutId);
+                                takeSnapshot();
+                            }
+                        });
+                    } else {
+                        takeSnapshot();
+                    }
+                } else if (e.data.type === 'progress') {
+                    // 処理中でなければプログレスを更新
+                    if (!isProcessingRef.current) {
+                        setCaptureProgress(e.data.progress);
+                    }
+                } else if (e.data.type === 'blobCreated') {
+                    // WorkerでBlob生成完了 → メインスレッドでDBにはメタデータのみ保存（画像はOPFSのみ）
+                    try {
+                        const timestamp = e.data.timestamp;
+                        const opfsFiles = e.data.opfsFiles;
+                        const frameHash = e.data.frameHash;
+
+                        // 重複スキップ機能が有効で、前フレームと同じハッシュの場合はスキップ
+                        if (skipDuplicates && lastFrameHashRef.current === frameHash) {
+                            console.log('[Frame Skip] Duplicate frame detected, skipping save');
+                            setSkippedCount(prev => prev + 1);
+                            
+                            // 処理完了フラグをリセット
+                            setTimeout(() => {
+                                setCaptureProgress(0);
+                                isProcessingRef.current = false;
+                            }, 150);
+                            return;
+                        }
+
+                        // ハッシュを更新
+                        lastFrameHashRef.current = frameHash;
+
+                        // IndexedDBにはBlobを保存せず、OPFSファイル名だけを記録する
+                        const id = await db.snapshots.add({
+                            timestamp,
+                            opfsMain: opfsFiles?.main,
+                            opfsThumb: opfsFiles?.thumb,
+                            frameHash: frameHash
+                        });
+
+                        console.log('[IndexedDB] Saved snapshot metadata', id, 'OPFS:', opfsFiles, 'Hash:', frameHash?.substring(0, 8));
+
+                        // 保存完了後、新しいレコードを直接stateに追加（画像はOPFSから読み込む設計）
+                        addSnapshot({ id, timestamp, opfsMain: opfsFiles?.main, opfsThumb: opfsFiles?.thumb, frameHash });
+
+                        // 100%表示とシャッター音
+                        setCaptureProgress(100);
+                        if (soundEnabledRef.current) playShutterSound();
+
+                        const flash = document.getElementById('screen-flash');
+                        if (flash) {
+                            flash.style.opacity = 0.5;
+                            setTimeout(() => flash.style.opacity = 0, 100);
+                        }
+
+                        // 少し遅延してからプログレスをリセットし、処理完了フラグを立てる
+                        setTimeout(() => {
+                            setCaptureProgress(0);
+                            isProcessingRef.current = false;
+                        }, 150);
+                    } catch (err) {
+                        console.error('DB save error:', err);
+                        isProcessingRef.current = false;
+                        setCaptureProgress(0);
+                    }
+                } else if (e.data.type === 'blobError') {
+                    console.error('Worker blob error:', e.data.error);
+                    isProcessingRef.current = false;
+                    setCaptureProgress(0);
+                }
+            };
+
+            const takeSnapshot = async () => {
+                const video = videoRef.current;
+                if (!video || !streamRef.current || !streamRef.current.active) {
+                    isProcessingRef.current = false;
+                    return;
+                }
+                const width = video.videoWidth;
+                const height = video.videoHeight;
+                if (width === 0 || height === 0) {
+                    isProcessingRef.current = false;
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d', {
+                    colorSpace: 'srgb',
+                    willReadFrequently: true  // getImageDataを使うためtrue
+                });
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                try {
+                    if (window.VideoFrame) {
+                        const frame = new VideoFrame(video);
+                        ctx.drawImage(frame, 0, 0, width, height);
+                        frame.close();
+                    } else {
+                        ctx.drawImage(video, 0, 0, width, height);
+                    }
+
+                    // ImageDataを取得してWorkerに送信（Transferable）
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const buffer = imageData.data.buffer;
+                    const timestamp = Date.now();
+                    
+                    workerRef.current.postMessage({
+                        command: 'createBlob',
+                        imageData: buffer,
+                        width: width,
+                        height: height,
+                        timestamp: timestamp
+                    }, [buffer]); // Transferableとして送信（コピーではなく所有権移譲）
+                    
+                } catch (e) {
+                    console.error("Snapshot failed", e);
+                    isProcessingRef.current = false;
+                }
+            };
+
+            const handleDelete = async (id, e) => {
+                e.stopPropagation();
+                if (confirm('この画像を削除しますか？')) {
+                    await db.snapshots.delete(id);
+                    loadSnapshots();
+                    if (selectedImage && selectedImage.id === id) setSelectedImage(null);
+                }
+            };
+
+            const handleClearAll = async () => {
+                if (confirm('全ての画像を削除しますか？この操作は取り消せません。')) {
+                    await db.snapshots.clear();
+                    loadSnapshots();
+                    setSelectedImage(null);
+                }
+            };
+
+            const openEditor = (snapshot) => {
+                // 新規でエディタを開く時は状態をリセットしない（保存された状態を使用）
+                setSelectedImage(snapshot);
+            };
+
+            const closeEditor = () => {
+                // エディタ状態を保存
+                saveEditorState(editorStateRef.current);
+                setSelectedImage(null);
+            };
+
+            const ImageEditor = ({ snapshot, onClose, snapshots, onNavigate, editorStateRef, projectId, projectName, autoAdvance, onAutoAdvanceChange, allProjects, selectedProjectId, onSelectedProjectChange }) => {
+                const imgRef = useRef(null);
+                const cropperInstance = useRef(null);
+                const [imageUrl, setImageUrl] = useState(null);
+                const [imageSource, setImageSource] = useState(null); // OPFS or IndexedDB
+                const [copyStatus, setCopyStatus] = useState(null);
+                const [sendStatus, setSendStatus] = useState(null);
+
+                const currentIndex = snapshots.findIndex(s => s.id === snapshot.id);
+                const hasPrev = currentIndex > 0;
+                const hasNext = currentIndex < snapshots.length - 1;
+
+                // 自動で次へ進む処理
+                const advanceToNext = () => {
+                    if (autoAdvance && hasNext) {
+                        saveCurrentState();
+                        setTimeout(() => {
+                            onNavigate(snapshots[currentIndex + 1]);
+                        }, 500); // ステータス表示を見せてから移動
+                    }
+                };
+
+                // 状態を保存する関数
+                const saveCurrentState = () => {
+                    if (cropperInstance.current) {
+                        editorStateRef.current = {
+                            cropBoxData: cropperInstance.current.getCropBoxData(),
+                            canvasData: cropperInstance.current.getCanvasData(),
+                            zoomRatio: cropperInstance.current.getCanvasData()?.width / cropperInstance.current.getImageData()?.naturalWidth
+                        };
+                    }
+                };
+
+                // 閉じる時に状態を保存してから閉じる
+                const handleClose = () => {
+                    saveCurrentState();
+                    onClose();
+                };
+
+                const goToPrev = () => {
+                    if (hasPrev) {
+                        saveCurrentState();
+                        onNavigate(snapshots[currentIndex - 1]);
+                    }
+                };
+
+                const goToNext = () => {
+                    if (hasNext) {
+                        saveCurrentState();
+                        onNavigate(snapshots[currentIndex + 1]);
+                    }
+                };
+
+                useEffect(() => {
+                    if (!snapshot) return;
+                    
+                    let objectUrl = null;
+                    let isCancelled = false;
+                    
+                    const loadImage = async () => {
+                        // OPFSフル画像があれば優先的に使用
+                        if (snapshot.opfsMain) {
+                            const file = await loadFromOPFS(snapshot.opfsMain);
+                            if (file && !isCancelled) {
+                                objectUrl = URL.createObjectURL(file);
+                                setImageUrl(objectUrl);
+                                setImageSource('OPFS');
+                                return;
+                            }
+                        }
+                        
+                        // OPFSから読めなかった場合はIndexedDBのBlobを使用
+                        if (!isCancelled) {
+                            objectUrl = URL.createObjectURL(snapshot.blob);
+                            setImageUrl(objectUrl);
+                            setImageSource('IndexedDB');
+                        }
+                    };
+                    
+                    loadImage();
+                    
+                    return () => {
+                        isCancelled = true;
+                        if (objectUrl) URL.revokeObjectURL(objectUrl);
+                    };
+                }, [snapshot]);
+
+                useEffect(() => {
+                    if (imgRef.current && imageUrl) {
+                        if (cropperInstance.current) cropperInstance.current.destroy();
+
+                        cropperInstance.current = new Cropper(imgRef.current, {
+                            viewMode: 1,
+                            dragMode: 'move',
+                            autoCropArea: 0.8,
+                            restore: false,
+                            guides: true,
+                            center: true,
+                            highlight: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false,
+                            background: false,
+                            ready: function() {
+                                // 保存された状態を復元
+                                const saved = editorStateRef.current;
+                                if (saved.canvasData && saved.zoomRatio) {
+                                    // 同じズーム比率を適用
+                                    const imageData = cropperInstance.current.getImageData();
+                                    const newWidth = imageData.naturalWidth * saved.zoomRatio;
+                                    const newHeight = imageData.naturalHeight * saved.zoomRatio;
+                                    
+                                    cropperInstance.current.setCanvasData({
+                                        ...saved.canvasData,
+                                        width: newWidth,
+                                        height: newHeight
+                                    });
+                                }
+                                if (saved.cropBoxData) {
+                                    cropperInstance.current.setCropBoxData(saved.cropBoxData);
+                                }
+                            }
+                        });
+                    }
+                    return () => {
+                        if (cropperInstance.current) {
+                            cropperInstance.current.destroy();
+                            cropperInstance.current = null;
+                        }
+                    };
+                }, [imageUrl]);
+
+                // キーボードショートカット
+                useEffect(() => {
+                    const handleKeyDown = (e) => {
+                        if (e.key === 'ArrowLeft' && hasPrev) {
+                            goToPrev();
+                        } else if (e.key === 'ArrowRight' && hasNext) {
+                            goToNext();
+                        } else if (e.key === 'Escape') {
+                            handleClose();
+                        }
+                    };
+                    window.addEventListener('keydown', handleKeyDown);
+                    return () => window.removeEventListener('keydown', handleKeyDown);
+                }, [hasPrev, hasNext, currentIndex]);
+
+                const copyToClipboard = async () => {
+                    if (!cropperInstance.current) return;
+                    
+                    try {
+                        const canvas = cropperInstance.current.getCroppedCanvas({
+                            imageSmoothingEnabled: true,
+                            imageSmoothingQuality: 'high',
+                        });
+                        
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) return;
+                            try {
+                                await navigator.clipboard.write([
+                                    new ClipboardItem({ 'image/png': blob })
+                                ]);
+                                setCopyStatus('success');
+                                advanceToNext();
+                                setTimeout(() => setCopyStatus(null), 2000);
+                            } catch (err) {
+                                console.error('Clipboard write failed:', err);
+                                setCopyStatus('error');
+                                setTimeout(() => setCopyStatus(null), 2000);
+                            }
+                        }, 'image/png');
+                    } catch (e) {
+                        console.error('Copy failed:', e);
+                        setCopyStatus('error');
+                        setTimeout(() => setCopyStatus(null), 2000);
+                    }
+                };
+
+                // エディタに送る機能
+                const sendToEditor = async () => {
+                    if (!cropperInstance.current || !selectedProjectId) {
+                        setSendStatus('error');
+                        setTimeout(() => setSendStatus(null), 2000);
+                        return;
+                    }
+                    
+                    try {
+                        setSendStatus('sending');
+                        
+                        // 現在の表示倍率を取得
+                        const cropperData = cropperInstance.current.getData();
+                        const canvasData = cropperInstance.current.getCanvasData();
+                        const imageData = cropperInstance.current.getImageData();
+                        
+                        // 表示倍率 = キャンバス上の表示幅 / 元画像の幅
+                        const displayRatio = canvasData.width / imageData.naturalWidth;
+                        
+                        // クロップ範囲の実サイズ
+                        const cropWidth = cropperData.width;
+                        const cropHeight = cropperData.height;
+                        
+                        // 表示サイズに縮小（表示倍率を適用）
+                        const outputWidth = Math.round(cropWidth * displayRatio);
+                        const outputHeight = Math.round(cropHeight * displayRatio);
+                        
+                        const croppedCanvas = cropperInstance.current.getCroppedCanvas({
+                            width: outputWidth,
+                            height: outputHeight,
+                            imageSmoothingEnabled: true,
+                            imageSmoothingQuality: 'high',
+                        });
+                        
+                        const dataUrl = croppedCanvas.toDataURL('image/png');
+                        const width = croppedCanvas.width;
+                        const height = croppedCanvas.height;
+                        
+                        // プロジェクトデータを取得
+                        const projectData = await editorDb.projectData.get(selectedProjectId);
+                        if (!projectData) {
+                            throw new Error("プロジェクトデータが見つかりません");
+                        }
+                        
+                        // 新しいタブデータを作成
+                        const newTabId = (projectData.tabCounter || 0) + 1;
+                        const now = new Date();
+                        const tabTitle = now.toLocaleTimeString('ja-JP', { hour12: false });
+                        
+                        // Fabric.js形式のキャンバスデータを作成（画像を含む）
+                        // 背景画像として固定（selectable: false, evented: false）
+                        const padding = 10;
+                        const canvasWidth = width + padding;
+                        const canvasHeight = height + padding;
+                        
+                        const fabricData = {
+                            version: "5.3.1",
+                            objects: [{
+                                type: "image",
+                                version: "5.3.1",
+                                originX: "left",
+                                originY: "top",
+                                left: padding / 2,
+                                top: padding / 2,
+                                width: width,
+                                height: height,
+                                scaleX: 1,
+                                scaleY: 1,
+                                angle: 0,
+                                src: dataUrl,
+                                crossOrigin: null,
+                                filters: [],
+                                selectable: false,
+                                evented: false,
+                                hoverCursor: "default"
+                            }]
+                        };
+                        
+                        const newTab = {
+                            id: newTabId,
+                            title: tabTitle,
+                            data: fabricData,
+                            baseDimensions: { width: canvasWidth, height: canvasHeight },
+                            zoom: 1,
+                            hasMainImage: true,
+                            backgroundColor: null,
+                            counterValue: 1
+                        };
+                        
+                        // タブを追加
+                        const updatedTabs = [...projectData.tabsData, newTab];
+                        
+                        // プロジェクトデータを更新
+                        await editorDb.projectData.put({
+                            projectId: selectedProjectId,
+                            tabsData: updatedTabs,
+                            tabCounter: newTabId,
+                            currentTabId: newTabId
+                        });
+                        
+                        // プロジェクトの更新日時を更新
+                        await editorDb.projects.update(selectedProjectId, {
+                            updatedAt: now
+                        });
+                        
+                        setSendStatus('success');
+                        advanceToNext();
+                        setTimeout(() => setSendStatus(null), 2000);
+                        
+                    } catch (e) {
+                        console.error('Send to editor failed:', e);
+                        setSendStatus('error');
+                        setTimeout(() => setSendStatus(null), 2000);
+                    }
+                };
+
+                if (!imageUrl) return null;
+
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-2">
+                        <div className="bg-white rounded-xl shadow-2xl w-full h-full flex flex-col overflow-hidden border border-slate-200">
+                            <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white">
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <i data-lucide="crop" className="text-blue-600"></i> 編集 & コピー
+                                    <span className="text-sm font-normal text-slate-400 ml-2">
+                                        {currentIndex + 1} / {snapshots.length}
+                                    </span>
+                                    {imageSource && (
+                                        <span className={`text-xs px-2 py-0.5 rounded ${imageSource === 'OPFS' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            {imageSource}
+                                        </span>
+                                    )}
+                                </h3>
+                                <button onClick={handleClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+
+                            <div className="flex-1 bg-checkerboard relative overflow-hidden flex items-center justify-center">
+                                {/* 前へボタン */}
+                                <button
+                                    onClick={goToPrev}
+                                    disabled={!hasPrev}
+                                    className={`absolute left-4 z-10 p-3 rounded-full shadow-lg transition ${
+                                        hasPrev 
+                                            ? 'bg-white hover:bg-slate-100 text-slate-700 hover:text-blue-600' 
+                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    <i data-lucide="chevron-left" className="w-6 h-6"></i>
+                                </button>
+
+                                <img ref={imgRef} src={imageUrl} alt="Edit Target" className="max-w-full max-h-full" style={{ display: 'block' }} />
+
+                                {/* 次へボタン */}
+                                <button
+                                    onClick={goToNext}
+                                    disabled={!hasNext}
+                                    className={`absolute right-4 z-10 p-3 rounded-full shadow-lg transition ${
+                                        hasNext 
+                                            ? 'bg-white hover:bg-slate-100 text-slate-700 hover:text-blue-600' 
+                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    <i data-lucide="chevron-right" className="w-6 h-6"></i>
+                                </button>
+                            </div>
+
+                            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center gap-3">
+                                <div className="flex items-center gap-3 text-xs text-slate-400">
+                                    <span>← → キーで移動</span>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-300 transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={autoAdvance}
+                                            onChange={(e) => onAutoAdvanceChange(e.target.checked)}
+                                            className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                        />
+                                        <span className="text-slate-600 font-medium">自動で次へ</span>
+                                    </label>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={handleClose} className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition shadow-sm">
+                                        キャンセル
+                                    </button>
+                                    <button 
+                                        onClick={copyToClipboard} 
+                                        className={`px-5 py-2.5 rounded-lg font-bold shadow-md hover:shadow-lg transition flex items-center gap-2 ${
+                                            copyStatus === 'success' 
+                                                ? 'bg-green-500 text-white' 
+                                                : copyStatus === 'error'
+                                                    ? 'bg-red-500 text-white'
+                                                    : 'bg-slate-600 hover:bg-slate-700 text-white'
+                                        }`}
+                                    >
+                                        <i data-lucide={copyStatus === 'success' ? 'check' : copyStatus === 'error' ? 'x' : 'clipboard-copy'}></i>
+                                        {copyStatus === 'success' ? 'コピー完了' : copyStatus === 'error' ? 'エラー' : 'コピー'}
+                                    </button>
+                                    <button 
+                                        onClick={sendToEditor}
+                                        disabled={!selectedProjectId || sendStatus === 'sending'}
+                                        className={`px-5 py-2.5 rounded-lg font-bold shadow-md hover:shadow-lg transition flex items-center gap-2 ${
+                                            sendStatus === 'success' 
+                                                ? 'bg-green-500 text-white' 
+                                                : sendStatus === 'error'
+                                                    ? 'bg-red-500 text-white'
+                                                    : sendStatus === 'sending'
+                                                        ? 'bg-purple-400 text-white cursor-wait'
+                                                        : !selectedProjectId
+                                                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                        }`}
+                                    >
+                                        <i data-lucide={sendStatus === 'success' ? 'check' : sendStatus === 'error' ? 'x' : sendStatus === 'sending' ? 'loader-2' : 'send'}></i>
+                                        {sendStatus === 'success' ? '送信完了！' : sendStatus === 'error' ? 'エラー' : sendStatus === 'sending' ? '送信中...' : 'エディタへ'}
+                                    </button>
+                                    {/* プロジェクト選択コンボボックス */}
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={selectedProjectId || ''}
+                                            onChange={(e) => onSelectedProjectChange(Number(e.target.value))}
+                                            className="bg-white border border-purple-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 w-[300px] truncate"
+                                        >
+                                            {allProjects.map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name}{p.id === projectId ? ' (現在)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-800">
+                    <div id="screen-flash" className="fixed inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-100 z-50"></div>
+
+                    {/* --- ヘッダー --- */}
+                    <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm z-10 sticky top-0">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 p-2 rounded-lg shadow-sm">
+                                <i data-lucide="camera" className="text-white w-5 h-5"></i>
+                            </div>
+                            <h1 className="text-xl font-bold tracking-tight text-slate-800 hidden sm:block">Interval Snapper</h1>
+                        </div>
+
+                        <div className="flex items-center gap-4 bg-slate-100 px-5 py-2 rounded-full border border-slate-200 shadow-inner">
+                            {/* 間隔設定 */}
+                            <div className="flex items-center gap-2" title="キャプチャ間隔">
+                                <i data-lucide="timer" className="w-4 h-4 text-slate-500"></i>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="10"
+                                    step="1"
+                                    value={intervalSec}
+                                    onChange={(e) => setIntervalSec(Number(e.target.value))}
+                                    disabled={isCapturing}
+                                    className="w-20 accent-blue-600 cursor-pointer"
+                                />
+                                <span className="text-sm font-mono font-bold w-10 text-center text-blue-600">{intervalSec}s</span>
+                            </div>
+                            <div className="w-px h-5 bg-slate-300"></div>
+                            {/* 最大時間設定 */}
+                            <div className="flex items-center gap-2" title="最大キャプチャ時間">
+                                <i data-lucide="clock" className="w-4 h-4 text-slate-500"></i>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="30"
+                                    step="1"
+                                    value={maxDurationMin}
+                                    onChange={(e) => handleMaxDurationChange(Number(e.target.value))}
+                                    disabled={isCapturing}
+                                    className="w-20 accent-orange-500 cursor-pointer"
+                                />
+                                <span className="text-sm font-mono font-bold w-14 text-center text-orange-500">{maxDurationMin}分</span>
+                            </div>
+                            <div className="w-px h-5 bg-slate-300"></div>
+                            {/* 重複スキップ設定 */}
+                            <button
+                                onClick={() => handleSkipDuplicatesChange(!skipDuplicates)}
+                                disabled={isCapturing}
+                                className={`flex items-center gap-2 text-sm font-medium transition ${
+                                    skipDuplicates ? 'text-green-600' : 'text-slate-400'
+                                } ${isCapturing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                title="同じ画面の重複キャプチャをスキップ"
+                            >
+                                <i data-lucide={skipDuplicates ? "filter" : "filter-x"} className="w-4 h-4"></i>
+                                {skipDuplicates ? "重複スキップ" : "全保存"}
+                            </button>
+                            <div className="w-px h-5 bg-slate-300"></div>
+                            {/* 経過時間表示 (キャプチャ中のみ) */}
+                            {isCapturing && (
+                                <>
+                                    <div className="flex items-center gap-2" title="経過時間">
+                                        <span className="text-sm font-mono font-bold text-emerald-600">
+                                            {formatElapsedTime(elapsedTime)} / {maxDurationMin}:00
+                                        </span>
+                                    </div>
+                                    <div className="w-px h-5 bg-slate-300"></div>
+                                </>
+                            )}
+                            <button
+                                onClick={() => setSoundEnabled(!soundEnabled)}
+                                className={`flex items-center gap-2 text-sm font-medium transition ${soundEnabled ? 'text-green-600' : 'text-slate-400'}`}
+                            >
+                                <i data-lucide={soundEnabled ? "volume-2" : "volume-x"} className="w-4 h-4"></i>
+                                {soundEnabled ? "ON" : "OFF"}
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            {!isCapturing ? (
+                                <button
+                                    onClick={startCapture}
+                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:shadow-lg transition transform hover:scale-105"
+                                >
+                                    <i data-lucide="play-circle"></i> 開始
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={stopCapture}
+                                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:shadow-lg transition transform hover:scale-105 animate-pulse"
+                                >
+                                    <i data-lucide="stop-circle"></i> 停止
+                                </button>
+                            )}
+                        </div>
+                    </header>
+
+                    {/* --- メインコンテンツ --- */}
+                    <div className="flex flex-1 overflow-hidden">
+
+                        <aside className="w-80 bg-white border-r border-slate-200 flex flex-col p-4 gap-4 shadow-[2px_0_10px_-3px_rgba(0,0,0,0.05)] z-0">
+                            <div className="bg-slate-100 rounded-xl overflow-hidden border border-slate-200 aspect-video relative shadow-inner group">
+                                <video
+                                    ref={videoRef}
+                                    className="w-full h-full object-contain"
+                                    muted
+                                    playsInline
+                                ></video>
+                                {!isCapturing && (
+                                    <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-50/50">
+                                        <div className="text-center">
+                                            <i data-lucide="monitor-off" className="mx-auto mb-2 opacity-50 w-8 h-8"></i>
+                                            <span className="text-xs font-medium">プレビュー待機中</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {isCapturing && (
+                                    <div className="absolute top-3 left-3 flex gap-2 items-center bg-white/90 px-2 py-1 rounded-full shadow-sm border border-slate-100">
+                                        <span className="relative flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                        </span>
+                                        <span className="text-[10px] font-bold text-red-600">LIVE</span>
+                                    </div>
+                                )}
+                                {/* プログレスバー */}
+                                {isCapturing && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-200/80">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-100 ease-linear"
+                                            style={{ width: `${captureProgress}%` }}
+                                        ></div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Statistics</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm font-medium text-slate-600">キャプチャ数</span>
+                                    <span className="text-2xl font-bold text-slate-800 font-mono tracking-tight">{captureCount} <small className="text-xs text-slate-400 font-normal">枚</small></span>
+                                </div>
+                                {skipDuplicates && skippedCount > 0 && (
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-slate-600">スキップ数</span>
+                                        <span className="text-lg font-bold text-orange-600 font-mono tracking-tight">{skippedCount} <small className="text-xs text-orange-400 font-normal">回</small></span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-slate-600">保存ストレージ</span>
+                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 flex items-center gap-1">
+                                        <i data-lucide="database" className="w-3 h-3"></i> IndexedDB
+                                    </span>
+                                </div>
+                                <div className="mt-3 text-[10px] text-slate-400 border-t border-slate-200 pt-2 text-right">
+                                    {window.VideoFrame ? "WebCodecs Active" : "Canvas Fallback"}
+                                </div>
+                            </div>
+
+                            {/* プロジェクト情報 */}
+                            {currentProjectName && (
+                                <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 shadow-sm">
+                                    <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">Current Project</h3>
+                                    <div className="text-sm font-medium text-purple-700 truncate" title={currentProjectName}>
+                                        📁 {currentProjectName}
+                                    </div>
+                                    <div className="mt-2 text-[10px] text-purple-400">
+                                        エディタに送った画像はこのプロジェクトに保存されます
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-auto">
+                                <button
+                                    onClick={handleClearAll}
+                                    className="w-full py-2.5 px-4 bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <i data-lucide="trash-2" className="w-4 h-4"></i> 全履歴を削除
+                                </button>
+                            </div>
+                        </aside>
+
+                        <main className="flex-1 overflow-y-auto bg-slate-50 p-6 relative">
+                            {snapshots.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                                    <div className="bg-white p-6 rounded-full shadow-sm mb-4 border border-slate-100">
+                                        <i data-lucide="image" className="w-12 h-12 text-slate-300"></i>
+                                    </div>
+                                    <p className="text-lg font-medium text-slate-600">ギャラリーは空です</p>
+                                    <p className="text-sm opacity-60 mt-1">左上の「開始」ボタンから画面共有を始めてください</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    {snapshots.map((snap) => (
+                                        <SnapshotItem
+                                            key={snap.id}
+                                            snap={snap}
+                                            onDelete={handleDelete}
+                                            onClick={() => openEditor(snap)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </main>
+                    </div>
+
+                    {selectedImage && (
+                        <ImageEditor 
+                            snapshot={selectedImage} 
+                            onClose={closeEditor} 
+                            snapshots={snapshots}
+                            onNavigate={setSelectedImage}
+                            editorStateRef={editorStateRef}
+                            projectId={currentProjectId}
+                            projectName={currentProjectName}
+                            autoAdvance={autoAdvance}
+                            onAutoAdvanceChange={handleAutoAdvanceChange}
+                            allProjects={allProjects}
+                            selectedProjectId={selectedProjectId || currentProjectId}
+                            onSelectedProjectChange={setSelectedProjectId}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        const SnapshotItem = ({ snap, onDelete, onClick }) => {
+            const [url, setUrl] = useState(null);
+            const [loadSource, setLoadSource] = useState(null); // 読み込み元を表示用
+
+            useEffect(() => {
+                let objectUrl = null;
+                let isCancelled = false;
+
+                const loadThumbnail = async () => {
+                    // OPFSサムネイルがあれば優先的に使用
+                    if (snap.opfsThumb) {
+                        const file = await loadFromOPFS(snap.opfsThumb);
+                        if (file && !isCancelled) {
+                            objectUrl = URL.createObjectURL(file);
+                            setUrl(objectUrl);
+                            setLoadSource('OPFS');
+                            return;
+                        }
+                    }
+                    
+                    // OPFSから読めなかった場合はIndexedDBのサムネイルを使用
+                    if (!isCancelled) {
+                        const blobToUse = snap.thumbnailBlob || snap.blob;
+                        objectUrl = URL.createObjectURL(blobToUse);
+                        setUrl(objectUrl);
+                        setLoadSource('IndexedDB');
+                    }
+                };
+
+                loadThumbnail();
+
+                return () => {
+                    isCancelled = true;
+                    if (objectUrl) URL.revokeObjectURL(objectUrl);
+                };
+            }, [snap.opfsThumb, snap.thumbnailBlob, snap.blob]);
+
+            if (!url) return <div className="animate-pulse bg-slate-200 h-40 rounded-lg"></div>;
+
+            return (
+                <div
+                    onClick={onClick}
+                    className="group relative bg-white border border-slate-200 rounded-xl overflow-hidden cursor-pointer hover:border-blue-400 hover:ring-2 hover:ring-blue-100 transition-all duration-200 shadow-sm hover:shadow-lg transform hover:-translate-y-1"
+                >
+                    <div className="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                        {/* 市松模様の背景を画像の裏に敷く（透過画像用） */}
+                        <div className="absolute inset-0 bg-checkerboard opacity-50"></div>
+                        <img src={url} alt="snap" className="object-contain w-full h-full relative z-10" />
+                    </div>
+                    <div className="p-3 bg-white border-t border-slate-100 flex justify-between items-center relative">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                {new Date(snap.timestamp).toLocaleTimeString()}
+                            </span>
+                            {loadSource && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${loadSource === 'OPFS' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                    {loadSource}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex gap-1">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClick();
+                                }}
+                                className="text-slate-400 hover:text-blue-500 p-1.5 rounded-md hover:bg-blue-50 transition"
+                                title="編集"
+                            >
+                                <i data-lucide="crop" className="w-4 h-4"></i>
+                            </button>
+                            <button
+                                onClick={(e) => onDelete(snap.id, e)}
+                                className="text-slate-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50 transition"
+                                title="削除"
+                            >
+                                <i data-lucide="trash" className="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

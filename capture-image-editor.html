@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Image Editor</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+    <!-- Dexie.js (IndexedDBラッパー) -->
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+
+    <!-- Google Fonts & Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+
+        .canvas-bg {
+            background-color: #e5e7eb;
+            background-image:
+                linear-gradient(45deg, #d1d5db 25%, transparent 25%),
+                linear-gradient(-45deg, #d1d5db 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #d1d5db 75%),
+                linear-gradient(-45deg, transparent 75%, #d1d5db 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .color-btn.active {
+            ring: 2px solid #3b82f6;
+            ring-offset: 2px;
+            transform: scale(1.1);
+        }
+
+        /* タブのスタイル */
+        .tab-item {
+            user-select: none;
+            max-width: 200px;
+            white-space: nowrap;
+        }
+
+        .tab-item.active {
+            background-color: #f3f4f6;
+            border-bottom-color: #f3f4f6;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .tab-item:not(.active) {
+            background-color: #e5e7eb;
+            color: #6b7280;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .tab-item:not(.active):hover {
+            background-color: #f9fafb;
+        }
+
+        /* モーダルのZ-Index調整 */
+        #project-modal {
+            z-index: 50;
+        }
+
+        #custom-confirm-modal {
+            z-index: 60;
+        }
+
+        #custom-input-modal {
+            z-index: 70;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 h-screen flex flex-col overflow-hidden text-gray-800">
+
+    <!-- ヘッダー -->
+    <header
+        class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 shadow-sm z-20 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-1.5 rounded-lg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+            </div>
+            <h1 class="font-bold text-lg text-gray-800 hidden sm:block">Capture Image Editor</h1>
+
+            <!-- プロジェクト操作系 (左側) -->
+            <div class="flex items-center gap-2 ml-2">
+                <button onclick="openProjectModal()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors">
+                    <i data-lucide="folder-open" class="w-4 h-4"></i> <span class="hidden sm:inline">プロジェクト</span>
+                </button>
+                <button onclick="saveProject()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors shadow-sm">
+                    <i data-lucide="save" class="w-4 h-4"></i> <span class="hidden sm:inline">保存</span>
+                </button>
+            </div>
+
+            <div id="project-name-display"
+                class="hidden sm:block text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2 border border-gray-200">
+                (未保存のプロジェクト)
+            </div>
+
+            <div id="mode-indicator"
+                class="hidden ml-4 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-100 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                <span id="mode-text">描画モード中</span>
+            </div>
+        </div>
+        <!-- ヘッダー右側は空けておく -->
+        <div class="flex items-center gap-2"></div>
+    </header>
+
+    <!-- タブバー -->
+    <div class="flex items-center bg-gray-200 border-b border-gray-300 w-full overflow-hidden">
+
+        <!-- アニメーション操作 (左端固定) -->
+        <div
+            class="flex items-center gap-2 bg-gray-200 h-10 border-r border-gray-300 px-3 flex-shrink-0 z-20 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]">
+            <!-- フリップ再生ボタン -->
+            <button onclick="toggleFlip()" id="btn-flip"
+                class="p-1.5 bg-white text-orange-500 border border-gray-300 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 rounded transition-colors shadow-sm"
+                title="直前のタブと交互に表示">
+                <svg id="icon-flip" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m17 2 4 4-4 4" />
+                    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                    <path d="m7 22-4-4 4-4" />
+                    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                </svg>
+            </button>
+
+            <!-- プレビュー再生ボタン -->
+            <button onclick="togglePreview()" id="btn-preview"
+                class="p-1.5 bg-white text-green-600 border border-gray-300 hover:bg-green-50 hover:text-green-700 hover:border-green-200 rounded transition-colors shadow-sm"
+                title="全タブを順番に再生">
+                <svg id="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+            </button>
+        </div>
+
+        <!-- タブリスト & 操作ボタン (スクロール領域) -->
+        <div id="tabs-container" class="flex items-end px-2 gap-1 pt-2 overflow-x-auto z-10 h-10 scrollbar-hide flex-1">
+            <!-- JSで生成 -->
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="flex flex-1 overflow-hidden relative">
+
+        <!-- 左サイドバー：ツールボックス -->
+        <aside
+            class="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-3 z-10 flex-shrink-0 overflow-y-auto">
+
+            <!-- 画像アップロード -->
+            <div class="relative group">
+                <label for="img-upload"
+                    class="w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 cursor-pointer text-gray-500 hover:text-blue-600 transition-colors">
+                    <i data-lucide="image-plus" class="w-5 h-5 mb-0.5"></i>
+                    <span class="text-[9px] font-medium">画像</span>
+                </label>
+                <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+            </div>
+
+            <!-- コピー・保存 (ツールバーへ移動) -->
+            <button onclick="copyToClipboard()"
+                class="group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors"
+                title="クリップボードにコピー">
+                <i data-lucide="copy" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">コピー</span>
+            </button>
+            <button onclick="downloadImage()"
+                class="group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors"
+                title="PNG保存">
+                <i data-lucide="download" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">保存</span>
+            </button>
+
+            <!-- Undo / Redo (ツールバーへ移動) -->
+            <button onclick="undo()" id="btn-undo"
+                class="group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="元に戻す (Ctrl+Z)" disabled>
+                <i data-lucide="undo-2" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">戻す</span>
+            </button>
+            <button onclick="redo()" id="btn-redo"
+                class="group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="やり直す (Ctrl+Y)" disabled>
+                <i data-lucide="redo-2" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">直す</span>
+            </button>
+
+            <div class="w-6 h-px bg-gray-200"></div>
+
+            <!-- トリミングツール -->
+            <button onclick="setMode('trim')" id="btn-trim"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-purple-50 text-gray-500 hover:text-purple-600 transition-colors">
+                <i data-lucide="crop" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">切抜</span>
+            </button>
+
+            <div class="w-6 h-px bg-gray-200"></div>
+
+            <!-- 矢印ツール群 -->
+            <button onclick="setMode('arrow', 'normal')" id="btn-arrow-normal"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="arrow-right" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">矢印</span>
+            </button>
+            <button onclick="setMode('arrow', 'double')" id="btn-arrow-double"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="arrow-left-right" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">双方</span>
+            </button>
+
+            <div class="w-6 h-px bg-gray-200"></div>
+
+            <!-- 図形ツール -->
+            <button onclick="setMode('rect')" id="btn-rect"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="square" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">四角</span>
+            </button>
+
+            <button onclick="setMode('roundRect')" id="btn-roundRect"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <div class="w-4 h-4 border-2 border-current rounded-md mb-0.5"></div>
+                <span class="text-[9px] font-medium">角丸</span>
+            </button>
+
+            <button onclick="setMode('circle')" id="btn-circle"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="circle" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">円</span>
+            </button>
+
+            <div class="w-6 h-px bg-gray-200"></div>
+
+            <!-- テキストツール -->
+            <button onclick="setMode('text')" id="btn-text"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="type" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">文字</span>
+            </button>
+
+            <!-- 連番ツール -->
+            <button onclick="setMode('counter')" id="btn-counter"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors">
+                <i data-lucide="list-ordered" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">連番</span>
+            </button>
+
+            <div class="w-6 h-px bg-gray-200"></div>
+
+            <!-- 全消去 -->
+            <button onclick="clearCanvas()"
+                class="tool-btn group relative w-10 h-10 flex flex-col items-center justify-center rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors">
+                <i data-lucide="trash-2" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[9px] font-medium">消去</span>
+            </button>
+
+        </aside>
+
+        <!-- 中央：キャンバスエリア -->
+        <main class="flex-1 bg-gray-100 relative overflow-auto flex items-start p-[10px]" id="workspace">
+            <!-- flex-shrink-0 を追加して、画面幅が狭くてもキャンバスが縮まないようにする -->
+            <div class="shadow-2xl rounded-lg overflow-hidden border border-gray-300 canvas-bg relative transition-transform duration-100 origin-top flex-shrink-0"
+                id="canvas-wrapper">
+                <canvas id="c"></canvas>
+            </div>
+
+            <div
+                class="fixed bottom-4 left-24 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-mono text-gray-500 shadow-sm border border-gray-200 pointer-events-none z-20">
+                <span id="canvas-size-info">800 x 600</span> px | <span id="zoom-level-display">100%</span>
+            </div>
+        </main>
+
+        <!-- 右サイドバー：プロパティパネル -->
+        <aside
+            class="w-72 bg-white border-l border-gray-200 flex flex-col z-10 flex-shrink-0 transition-all duration-300"
+            id="properties-panel">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider" id="prop-title">Canvas Settings
+                </h2>
+            </div>
+
+            <!-- 選択なし状態（キャンバス設定） -->
+            <div id="canvas-settings" class="flex-1 overflow-y-auto p-4 space-y-6">
+                <div class="text-xs text-gray-400 mb-4 flex items-center gap-2">
+                    <i data-lucide="info" class="w-3 h-3"></i>
+                    <span>画像に合わせて自動調整されます</span>
+                </div>
+
+                <!-- 貼り付け設定 -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700 block">貼り付け設定 (Paste)</label>
+
+                    <!-- 貼り付け時リサイズ設定 -->
+                    <div
+                        class="flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-100 transition-colors hover:bg-blue-100">
+                        <input type="checkbox" id="auto-resize-paste"
+                            class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            checked>
+                        <label for="auto-resize-paste"
+                            class="text-xs font-medium text-blue-800 cursor-pointer select-none flex-1">サイズを自動調整</label>
+                    </div>
+
+                    <!-- 新規タブ作成設定 -->
+                    <div
+                        class="flex items-center gap-2 bg-green-50 p-2 rounded border border-green-100 transition-colors hover:bg-green-100">
+                        <input type="checkbox" id="paste-new-tab"
+                            class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer">
+                        <label for="paste-new-tab"
+                            class="text-xs font-medium text-green-800 cursor-pointer select-none flex-1">新規タブで開く</label>
+                    </div>
+                    <div class="text-[10px] text-gray-500 ml-1">※ Ctrl+V 時に適用されます</div>
+                </div>
+
+                <!-- 連番設定 (新規追加) -->
+                <div class="space-y-2 pt-2 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium text-gray-700">連番設定 (Counter)</label>
+                        <button onclick="resetCounter()"
+                            class="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors cursor-pointer"
+                            title="1に戻す">リセット(1)</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500">次の番号:</span>
+                        <input type="number" id="counter-input" min="1" value="1"
+                            class="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow"
+                            oninput="updateCounterFromInput(this.value)">
+                    </div>
+                </div>
+
+                <!-- ズーム設定 -->
+                <div class="space-y-3 pt-2 border-t border-gray-200">
+                    <div class="flex justify-between">
+                        <label class="text-sm font-medium text-gray-700">表示サイズ (Zoom)</label>
+                        <span id="zoom-val" class="text-xs text-gray-500">100%</span>
+                    </div>
+                    <input type="range" id="zoom-slider" min="10" max="300" value="100"
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        oninput="updateZoom(this.value)">
+                    <div class="flex justify-between text-[10px] text-gray-400">
+                        <span>10%</span>
+                        <button onclick="updateZoom(100); document.getElementById('zoom-slider').value=100;"
+                            class="text-blue-500 hover:underline cursor-pointer">リセット(100%)</button>
+                        <span>300%</span>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-4"></div>
+
+                <!-- 背景色設定 -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-gray-700 block">背景色</label>
+                    <div class="flex flex-wrap gap-2" id="bg-palette"></div>
+                    <button onclick="updateCanvasColor('transparent')"
+                        class="w-full py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
+                        <div class="w-3 h-3 border border-gray-300 rounded-sm"
+                            style="background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 4px 4px;">
+                        </div>
+                        背景を透過 (Transparent)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 選択あり状態（オブジェクトプロパティ） -->
+            <div id="selection-controls" class="hidden flex-1 overflow-y-auto p-4 space-y-6">
+                <!-- 塗りつぶし -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-gray-700 block">塗りつぶし (Fill)</label>
+                    <div class="flex flex-wrap gap-2" id="fill-palette"></div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <label class="text-xs text-gray-500 cursor-pointer flex items-center gap-1 hover:text-blue-600">
+                            <i data-lucide="palette" class="w-3 h-3"></i> カスタム:
+                            <input type="color" id="fill-color-picker"
+                                class="w-6 h-6 p-0 border-0 rounded bg-transparent cursor-pointer ml-1"
+                                oninput="updateActiveObject('fill', this.value)">
+                        </label>
+                        <button onclick="updateActiveObject('fill', '')"
+                            class="text-xs text-gray-400 hover:text-red-500 border border-gray-200 px-2 py-0.5 rounded">なし</button>
+                    </div>
+                </div>
+
+                <!-- テキスト用背景 -->
+                <div id="text-controls" class="hidden space-y-3 border-t border-gray-200 pt-4">
+                    <label class="text-sm font-medium text-gray-700 block">テキスト背景色</label>
+                    <div class="flex flex-wrap gap-2" id="text-bg-palette"></div>
+                    <div class="flex items-center justify-end mt-1">
+                        <button onclick="updateActiveObject('backgroundColor', '')"
+                            class="text-xs text-gray-400 hover:text-red-500 border border-gray-200 px-2 py-0.5 rounded">背景なし</button>
+                    </div>
+                </div>
+
+                <!-- 線の色 -->
+                <div class="space-y-3 border-t border-gray-200 pt-4">
+                    <label class="text-sm font-medium text-gray-700 block">線の色 (Stroke)</label>
+                    <div class="flex flex-wrap gap-2" id="stroke-palette"></div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <label class="text-xs text-gray-500 cursor-pointer flex items-center gap-1 hover:text-blue-600">
+                            <i data-lucide="palette" class="w-3 h-3"></i> カスタム:
+                            <input type="color" id="stroke-color-picker"
+                                class="w-6 h-6 p-0 border-0 rounded bg-transparent cursor-pointer ml-1"
+                                oninput="updateActiveObject('stroke', this.value)">
+                        </label>
+                        <button onclick="updateActiveObject('stroke', '')"
+                            class="text-xs text-gray-400 hover:text-red-500 border border-gray-200 px-2 py-0.5 rounded">なし</button>
+                    </div>
+                </div>
+
+                <!-- 線の太さ -->
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <label class="text-sm font-medium text-gray-700">線の太さ</label>
+                        <!-- 初期値を5pxに変更 -->
+                        <span id="stroke-width-val" class="text-xs text-gray-500">5px</span>
+                    </div>
+                    <!-- 初期値を5に変更 -->
+                    <input type="range" id="stroke-width" min="0" max="20" step="1" value="5"
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        oninput="updateActiveObject('strokeWidth', parseInt(this.value))">
+                </div>
+
+                <div class="border-t border-gray-200 pt-4"></div>
+
+                <!-- 透明度 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <label class="text-sm font-medium text-gray-700">不透明度</label>
+                        <span id="opacity-val" class="text-xs text-gray-500">100%</span>
+                    </div>
+                    <input type="range" id="opacity" min="0" max="1" step="0.1"
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        oninput="updateActiveObject('opacity', this.value)">
+                </div>
+
+                <div class="border-t border-gray-200 pt-4"></div>
+
+                <!-- 整列・削除 -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="sendToBack()"
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium text-gray-700 transition-colors">背面へ</button>
+                    <button onclick="bringToFront()"
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium text-gray-700 transition-colors">前面へ</button>
+                </div>
+                <button onclick="deleteActiveObject()"
+                    class="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors border border-red-200 mt-2">
+                    <i data-lucide="trash" class="w-4 h-4"></i> 削除
+                </button>
+            </div>
+        </aside>
+
+        <!-- カスタム確認モーダル -->
+        <div id="custom-confirm-modal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-95 duration-200"
+                id="modal-content">
+                <div class="flex items-center gap-3 mb-4 text-red-600" id="modal-icon-container">
+                    <div class="p-2 bg-red-50 rounded-full">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">確認</h3>
+                </div>
+                <!-- ローディング用アイコン -->
+                <div id="loading-icon" class="hidden flex justify-center mb-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                </div>
+
+                <div id="modal-body-container">
+                    <p id="modal-message" class="text-gray-600 mb-6 text-sm leading-relaxed"></p>
+                </div>
+
+                <div class="flex gap-3 justify-end" id="modal-buttons">
+                    <button onclick="closeConfirmModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">キャンセル</button>
+                    <button id="modal-confirm-btn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors flex items-center gap-2">実行する</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- カスタム入力モーダル -->
+        <div id="custom-input-modal"
+            class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-95 duration-200"
+                id="input-modal-content">
+                <div class="flex items-center gap-3 mb-4 text-blue-600">
+                    <div class="p-2 bg-blue-50 rounded-full">
+                        <i data-lucide="edit-3" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">入力</h3>
+                </div>
+                <p id="input-modal-message" class="text-gray-600 mb-2 text-sm leading-relaxed"></p>
+                <input type="text" id="input-modal-field"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-6 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <div class="flex gap-3 justify-end">
+                    <button onclick="closeInputModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">キャンセル</button>
+                    <button id="input-modal-confirm-btn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-2">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- トースト通知 (新規追加) -->
+        <div id="toast-container"
+            class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[80] pointer-events-none transition-all duration-300 opacity-0 translate-y-4">
+            <div id="toast-message-box"
+                class="bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3">
+                <span id="toast-icon"></span>
+                <span id="toast-text" class="font-medium text-sm"></span>
+            </div>
+        </div>
+
+        <!-- プロジェクト一覧モーダル -->
+        <div id="project-modal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl h-[500px] flex flex-col transform transition-all scale-95 duration-200"
+                id="project-modal-content">
+                <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <i data-lucide="folder-open" class="w-5 h-5 text-blue-600"></i>
+                        プロジェクト管理
+                    </h3>
+                    <button onclick="closeProjectModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="newProjectFlow()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i> 新規作成
+                    </button>
+                    <div class="text-xs text-gray-500">※ ブラウザに保存されます</div>
+                </div>
+
+                <div id="project-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- JSでリスト生成 -->
+                    <div class="text-center text-gray-400 py-10">読み込み中...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ---------------------------------------------------------
+        // Dexie.js DB初期化
+        // ---------------------------------------------------------
+        const db = new Dexie("ImageEditorDB");
+        db.version(1).stores({
+            projects: "++id, name, updatedAt",
+            projectData: "projectId" // projectIdをキーにする (画像データ等を含む巨大データ)
+        });
+
+        // 現在のプロジェクト情報
+        let currentProjectId = null;
+        let currentProjectName = null;
+
+        // ---------------------------------------------------------
+        // グローバル変数 & Fabric.js 初期化
+        // ---------------------------------------------------------
+        const canvas = new fabric.Canvas('c', {
+            width: 800,
+            height: 600,
+            backgroundColor: null,
+            preserveObjectStacking: true,
+            selection: true,
+            uniformScaling: false
+        });
+
+        let tabs = [];
+        let currentTabId = null;
+        let tabCounter = 0;
+
+        let currentMode = 'select';
+        let drawingType = null;
+        let arrowType = 'normal';
+        let isDragging = false;
+        let startPoint = null;
+        let activeShape = null;
+
+        // 連番カウンタ（現在のタブのカウンタ）
+        let counterValue = 1;
+
+        // デフォルト描画設定を変更
+        let lastProps = {
+            fill: '',          // 塗りつぶし: なし
+            stroke: '#ef4444', // 線の色: 赤
+            strokeWidth: 5,    // 線の太さ: 5px
+            opacity: 1
+        };
+        let lastArrowProps = {
+            fill: '#ef4444',
+            stroke: '#ef4444'
+        };
+
+        // アニメーション関連の状態変数
+        let isPreviewPlaying = false;
+        let previewInterval = null;
+
+        let isFlipping = false;
+        let flipInterval = null;
+
+        // 履歴管理用フラグ
+        let historyProcessing = false;
+        const HISTORY_LIMIT = 20; // 履歴保存の最大数
+
+        // ---------------------------------------------------------
+        // 入力モーダル制御
+        // ---------------------------------------------------------
+        const inputModal = document.getElementById('custom-input-modal');
+        const inputModalContent = document.getElementById('input-modal-content');
+        const inputModalMessage = document.getElementById('input-modal-message');
+        const inputModalField = document.getElementById('input-modal-field');
+        const inputModalConfirmBtn = document.getElementById('input-modal-confirm-btn');
+        let inputCallback = null;
+
+        // トースト関連
+        const toastContainer = document.getElementById('toast-container');
+        const toastMessageBox = document.getElementById('toast-message-box');
+        const toastText = document.getElementById('toast-text');
+        const toastIcon = document.getElementById('toast-icon');
+        let toastTimeout = null;
+
+        function showToast(message, type = 'success') {
+            clearTimeout(toastTimeout);
+
+            toastText.textContent = message;
+
+            if (type === 'success') {
+                toastMessageBox.className = "bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3";
+                toastIcon.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>';
+            } else if (type === 'error') {
+                toastMessageBox.className = "bg-red-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3";
+                toastIcon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-white"></i>';
+            } else {
+                toastMessageBox.className = "bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3";
+                toastIcon.innerHTML = '<i data-lucide="info" class="w-5 h-5 text-white"></i>';
+            }
+
+            lucide.createIcons();
+
+            toastContainer.classList.remove('opacity-0', 'translate-y-4');
+
+            toastTimeout = setTimeout(() => {
+                toastContainer.classList.add('opacity-0', 'translate-y-4');
+            }, 3000);
+        }
+
+        function showInputModal(message, defaultValue, onConfirm) {
+            inputModalMessage.textContent = message;
+            inputModalField.value = defaultValue;
+            inputCallback = onConfirm;
+
+            inputModal.classList.remove('hidden');
+            setTimeout(() => {
+                inputModal.classList.remove('opacity-0');
+                inputModalContent.classList.remove('scale-95');
+                inputModalContent.classList.add('scale-100');
+                inputModalField.focus(); // フォーカスを当てる
+            }, 10);
+        }
+
+        function closeInputModal() {
+            inputModal.classList.add('opacity-0');
+            inputModalContent.classList.remove('scale-100');
+            inputModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                inputModal.classList.add('hidden');
+            }, 200);
+            inputCallback = null;
+        }
+
+        inputModalConfirmBtn.onclick = () => {
+            const val = inputModalField.value;
+            if (inputCallback) inputCallback(val);
+            closeInputModal();
+        };
+
+        // Enterキーで確定できるようにする
+        inputModalField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                inputModalConfirmBtn.click();
+            }
+        });
+
+        // ---------------------------------------------------------
+        // DB操作関連
+        // ---------------------------------------------------------
+        async function saveProject() {
+            // 新規の場合は名前を聞く
+            if (!currentProjectId) {
+                showInputModal(
+                    "プロジェクト名を入力してください",
+                    `無題のプロジェクト ${new Date().toLocaleDateString()}`,
+                    async (name) => {
+                        if (!name) name = "名称未設定";
+                        // 名前決定後に保存処理を開始
+                        performSaveProcess(name);
+                    }
+                );
+            } else {
+                // 既存プロジェクト上書き
+                performSaveProcess(currentProjectName);
+            }
+        }
+
+        // 保存処理の実体（ローディング表示制御を含む）
+        function performSaveProcess(name) {
+            // 1. まずローディングを表示してユーザーを待たせない
+            showLoadingModal("プロジェクトを保存中...");
+
+            // 2. ブラウザの描画更新を待ってから重い処理を開始
+            setTimeout(async () => {
+                try {
+                    // 現在のタブの状態をメモリに反映 (データ量が多いとここで時間がかかる)
+                    saveCurrentTabState();
+
+                    // DBへの保存実行
+                    await executeSave(name);
+
+                } catch (e) {
+                    console.error(e);
+                    closeConfirmModal(); // ローディングを閉じる
+                    setTimeout(() => showAlert("保存に失敗しました: " + e.message, "エラー", true), 300);
+                }
+            }, 50);
+        }
+
+        async function executeSave(name) {
+            // showLoadingModal は呼び出し元(performSaveProcess)で表示済み
+
+            const now = new Date();
+
+            await db.transaction('rw', db.projects, db.projectData, async () => {
+                let id = currentProjectId;
+
+                if (!id) {
+                    // 新規作成
+                    id = await db.projects.add({
+                        name: name,
+                        updatedAt: now
+                    });
+                    currentProjectId = id;
+                    currentProjectName = name;
+                } else {
+                    // 更新
+                    await db.projects.update(id, {
+                        updatedAt: now
+                    });
+                }
+
+                // 保存データの準備（履歴スタックは容量を食うので除外して保存する）
+                const cleanTabsData = tabs.map(tab => {
+                    const { undoStack, redoStack, ...rest } = tab;
+                    return rest;
+                });
+
+                // データ本体の保存
+                await db.projectData.put({
+                    projectId: id,
+                    tabsData: cleanTabsData,
+                    tabCounter: tabCounter,
+                    currentTabId: currentTabId
+                });
+            });
+
+            updateProjectInfoUI();
+            closeConfirmModal(); // 保存完了、ローディングを閉じる
+            showToast(`「${currentProjectName}」を保存しました`, 'success');
+        }
+
+        async function loadProject(id) {
+            showLoadingModal("プロジェクトを読み込み中...");
+
+            try {
+                const project = await db.projects.get(id);
+                const data = await db.projectData.get(id);
+
+                if (!project || !data) {
+                    throw new Error("データが見つかりません");
+                }
+
+                // 再生中なら止める
+                if (isPreviewPlaying) stopPreview();
+                if (isFlipping) stopFlip();
+
+                // 展開
+                currentProjectId = project.id;
+                currentProjectName = project.name;
+
+                // タブデータを復元
+                tabs = data.tabsData;
+                tabCounter = data.tabCounter || tabs.length;
+
+                // 描画設定をデフォルト値で初期化（プロジェクトロード時は常にリセット）
+                lastProps = {
+                    fill: '',          // 塗りつぶし: なし
+                    stroke: '#ef4444', // 線の色: 赤
+                    strokeWidth: 5,    // 線の太さ: 5px
+                    opacity: 1
+                };
+                lastArrowProps = {
+                    fill: '#ef4444',
+                    stroke: '#ef4444'
+                };
+
+                const targetTabId = data.currentTabId || (tabs.length > 0 ? tabs[0].id : null);
+
+                if (targetTabId) {
+                    switchTab(targetTabId, false);
+                } else {
+                    createNewTab();
+                }
+
+                closeProjectModal();
+                closeConfirmModal();
+                updateProjectInfoUI();
+
+            } catch (e) {
+                console.error(e);
+                closeConfirmModal();
+                setTimeout(() => showAlert("読み込み失敗: " + e.message, "エラー", true), 300);
+            }
+        }
+
+        async function deleteProject(id) {
+            showConfirmModal("本当に削除しますか？この操作は取り消せません。", async () => {
+                try {
+                    await db.transaction('rw', db.projects, db.projectData, async () => {
+                        await db.projects.delete(id);
+                        await db.projectData.delete(id);
+                    });
+
+                    if (currentProjectId === id) {
+                        currentProjectId = null;
+                        currentProjectName = null;
+                        updateProjectInfoUI();
+                    }
+
+                    renderProjectList();
+                    closeConfirmModal();
+                } catch (e) {
+                    console.error(e);
+                    closeConfirmModal();
+                }
+            });
+        }
+
+        // ---------------------------------------------------------
+        // プロジェクトUI関連
+        // ---------------------------------------------------------
+        const projectModal = document.getElementById('project-modal');
+        const projectModalContent = document.getElementById('project-modal-content');
+        const projectListEl = document.getElementById('project-list');
+        const projectNameDisplay = document.getElementById('project-name-display');
+
+        function updateProjectInfoUI() {
+            if (currentProjectId) {
+                projectNameDisplay.innerText = currentProjectName;
+                projectNameDisplay.classList.remove('text-gray-500', 'bg-gray-100');
+                projectNameDisplay.classList.add('text-blue-700', 'bg-blue-50', 'border-blue-200');
+            } else {
+                projectNameDisplay.innerText = "(未保存のプロジェクト)";
+                projectNameDisplay.classList.add('text-gray-500', 'bg-gray-100');
+                projectNameDisplay.classList.remove('text-blue-700', 'bg-blue-50', 'border-blue-200');
+            }
+        }
+
+        function openProjectModal() {
+            projectModal.classList.remove('hidden');
+            setTimeout(() => {
+                projectModal.classList.remove('opacity-0');
+                projectModalContent.classList.remove('scale-95');
+                projectModalContent.classList.add('scale-100');
+            }, 10);
+            renderProjectList();
+        }
+
+        function closeProjectModal() {
+            projectModal.classList.add('opacity-0');
+            projectModalContent.classList.remove('scale-100');
+            projectModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                projectModal.classList.add('hidden');
+            }, 200);
+        }
+
+        async function renderProjectList() {
+            projectListEl.innerHTML = '<div class="text-center text-gray-400 py-4"><div class="animate-spin inline-block w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full"></div></div>';
+
+            try {
+                const projects = await db.projects.orderBy('updatedAt').reverse().toArray();
+
+                projectListEl.innerHTML = '';
+
+                if (projects.length === 0) {
+                    projectListEl.innerHTML = '<div class="text-center text-gray-400 py-10">保存されたプロジェクトはありません</div>';
+                    return;
+                }
+
+                projects.forEach(p => {
+                    const dateStr = p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '---';
+                    const isCurrent = (p.id === currentProjectId);
+
+                    const div = document.createElement('div');
+                    div.className = `flex items-center justify-between p-3 rounded-lg border transition-colors ${isCurrent ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`;
+
+                    div.innerHTML = `
+                        <div class="flex-1 cursor-pointer" onclick="confirmLoadProject(${p.id})">
+                            <div class="font-bold text-gray-800 ${isCurrent ? 'text-blue-700' : ''}">${p.name} ${isCurrent ? '<span class="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded ml-2">編集中</span>' : ''}</div>
+                            <div class="text-xs text-gray-400 mt-0.5">最終更新: ${dateStr}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="confirmLoadProject(${p.id})" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="開く">
+                                <i data-lucide="folder-open-dot" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteProject(${p.id})" class="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors" title="削除">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `;
+                    projectListEl.appendChild(div);
+                });
+                lucide.createIcons();
+
+            } catch (e) {
+                projectListEl.innerHTML = `<div class="text-center text-red-500 py-4">読み込みエラー: ${e.message}</div>`;
+            }
+        }
+
+        function confirmLoadProject(id) {
+            const proceed = () => loadProject(id);
+            if (tabs.length > 0) {
+                showConfirmModal("現在の作業内容は失われます（保存していない場合）。\nプロジェクトを開きますか？", proceed);
+            } else {
+                proceed();
+            }
+        }
+
+        function newProjectFlow() {
+            const proceed = () => {
+                currentProjectId = null;
+                currentProjectName = null;
+
+                tabs = [];
+                tabCounter = 0;
+                currentTabId = null;
+
+                createNewTab();
+
+                updateProjectInfoUI();
+                closeProjectModal();
+                closeConfirmModal();
+            };
+
+            if (tabs.length > 0) {
+                showConfirmModal("現在の作業内容は失われます。新規作成しますか？", proceed);
+            } else {
+                proceed();
+            }
+        }
+
+        // ---------------------------------------------------------
+        // タブシステム
+        // ---------------------------------------------------------
+        function createNewTab(title = null, data = null, customProps = {}, insertAfterTabId = null) {
+            tabCounter++;
+            const id = tabCounter;
+
+            const baseDimensions = customProps.baseDimensions || { width: 800, height: 600 };
+            const zoom = customProps.zoom || 1;
+            const hasMainImage = customProps.hasMainImage || false;
+            const backgroundColor = customProps.backgroundColor || null;
+
+            // 連番の初期値は 1
+            const initialCounter = customProps.counterValue || 1;
+
+            // タイトルが指定されていない場合は現在時刻(HH:MM:SS)を使用
+            let displayTitle = title;
+            if (!displayTitle) {
+                const now = new Date();
+                displayTitle = now.toLocaleTimeString('ja-JP', { hour12: false });
+            }
+
+            const newTab = {
+                id: id,
+                title: displayTitle,
+                data: data || null,
+                baseDimensions: baseDimensions,
+                zoom: zoom,
+                hasMainImage: hasMainImage,
+                backgroundColor: backgroundColor,
+                counterValue: initialCounter,
+                // 履歴用スタック
+                undoStack: [],
+                redoStack: []
+            };
+
+            // 挿入位置を指定された場合はそのタブの後に挿入、それ以外は末尾に追加
+            if (insertAfterTabId !== null) {
+                const insertIndex = tabs.findIndex(t => t.id === insertAfterTabId);
+                if (insertIndex !== -1) {
+                    tabs.splice(insertIndex + 1, 0, newTab);
+                } else {
+                    tabs.push(newTab);
+                }
+            } else {
+                tabs.push(newTab);
+            }
+
+            // タブ追加後に初期状態を履歴保存（少し遅延させて初期化完了を待つ）
+            setTimeout(() => {
+                const addedTab = tabs.find(t => t.id === id);
+                if (addedTab && addedTab.undoStack.length === 0) {
+                    // 初期状態が空またはdata由来の場合、それを初期履歴とする
+                    if (data) {
+                        addedTab.undoStack.push(JSON.stringify(data));
+                    }
+                }
+            }, 100);
+
+            switchTab(id);
+            renderTabs();
+        }
+
+        // タブ複製
+        function duplicateCurrentTab() {
+            if (currentTabId === null) return;
+            saveCurrentTabState();
+
+            const currentTab = tabs.find(t => t.id === currentTabId);
+            if (!currentTab) return;
+
+            const dataCopy = currentTab.data ? JSON.parse(JSON.stringify(currentTab.data)) : null;
+            const dimsCopy = { ...currentTab.baseDimensions };
+
+            // 複製時は現在時刻でタイトル生成、現在のタブの右側に挿入
+            createNewTab(
+                null,
+                dataCopy,
+                {
+                    baseDimensions: dimsCopy,
+                    zoom: currentTab.zoom,
+                    hasMainImage: currentTab.hasMainImage,
+                    backgroundColor: currentTab.backgroundColor,
+                    counterValue: currentTab.counterValue
+                },
+                currentTabId  // 現在のタブの後に挿入
+            );
+        }
+
+        function saveCurrentTabState() {
+            if (currentTabId === null) return;
+            const tab = tabs.find(t => t.id === currentTabId);
+            if (!tab) return;
+
+            // 'counter' カスタムタイプも含めて保存
+            tab.data = canvas.toJSON(['id', 'selectable', 'evented', 'hoverCursor', 'customType', 'stroke', 'strokeWidth', 'fill', 'opacity', 'counterId']);
+            tab.zoom = canvas.getZoom();
+            tab.backgroundColor = canvas.backgroundColor;
+            tab.counterValue = counterValue; // 現在のカウンタ値を保存
+        }
+
+        function switchTab(id, saveCurrent = true) {
+            if (saveCurrent) {
+                saveCurrentTabState();
+            }
+
+            const nextTab = tabs.find(t => t.id === id);
+            if (!nextTab) return;
+
+            currentTabId = id;
+
+            // ロード中は履歴保存しない
+            historyProcessing = true;
+
+            canvas.clear();
+            activeShape = null;
+            isDragging = false;
+            startPoint = null;
+
+            // カウンタ値を復元
+            counterValue = nextTab.counterValue || 1;
+
+            // 履歴スタックの初期化チェック
+            if (!nextTab.undoStack) nextTab.undoStack = [];
+            if (!nextTab.redoStack) nextTab.redoStack = [];
+
+            canvas.setBackgroundColor(nextTab.backgroundColor, () => {
+                const onLoaded = () => {
+                    restoreCanvasView(nextTab);
+                    canvas.requestRenderAll();
+
+                    // 初期ロード完了後に履歴保存を再開
+                    historyProcessing = false;
+
+                    // もし履歴が空なら、現在の（ロード直後の）状態を初期履歴として保存
+                    if (nextTab.undoStack.length === 0) {
+                        saveHistory();
+                    }
+                    updateHistoryButtons();
+                };
+
+                if (nextTab.data) {
+                    canvas.loadFromJSON(nextTab.data, onLoaded);
+                } else {
+                    onLoaded();
+                }
+            });
+
+            renderTabs();
+
+            if (!isPreviewPlaying && !isFlipping) {
+                setMode('select');
+            }
+
+            document.getElementById('zoom-slider').value = Math.round(nextTab.zoom * 100);
+            updateInfoDisplay(nextTab);
+        }
+
+        // ---------------------------------------------------------
+        // Undo / Redo 機能
+        // ---------------------------------------------------------
+        function saveHistory() {
+            if (historyProcessing) return;
+            const tab = tabs.find(t => t.id === currentTabId);
+            if (!tab) return;
+
+            const json = JSON.stringify(canvas.toJSON(['id', 'selectable', 'evented', 'hoverCursor', 'customType', 'stroke', 'strokeWidth', 'fill', 'opacity', 'counterId']));
+
+            // 直前の状態と同じなら保存しない（重複排除）
+            if (tab.undoStack.length > 0) {
+                const last = tab.undoStack[tab.undoStack.length - 1];
+                if (last === json) return;
+            }
+
+            tab.undoStack.push(json);
+
+            // 最大数を超えたら古いものを削除
+            if (tab.undoStack.length > HISTORY_LIMIT) {
+                tab.undoStack.shift();
+            }
+
+            // 新しい操作をしたらRedoスタックはクリア
+            tab.redoStack = [];
+
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            const tab = tabs.find(t => t.id === currentTabId);
+            if (!tab || tab.undoStack.length <= 1) return; // 初期状態1つだけならUndo不可
+
+            historyProcessing = true;
+
+            // 現在の状態をRedoスタックへ退避
+            const currentJson = tab.undoStack.pop();
+            tab.redoStack.push(currentJson);
+
+            // 一つ前の状態を取得
+            const prevState = tab.undoStack[tab.undoStack.length - 1];
+
+            canvas.loadFromJSON(prevState, () => {
+                canvas.renderAll();
+                historyProcessing = false;
+                updateHistoryButtons();
+            });
+        }
+
+        function redo() {
+            const tab = tabs.find(t => t.id === currentTabId);
+            if (!tab || tab.redoStack.length === 0) return;
+
+            historyProcessing = true;
+
+            // Redoスタックから取り出してUndoスタックへ戻す
+            const nextState = tab.redoStack.pop();
+            tab.undoStack.push(nextState);
+
+            canvas.loadFromJSON(nextState, () => {
+                canvas.renderAll();
+                historyProcessing = false;
+                updateHistoryButtons();
+            });
+        }
+
+        function updateHistoryButtons() {
+            const tab = tabs.find(t => t.id === currentTabId);
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+
+            if (!tab) return;
+
+            // Undoは履歴が2つ以上（初期状態 + 1つ以上の変更）ある場合に有効
+            btnUndo.disabled = (tab.undoStack.length <= 1);
+            btnRedo.disabled = (tab.redoStack.length === 0);
+        }
+
+        // Fabric.js のイベントフック
+        // canvas.on(...) の登録場所
+        canvas.on('object:added', () => !historyProcessing && saveHistory());
+        canvas.on('object:modified', () => !historyProcessing && saveHistory());
+        canvas.on('object:removed', () => !historyProcessing && saveHistory());
+
+        // ---------------------------------------------------------
+        // キーボードショートカット (Undo/Redo)
+        // ---------------------------------------------------------
+        document.addEventListener('keydown', function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            // Ctrl+Z (Undo)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+            // Ctrl+Y or Ctrl+Shift+Z (Redo)
+            if (((e.ctrlKey || e.metaKey) && e.key === 'y') ||
+                ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redo();
+            }
+
+            // ... (既存のDelete処理など)
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && activeObj.isEditing) return;
+                e.preventDefault();
+                if (activeObj) deleteActiveObject();
+            }
+            if (e.key === 'Escape') setMode('select');
+        });
+
+        // ---------------------------------------------------------
+        // 以下、既存関数
+        // ---------------------------------------------------------
+
+        function restoreCanvasView(tab) {
+            canvas.setZoom(tab.zoom);
+            canvas.setWidth(tab.baseDimensions.width * tab.zoom);
+            canvas.setHeight(tab.baseDimensions.height * tab.zoom);
+            updateInfoDisplay(tab);
+        }
+
+        function closeTab(id, event) {
+            event.stopPropagation();
+
+            // 再生中なら停止
+            if (isPreviewPlaying) togglePreview();
+            if (isFlipping) toggleFlip();
+
+            if (tabs.length <= 1) {
+                const performClear = () => {
+                    canvas.clear();
+                    canvas.setBackgroundColor(null, canvas.renderAll.bind(canvas));
+                    const tab = tabs.find(t => t.id === id);
+                    if (tab) {
+                        tab.data = null;
+                        tab.hasMainImage = false;
+                        tab.backgroundColor = null;
+                        tab.baseDimensions = { width: 800, height: 600 };
+                        tab.zoom = 1;
+                        tab.counterValue = 1; // カウンタ初期化
+                        counterValue = 1;
+                        switchTab(id, false);
+                    }
+                    setMode('select');
+                    updateUI();
+                    closeConfirmModal();
+                };
+
+                showConfirmModal('最後のタブです。内容をクリアしますか？', performClear);
+                return;
+            }
+
+            const index = tabs.findIndex(t => t.id === id);
+            if (index === -1) return;
+
+            let nextActiveId = currentTabId;
+            if (id === currentTabId) {
+                const nextTab = tabs[index > 0 ? index - 1 : index + 1];
+                if (nextTab) nextActiveId = nextTab.id;
+            }
+
+            tabs.splice(index, 1);
+
+            if (id === currentTabId) {
+                switchTab(nextActiveId);
+            } else {
+                renderTabs();
+            }
+        }
+
+        // ドラッグ中のタブID
+        let draggedTabId = null;
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+
+            tabs.forEach(tab => {
+                const el = document.createElement('div');
+                // min-w-[90px] に変更して、時刻などの短いタイトルに対応
+                el.className = `tab-item flex items-center justify-between px-3 py-2 text-xs rounded-t-lg border-t border-l border-r border-gray-300 cursor-pointer min-w-[90px] transition-colors ${tab.id === currentTabId ? 'active z-10 border-b-0' : 'hover:bg-gray-100 mt-1 h-8'}`;
+                el.dataset.tabId = tab.id;
+                
+                // ドラッグ＆ドロップ属性
+                el.draggable = true;
+                
+                el.onclick = () => {
+                    // 再生中なら停止
+                    if (isPreviewPlaying) togglePreview();
+                    if (isFlipping) toggleFlip();
+                    switchTab(tab.id);
+                };
+
+                // ドラッグ開始
+                el.ondragstart = (e) => {
+                    draggedTabId = tab.id;
+                    el.classList.add('opacity-50');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', tab.id);
+                };
+
+                // ドラッグ終了
+                el.ondragend = () => {
+                    draggedTabId = null;
+                    el.classList.remove('opacity-50');
+                    // ドロップインジケータを消去
+                    document.querySelectorAll('.tab-item').forEach(t => {
+                        t.classList.remove('border-l-blue-500', 'border-l-4', 'border-r-blue-500', 'border-r-4');
+                    });
+                };
+
+                // ドラッグオーバー（ドロップ可能領域）
+                el.ondragover = (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    if (draggedTabId === null || draggedTabId === tab.id) return;
+                    
+                    // ドロップ位置のインジケータ表示
+                    const rect = el.getBoundingClientRect();
+                    const midX = rect.left + rect.width / 2;
+                    
+                    document.querySelectorAll('.tab-item').forEach(t => {
+                        t.classList.remove('border-l-blue-500', 'border-l-4', 'border-r-blue-500', 'border-r-4');
+                    });
+                    
+                    if (e.clientX < midX) {
+                        el.classList.add('border-l-blue-500', 'border-l-4');
+                    } else {
+                        el.classList.add('border-r-blue-500', 'border-r-4');
+                    }
+                };
+
+                // ドラッグリーブ
+                el.ondragleave = () => {
+                    el.classList.remove('border-l-blue-500', 'border-l-4', 'border-r-blue-500', 'border-r-4');
+                };
+
+                // ドロップ
+                el.ondrop = (e) => {
+                    e.preventDefault();
+                    
+                    if (draggedTabId === null || draggedTabId === tab.id) return;
+                    
+                    const rect = el.getBoundingClientRect();
+                    const midX = rect.left + rect.width / 2;
+                    const insertBefore = e.clientX < midX;
+                    
+                    // タブの並び替え実行
+                    reorderTabs(draggedTabId, tab.id, insertBefore);
+                    
+                    el.classList.remove('border-l-blue-500', 'border-l-4', 'border-r-blue-500', 'border-r-4');
+                };
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'truncate mr-2';
+                titleSpan.textContent = tab.title;
+                el.appendChild(titleSpan);
+
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'p-0.5 rounded-full hover:bg-gray-300 text-gray-500 hover:text-red-500 transition-colors flex-shrink-0';
+                closeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                closeBtn.onclick = (e) => closeTab(tab.id, e);
+                // ドラッグ中は閉じるボタンを無効化
+                closeBtn.draggable = false;
+                closeBtn.ondragstart = (e) => e.stopPropagation();
+                el.appendChild(closeBtn);
+
+                container.appendChild(el);
+            });
+
+            // ★追加: 複製ボタンと新規作成ボタンをタブリストの末尾に追加
+            const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'flex items-center pb-1 gap-1 ml-1';
+            buttonGroup.innerHTML = `
+             <button onclick="duplicateCurrentTab()" class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-gray-300 rounded transition-colors" title="現在のタブを複製">
+                <i data-lucide="copy-plus" class="w-4 h-4"></i>
+            </button>
+            <button onclick="createNewTab()" class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-gray-300 rounded transition-colors" title="新規タブ追加">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+            </button>
+            `;
+            container.appendChild(buttonGroup);
+            lucide.createIcons();
+        }
+
+        // タブの並び替え
+        function reorderTabs(draggedId, targetId, insertBefore) {
+            const draggedIndex = tabs.findIndex(t => t.id === draggedId);
+            const targetIndex = tabs.findIndex(t => t.id === targetId);
+            
+            if (draggedIndex === -1 || targetIndex === -1) return;
+            
+            // ドラッグしたタブを取り出す
+            const [draggedTab] = tabs.splice(draggedIndex, 1);
+            
+            // 新しい位置を計算（取り出し後のインデックス）
+            let newIndex = tabs.findIndex(t => t.id === targetId);
+            if (newIndex === -1) newIndex = tabs.length;
+            
+            if (!insertBefore) {
+                newIndex += 1;
+            }
+            
+            // 挿入
+            tabs.splice(newIndex, 0, draggedTab);
+            
+            renderTabs();
+        }
+
+        function updateInfoDisplay(tab) {
+            document.getElementById('canvas-size-info').innerText = `${Math.round(tab.baseDimensions.width)} x ${Math.round(tab.baseDimensions.height)}`;
+            document.getElementById('zoom-val').innerText = `${Math.round(tab.zoom * 100)}%`;
+            document.getElementById('zoom-level-display').innerText = `${Math.round(tab.zoom * 100)}%`;
+
+            // 連番入力欄の更新
+            updateCounterInputUI();
+        }
+
+        // 連番機能関連のUI更新処理
+        function updateCounterInputUI() {
+            const input = document.getElementById('counter-input');
+            if (input) {
+                input.value = counterValue;
+            }
+            updateModeText();
+        }
+
+        function updateCounterFromInput(val) {
+            const num = parseInt(val, 10);
+            if (!isNaN(num) && num >= 0) {
+                counterValue = num;
+                // 現在のタブにも値を反映させておく（保存用）
+                const currentTab = tabs.find(t => t.id === currentTabId);
+                if (currentTab) {
+                    currentTab.counterValue = counterValue;
+                }
+                updateModeText();
+            }
+        }
+
+        function resetCounter() {
+            updateCounterFromInput(1);
+            updateCounterInputUI();
+        }
+
+        function updateModeText() {
+            const modeText = document.getElementById('mode-text');
+            if (modeText && currentMode === 'drawing' && drawingType === 'counter') {
+                modeText.innerText = `連番配置モード [ 次: ${counterValue} ]`;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // プレビュー再生機能 (全タブ)
+        // ---------------------------------------------------------
+        function togglePreview() {
+            if (isFlipping) stopFlip(); // フリップ再生中なら止める
+
+            if (isPreviewPlaying) {
+                stopPreview();
+            } else {
+                startPreview();
+            }
+        }
+
+        function startPreview() {
+            if (tabs.length <= 1) return;
+
+            isPreviewPlaying = true;
+            const btn = document.getElementById('btn-preview');
+            const icon = document.getElementById('icon-play');
+
+            // スタイル変更: 再生中(赤)
+            btn.classList.remove('text-green-600', 'hover:bg-green-50', 'hover:text-green-700', 'hover:border-green-200');
+            btn.classList.add('bg-red-50', 'text-red-500', 'border-red-200', 'hover:bg-red-100', 'hover:text-red-600');
+
+            // アイコンを停止(■)に
+            icon.innerHTML = '<rect x="6" y="6" width="12" height="12"></rect>';
+
+            saveCurrentTabState();
+
+            // setIntervalではなく、現在インデックスを基準にループ
+            let currentIndex = tabs.findIndex(t => t.id === currentTabId);
+
+            previewInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % tabs.length;
+                switchTab(tabs[currentIndex].id, false);
+            }, 500);
+        }
+
+        function stopPreview() {
+            isPreviewPlaying = false;
+            clearInterval(previewInterval);
+
+            const btn = document.getElementById('btn-preview');
+            const icon = document.getElementById('icon-play');
+
+            // スタイル戻す
+            btn.classList.remove('bg-red-50', 'text-red-500', 'border-red-200', 'hover:bg-red-100', 'hover:text-red-600');
+            btn.classList.add('text-green-600', 'hover:bg-green-50', 'hover:text-green-700', 'hover:border-green-200');
+
+            // アイコンを再生(▶)に
+            icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        }
+
+        // ---------------------------------------------------------
+        // フリップ再生機能 (直前と交互)
+        // ---------------------------------------------------------
+        function toggleFlip() {
+            if (isPreviewPlaying) stopPreview(); // 通常プレビュー中なら止める
+
+            if (isFlipping) {
+                stopFlip();
+            } else {
+                startFlip();
+            }
+        }
+
+        function startFlip() {
+            const currentIndex = tabs.findIndex(t => t.id === currentTabId);
+
+            if (currentIndex <= 0) {
+                showAlert("比較する前のタブがありません。\n2枚目以降のタブを選択して実行してください。", "通知");
+                return;
+            }
+
+            isFlipping = true;
+
+            const btn = document.getElementById('btn-flip');
+            const icon = document.getElementById('icon-flip');
+
+            // スタイル変更 (停止状態)
+            btn.classList.remove('text-orange-500', 'hover:bg-orange-50', 'hover:text-orange-600', 'hover:border-orange-200');
+            btn.classList.add('bg-red-50', 'text-red-500', 'border-red-200', 'hover:bg-red-100', 'hover:text-red-600');
+
+            icon.innerHTML = '<rect x="6" y="6" width="12" height="12"></rect>'; // 停止アイコン
+
+            saveCurrentTabState();
+
+            // ループ対象: [currentIndex - 1, currentIndex]
+            const targetIds = [tabs[currentIndex - 1].id, tabs[currentIndex].id];
+            let toggleState = 1; // 最初は自分(1)なので、次は(0)へ
+
+            flipInterval = setInterval(() => {
+                toggleState = 1 - toggleState; // 1 -> 0 -> 1 ...
+                switchTab(targetIds[toggleState], false);
+            }, 500); // 500ms間隔
+        }
+
+        function stopFlip() {
+            isFlipping = false;
+            clearInterval(flipInterval);
+
+            const btn = document.getElementById('btn-flip');
+            const icon = document.getElementById('icon-flip');
+
+            // スタイル戻す
+            btn.classList.remove('bg-red-50', 'text-red-500', 'border-red-200', 'hover:bg-red-100', 'hover:text-red-600');
+            btn.classList.add('text-orange-500', 'hover:bg-orange-50', 'hover:text-orange-600', 'hover:border-orange-200');
+
+            // アイコン戻す (Repeat系)
+            icon.innerHTML = '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>';
+        }
+
+        // ---------------------------------------------------------
+        // リサイズ時の再描画処理 (線を均一に保つ)
+        // ---------------------------------------------------------
+        canvas.on('object:scaling', function (e) {
+            const obj = e.target;
+            if (!obj) return;
+            // counterも比率維持の対象外とする（グループ全体で拡大縮小されるため）
+            if (obj.customType === 'arrow' || obj.customType === 'counter' || obj.type === 'image' || obj.type === 'i-text' || obj.type === 'path') return;
+
+            if (obj.type === 'rect') {
+                const width = obj.width * obj.scaleX;
+                const height = obj.height * obj.scaleY;
+                obj.set({ width: width, height: height, scaleX: 1, scaleY: 1 });
+            }
+            else if (obj.type === 'ellipse') {
+                const rx = obj.rx * obj.scaleX;
+                const ry = obj.ry * obj.scaleY;
+                obj.set({ rx: rx, ry: ry, scaleX: 1, scaleY: 1 });
+            }
+        });
+
+        // ---------------------------------------------------------
+        // モード切替
+        // ---------------------------------------------------------
+        function setMode(mode, type = null) {
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'text-blue-600', 'ring-2', 'ring-blue-300', 'bg-purple-50', 'text-purple-600', 'bg-purple-100');
+            });
+            const modeIndicator = document.getElementById('mode-indicator');
+            const modeText = document.getElementById('mode-text');
+
+            // 安全策: 要素が見つからない場合は処理を中断
+            if (!modeIndicator || !modeText) return;
+
+            const isToggle = (currentMode === 'drawing' && drawingType === mode && arrowType === type);
+
+            if (mode === 'select' || isToggle) {
+                currentMode = 'select';
+                drawingType = null;
+                arrowType = null;
+
+                canvas.selection = true;
+                canvas.skipTargetFind = false;
+                canvas.defaultCursor = 'default';
+                canvas.hoverCursor = 'move';
+
+                canvas.discardActiveObject();
+                canvas.requestRenderAll();
+
+                modeIndicator.classList.add('hidden');
+                return;
+            }
+
+            currentMode = 'drawing';
+            drawingType = mode;
+            arrowType = type;
+
+            canvas.selection = false;
+            canvas.skipTargetFind = (mode === 'trim');
+
+            // 連番は配置モードなのでカーソルをポインター系に
+            if (mode === 'counter') {
+                canvas.defaultCursor = 'copy'; // スタンプっぽいカーソル
+                modeText.innerText = `連番配置モード [ 次: ${counterValue} ]`; // 即時反映
+            } else {
+                canvas.defaultCursor = 'crosshair';
+            }
+
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+
+            let btnId = 'btn-' + mode;
+            if (mode === 'arrow' && type) {
+                btnId += '-' + type;
+            }
+            const activeBtn = document.getElementById(btnId);
+            if (activeBtn) {
+                if (mode === 'trim') {
+                    activeBtn.classList.add('bg-purple-100', 'text-purple-600', 'ring-2', 'ring-purple-300');
+                    modeText.innerText = "範囲選択中 (離すとコピー)";
+                } else if (mode === 'counter') {
+                    activeBtn.classList.add('bg-blue-100', 'text-blue-600', 'ring-2', 'ring-blue-300');
+                    // テキスト更新は上で実施済み
+                } else {
+                    activeBtn.classList.add('bg-blue-100', 'text-blue-600', 'ring-2', 'ring-blue-300');
+                    modeText.innerText = "描画モード中 (ESCで完了)";
+                }
+            }
+
+            modeIndicator.classList.remove('hidden');
+        }
+
+        // ---------------------------------------------------------
+        // ドラッグ・クリック描画ロジック
+        // ---------------------------------------------------------
+        canvas.on('mouse:down', function (o) {
+            if (currentMode !== 'drawing') return;
+
+            // 連番機能：クリックで配置
+            if (drawingType === 'counter') {
+                const pointer = canvas.getPointer(o.e);
+
+                // 円 (背景)
+                const circle = new fabric.Circle({
+                    radius: 15,
+                    fill: '#ef4444',
+                    originX: 'center',
+                    originY: 'center',
+                    strokeWidth: 0
+                });
+
+                // 数字 (テキスト)
+                const text = new fabric.Text(String(counterValue), {
+                    fontSize: 20,
+                    fill: '#ffffff',
+                    fontFamily: 'Inter',
+                    fontWeight: 'bold',
+                    originX: 'center',
+                    originY: 'center',
+                    top: 1 // 微調整（垂直中央）
+                });
+
+                // グループ化
+                const group = new fabric.Group([circle, text], {
+                    left: pointer.x,
+                    top: pointer.y,
+                    originX: 'center',
+                    originY: 'center',
+                    customType: 'counter',
+                    selectable: true,
+                    hasControls: true
+                });
+
+                canvas.add(group);
+
+                // カウントアップ
+                counterValue++;
+                // ★追加: UI更新
+                updateCounterInputUI();
+
+                canvas.requestRenderAll();
+                return; // ドラッグ処理には進まない
+            }
+
+            // 以下、通常のドラッグ描画
+            if (o.target && drawingType !== 'trim') return;
+            isDragging = false;
+            const pointer = canvas.getPointer(o.e);
+            startPoint = { x: pointer.x, y: pointer.y };
+        });
+
+        canvas.on('mouse:move', function (o) {
+            if (currentMode !== 'drawing') return;
+            if (drawingType === 'counter') return; // 連番はドラッグしない
+
+            if (!o.e.buttons && !o.e.which) return;
+            const pointer = canvas.getPointer(o.e);
+
+            if (!activeShape) {
+                if (!startPoint) return;
+                const dist = Math.sqrt(Math.pow(pointer.x - startPoint.x, 2) + Math.pow(pointer.y - startPoint.y, 2));
+                if (dist < 5) return;
+
+                isDragging = true;
+                const commonProps = {
+                    left: startPoint.x, top: startPoint.y, originX: 'left', originY: 'top',
+                    fill: lastProps.fill, stroke: lastProps.stroke, strokeWidth: lastProps.strokeWidth, opacity: lastProps.opacity,
+                    selectable: false, evented: false, objectCaching: false
+                };
+
+                if (drawingType === 'trim') {
+                    activeShape = new fabric.Rect({ ...commonProps, width: 0, height: 0, fill: 'rgba(0,0,0,0.3)', stroke: '#fff', strokeWidth: 2, strokeDashArray: [5, 5] });
+                } else if (drawingType === 'rect') {
+                    activeShape = new fabric.Rect({ ...commonProps, width: 0, height: 0 });
+                } else if (drawingType === 'roundRect') {
+                    activeShape = new fabric.Rect({ ...commonProps, width: 0, height: 0, rx: 10, ry: 10 });
+                } else if (drawingType === 'circle') {
+                    activeShape = new fabric.Ellipse({ ...commonProps, rx: 0, ry: 0 });
+                } else if (drawingType === 'arrow') {
+                    activeShape = new fabric.Path(getArrowPath(arrowType), {
+                        ...commonProps, fill: lastArrowProps.fill, stroke: null, strokeWidth: 0, originX: 'left', originY: 'center', scaleX: 0, scaleY: 0, customType: 'arrow'
+                    });
+                } else if (drawingType === 'text') {
+                    activeShape = new fabric.Rect({ ...commonProps, width: 0, height: 0, fill: 'rgba(0,0,0,0.1)', stroke: '#3b82f6', strokeWidth: 1, strokeDashArray: [5, 5] });
+                }
+
+                if (activeShape) {
+                    // ★修正: ドラッグ開始時の「サイズ0の図形」追加イベントで履歴を保存しないように一時停止
+                    historyProcessing = true;
+                    canvas.add(activeShape);
+                    historyProcessing = false;
+                }
+            }
+
+            if (activeShape && isDragging) {
+                if (drawingType === 'arrow') {
+                    const dx = pointer.x - startPoint.x;
+                    const dy = pointer.y - startPoint.y;
+                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const baseWidth = 100;
+                    activeShape.set({ angle: angle, scaleX: distance / baseWidth, scaleY: Math.max(0.2, distance / baseWidth * 0.4) });
+                    if (arrowType === 'normal' || arrowType === 'double') activeShape.set({ scaleY: Math.max(0.5, distance / baseWidth * 0.6) });
+                } else {
+                    let w = Math.abs(pointer.x - startPoint.x);
+                    let h = Math.abs(pointer.y - startPoint.y);
+                    const left = Math.min(pointer.x, startPoint.x);
+                    const top = Math.min(pointer.y, startPoint.y);
+                    activeShape.set({ left: left, top: top });
+                    if (drawingType === 'circle') activeShape.set({ rx: w / 2, ry: h / 2 });
+                    else activeShape.set({ width: w, height: h });
+                }
+                canvas.requestRenderAll();
+            }
+        });
+
+        canvas.on('mouse:up', function (o) {
+            if (currentMode === 'drawing') {
+                if (drawingType === 'counter') {
+                    // 連番の場合はドラッグ完了処理なし
+                    return;
+                }
+
+                if (isDragging && activeShape) {
+                    isDragging = false;
+                    if (activeShape.width === 0 && activeShape.scaleX === 0) {
+                        canvas.remove(activeShape);
+                    } else if (drawingType === 'trim') {
+                        performTrimCopy(activeShape);
+                        canvas.remove(activeShape);
+                        setMode('select');
+                    } else if (drawingType === 'text') {
+                        const left = activeShape.left;
+                        const top = activeShape.top;
+                        canvas.remove(activeShape);
+                        // デフォルト文字色を赤(#ef4444)に変更
+                        const text = new fabric.IText('テキスト', { left: left, top: top, fontFamily: 'Noto Sans JP', fill: '#ef4444', fontSize: 40 });
+                        canvas.add(text);
+                        canvas.requestRenderAll();
+
+                        // ★修正: テキスト追加時も履歴を保存
+                        saveHistory();
+                    } else {
+                        activeShape.setCoords();
+                        activeShape.set({ selectable: true, evented: true });
+                        if (activeShape.customType === 'arrow') updateArrowControls(activeShape);
+                        canvas.setActiveObject(activeShape);
+
+                        // ★修正: 描画が完了したタイミングで履歴を保存
+                        saveHistory();
+
+                        canvas.requestRenderAll();
+                    }
+                    activeShape = null;
+                }
+                startPoint = null;
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 矢印カスタムコントロール
+        // ---------------------------------------------------------
+        function updateArrowControls(arrow) {
+            arrow.setControlsVisibility({ tl: false, tr: false, br: false, bl: false, ml: false, mt: false, mr: false, mb: false, mtr: false });
+            arrow.controls.p2 = new fabric.Control({ x: 0.5, y: 0, cursorStyle: 'crosshair', actionHandler: anchorWrapper((e, t, x, y) => { changeArrowVector(t.target, x, y, 'head'); return true; }), render: renderCircleControl });
+            arrow.controls.p1 = new fabric.Control({ x: -0.5, y: 0, cursorStyle: 'crosshair', actionHandler: anchorWrapper((e, t, x, y) => { changeArrowVector(t.target, x, y, 'tail'); return true; }), render: renderCircleControl });
+        }
+        function changeArrowVector(target, x, y, mode) {
+            let startX = target.left; let startY = target.top;
+            const rad = fabric.util.degreesToRadians(target.angle);
+            const len = target.width * target.scaleX;
+            let endX = startX + Math.cos(rad) * len; let endY = startY + Math.sin(rad) * len;
+            if (mode === 'head') { endX = x; endY = y; } else { startX = x; startY = y; }
+            const dx = endX - startX; const dy = endY - startY;
+            const newAngle = fabric.util.radiansToDegrees(Math.atan2(dy, dx));
+            const newLen = Math.sqrt(dx * dx + dy * dy);
+            if (newLen < 10) return;
+            target.set({ left: startX, top: startY, angle: newAngle, scaleX: newLen / target.width });
+            target.setCoords();
+        }
+        function anchorWrapper(fn) { return function (eventData, transform, x, y) { return fn(eventData, transform, x, y); } }
+        function renderCircleControl(ctx, left, top, styleOverride, fabricObject) {
+            ctx.save(); ctx.translate(left, top); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+        }
+        function getArrowPath(type) {
+            return type === 'double' ? 'M 10 10 L 30 30 L 30 15 L 70 15 L 70 30 L 90 10 L 70 -10 L 70 5 L 30 5 L 30 -10 Z' : 'M 0 5 L 70 5 L 70 15 L 100 0 L 70 -15 L 70 -5 L 0 -5 Z';
+        }
+
+        // ---------------------------------------------------------
+        // 画像アップロード & ペースト (タブ連携)
+        // ---------------------------------------------------------
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // アップロード時も新規タブ設定を見るか？
+            // ファイル選択は意図的なので、ここでは現在のタブ上書き or 名前変更という挙動を維持しつつ、
+            // もし画像がまだない空のタブなら名前を変える、などが自然。
+            // 今回はペースト時の要望なので、アップロードボタンの挙動は維持します。
+
+            const currentTab = tabs.find(t => t.id === currentTabId);
+            if (currentTab) {
+                currentTab.title = file.name;
+                renderTabs();
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (f) {
+                const data = f.target.result;
+                fabric.Image.fromURL(data, function (img) {
+                    processImagePlacement(img, true);
+                    e.target.value = '';
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.addEventListener('paste', function (e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            const autoResize = document.getElementById('auto-resize-paste').checked;
+            const openInNewTab = document.getElementById('paste-new-tab').checked; // 設定取得
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    const reader = new FileReader();
+
+                    reader.onload = function (event) {
+                        // 新規タブで開く設定がONなら、まずタブを作成して切り替える
+                        if (openInNewTab) {
+                            // タイトル指定なし(=現在時刻)で作成
+                            createNewTab(null);
+                        }
+
+                        fabric.Image.fromURL(event.target.result, function (img) {
+                            processImagePlacement(img, autoResize);
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+
+        function processImagePlacement(img, autoResize) {
+            const currentTab = tabs.find(t => t.id === currentTabId);
+            if (!currentTab) return;
+
+            // hasMainImage は currentTab のプロパティとして管理
+            // 新規タブ作成直後は hasMainImage = false なので、
+            // autoResize=true と組み合わせると「新規タブ＋サイズ合わせ」で綺麗に配置される
+            if (autoResize && !currentTab.hasMainImage) {
+                const padding = 10;
+                const newWidth = img.width + padding;
+                const newHeight = img.height + padding;
+
+                currentTab.baseDimensions.width = newWidth;
+                currentTab.baseDimensions.height = newHeight;
+                currentTab.zoom = 1;
+                currentTab.hasMainImage = true;
+
+                canvas.setZoom(1);
+                canvas.setWidth(newWidth);
+                canvas.setHeight(newHeight);
+                updateInfoDisplay(currentTab);
+
+                img.set({ left: padding / 2, top: padding / 2, selectable: false, evented: false, hoverCursor: 'default' });
+                canvas.add(img);
+                canvas.sendToBack(img);
+            } else {
+                const targetWidth = (currentTab.baseDimensions.width * 0.5);
+                if (img.width > targetWidth) img.scaleToWidth(targetWidth);
+                img.set({
+                    left: currentTab.baseDimensions.width / 2 - (img.getScaledWidth() / 2),
+                    top: currentTab.baseDimensions.height / 2 - (img.getScaledHeight() / 2),
+                    selectable: true, evented: true
+                });
+                canvas.add(img);
+                canvas.setActiveObject(img);
+            }
+            canvas.requestRenderAll();
+        }
+
+        function updateZoom(value) {
+            const percentage = parseInt(value, 10);
+            const zoomRatio = percentage / 100;
+
+            const currentTab = tabs.find(t => t.id === currentTabId);
+            if (currentTab) {
+                currentTab.zoom = zoomRatio;
+                canvas.setZoom(zoomRatio);
+                canvas.setWidth(currentTab.baseDimensions.width * zoomRatio);
+                canvas.setHeight(currentTab.baseDimensions.height * zoomRatio);
+                updateInfoDisplay(currentTab);
+            }
+        }
+
+        function updateCanvasColor(color) {
+            const currentTab = tabs.find(t => t.id === currentTabId);
+            if (currentTab) currentTab.backgroundColor = color;
+            canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
+        }
+
+        function performTrimCopy(selectionRect) {
+            // 1. 枠線が画像に写り込まないように一時的に非表示にする
+            selectionRect.visible = false;
+            canvas.renderAll();
+
+            try {
+                // 2. 切り取り範囲の座標を取得
+                // Fabric.jsのオブジェクト座標は「論理座標（Zoom=1の状態）」なので、
+                // そのまま使用することで正確な位置を取得できます。
+                const left = selectionRect.left;
+                const top = selectionRect.top;
+                const width = selectionRect.getScaledWidth();
+                const height = selectionRect.getScaledHeight();
+
+                // 3. 画像データを生成
+                const dataURL = canvas.toDataURL({
+                    left: left,
+                    top: top,
+                    width: width,
+                    height: height,
+                    format: 'png',
+                    multiplier: 1 // 解像度を上げたい場合はここを2などに変更
+                });
+
+                // 4. クリップボードへ書き込み
+                fetch(dataURL).then(res => res.blob()).then(blob => {
+                    if (!navigator.clipboard || !navigator.clipboard.write) {
+                        showAlert('エラー: この環境ではクリップボード操作が許可されていません。\n(HTTPSまたはlocalhostでのアクセスが必要です)', "エラー", true);
+                        return;
+                    }
+                    const item = new ClipboardItem({ "image/png": blob });
+                    navigator.clipboard.write([item])
+                        .then(() => showToast('選択範囲をコピーしました！')) // ★変更: トースト表示
+                        .catch(err => showAlert('コピー失敗: ' + err.message, "エラー", true));
+                }).catch(err => showAlert('処理失敗: ' + err.message, "エラー", true));
+
+            } catch (e) {
+                console.error(e);
+                showAlert('エラーが発生しました: ' + e.message, "エラー", true);
+            } finally {
+                // 処理完了後の後始末（呼び出し元でremoveされるので画面上は消えます）
+                canvas.requestRenderAll();
+            }
+        }
+
+        function copyToClipboard() {
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
+            document.getElementById('c').toBlob(function (blob) {
+                if (!blob) return showAlert('画像の生成に失敗しました', "エラー", true);
+
+                // APIの存在チェック
+                if (!navigator.clipboard || !navigator.clipboard.write) {
+                    showAlert('エラー: クリップボードAPIが使用できません。\n\n考えられる原因:\n1. URLがIPアドレスになっている (http://192.168...)\n2. HTTPS通信ではない\n3. ブラウザが対応していない', "エラー", true);
+                    return;
+                }
+
+                try {
+                    const item = new ClipboardItem({ "image/png": blob });
+                    navigator.clipboard.write([item]).then(() => {
+                        showToast('画像をコピーしました！'); // ★変更: トースト表示
+                    }).catch(err => {
+                        console.error('Clipboard Write Error:', err);
+                        // 具体的なエラー内容を表示
+                        showAlert('コピーに失敗しました:\n' + err.name + ': ' + err.message, "エラー", true);
+                    });
+                } catch (err) {
+                    console.error('Clipboard Item Error:', err);
+                    // 具体的なエラー内容を表示
+                    showAlert('処理を開始できませんでした:\n' + err.name + ': ' + err.message, "エラー", true);
+                }
+            });
+        }
+
+        function downloadImage() {
+            canvas.discardActiveObject(); canvas.renderAll();
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 / canvas.getZoom() });
+            const link = document.createElement('a'); link.download = 'edited-image.png'; link.href = dataURL;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function clearCanvas() {
+            const performClear = () => {
+                canvas.clear();
+                canvas.setBackgroundColor(null, canvas.renderAll.bind(canvas));
+
+                const currentTab = tabs.find(t => t.id === currentTabId);
+                if (currentTab) {
+                    currentTab.baseDimensions = { width: 800, height: 600 };
+                    currentTab.zoom = 1;
+                    currentTab.hasMainImage = false;
+                    currentTab.backgroundColor = null;
+
+                    // カウンタもリセット
+                    currentTab.counterValue = 1;
+                    counterValue = 1;
+
+                    canvas.setZoom(1);
+                    canvas.setWidth(800);
+                    canvas.setHeight(600);
+                    document.getElementById('zoom-slider').value = 100;
+                    updateInfoDisplay(currentTab);
+                }
+
+                setMode('select');
+                updateUI();
+                closeConfirmModal();
+            };
+
+            showConfirmModal('キャンバスをすべて消去しますか？\n（連番カウンタもリセットされます）', performClear);
+        }
+
+        function createColorPalette(containerId, onClickFn) {
+            const container = document.getElementById(containerId); container.innerHTML = '';
+            const colorPresets = ['#000000', '#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#a855f7'];
+            colorPresets.forEach(color => {
+                const btn = document.createElement('button'); btn.className = 'w-6 h-6 rounded-full border border-gray-300 shadow-sm transition-transform hover:scale-110 color-btn';
+                btn.style.backgroundColor = color;
+                btn.onclick = () => { container.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); onClickFn(color); };
+                container.appendChild(btn);
+            });
+        }
+        createColorPalette('bg-palette', (c) => updateCanvasColor(c));
+        createColorPalette('fill-palette', (c) => updateActiveObject('fill', c));
+        createColorPalette('stroke-palette', (c) => updateActiveObject('stroke', c));
+        createColorPalette('text-bg-palette', (c) => updateActiveObject('backgroundColor', c));
+
+        const canvasSettingsEl = document.getElementById('canvas-settings');
+        const selectionControlsEl = document.getElementById('selection-controls');
+        const propTitleEl = document.getElementById('prop-title');
+        const opacityInput = document.getElementById('opacity');
+        const opacityValEl = document.getElementById('opacity-val');
+        const strokeWidthInput = document.getElementById('stroke-width');
+        const strokeWidthValEl = document.getElementById('stroke-width-val');
+
+        canvas.on('selection:created', updateUI);
+        canvas.on('selection:updated', updateUI);
+        canvas.on('selection:cleared', updateUI);
+
+        function updateUI() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                canvasSettingsEl.classList.add('hidden'); selectionControlsEl.classList.remove('hidden'); propTitleEl.innerText = 'Object Properties';
+                if (activeObj.customType === 'arrow') updateArrowControls(activeObj);
+
+                let fill = activeObj.get('fill');
+                // Group(連番)の場合、最初の要素(Circle)の色を取得
+                if (activeObj.type === 'group' && activeObj.customType === 'counter') {
+                    fill = activeObj.item(0).get('fill');
+                }
+
+                let stroke = activeObj.get('stroke'); let strokeWidth = activeObj.get('strokeWidth') || 0; let opacity = activeObj.get('opacity'); let bgColor = activeObj.get('backgroundColor');
+                if (activeObj.customType === 'arrow') strokeWidth = Math.round(activeObj.scaleY * 10);
+                if (activeObj.type !== 'path') { lastProps.fill = fill; lastProps.stroke = stroke; lastProps.strokeWidth = strokeWidth; lastProps.opacity = opacity; } else { lastArrowProps.fill = fill; }
+                highlightPalette('fill-palette', fill); highlightPalette('stroke-palette', stroke); highlightPalette('text-bg-palette', bgColor);
+                strokeWidthInput.value = strokeWidth; strokeWidthValEl.textContent = strokeWidth + 'px';
+                opacityInput.value = opacity; opacityValEl.textContent = Math.round(opacity * 100) + '%';
+                const textControls = document.getElementById('text-controls');
+                if (activeObj.type === 'i-text' || activeObj.type === 'text') textControls.classList.remove('hidden'); else textControls.classList.add('hidden');
+            } else {
+                canvasSettingsEl.classList.remove('hidden'); selectionControlsEl.classList.add('hidden'); propTitleEl.innerText = 'Canvas Settings';
+            }
+        }
+
+        function highlightPalette(paletteId, color) {
+            const container = document.getElementById(paletteId);
+            container.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (color && typeof color === 'string' && convertToHex(btn.style.backgroundColor) === convertToHex(color)) btn.classList.add('active');
+            });
+        }
+        function convertToHex(rgb) { if (!rgb) return ''; if (rgb.startsWith('#')) return rgb.toLowerCase(); const rgbMatch = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/); if (!rgbMatch) return rgb; function hex(x) { return ("0" + parseInt(x).toString(16)).slice(-2); } return "#" + hex(rgbMatch[1]) + hex(rgbMatch[2]) + hex(rgbMatch[3]); }
+
+        function updateActiveObject(prop, value) {
+            const activeObj = canvas.getActiveObject(); if (!activeObj) return;
+            if (prop === 'opacity') { value = parseFloat(value); opacityValEl.textContent = Math.round(value * 100) + '%'; }
+            if (prop === 'strokeWidth') {
+                value = parseInt(value, 10); strokeWidthValEl.textContent = value + 'px';
+                if (activeObj.customType === 'arrow') { const newScaleY = value / 10; activeObj.set('scaleY', Math.max(0.1, newScaleY)); canvas.requestRenderAll(); return; }
+            }
+
+            // 連番(Group)の特別処理
+            if (activeObj.customType === 'counter') {
+                if (prop === 'fill') {
+                    // 背景の円の色を変更
+                    activeObj.item(0).set('fill', value);
+                    lastProps.fill = value;
+                    highlightPalette('fill-palette', value);
+                } else if (prop === 'opacity') {
+                    activeObj.set('opacity', value);
+                    lastProps.opacity = value;
+                }
+                canvas.requestRenderAll();
+                return;
+            }
+
+            activeObj.set(prop, value);
+            if (activeObj.type !== 'path') { if (prop === 'fill') lastProps.fill = value; if (prop === 'stroke') lastProps.stroke = value; if (prop === 'strokeWidth') lastProps.strokeWidth = value; if (prop === 'opacity') lastProps.opacity = value; } else { if (prop === 'fill') lastArrowProps.fill = value; }
+            if (prop === 'fill') highlightPalette('fill-palette', value); if (prop === 'stroke') highlightPalette('stroke-palette', value); if (prop === 'backgroundColor') highlightPalette('text-bg-palette', value);
+            canvas.requestRenderAll();
+        }
+
+        function deleteActiveObject() { const activeObjects = canvas.getActiveObjects(); if (activeObjects.length) { canvas.discardActiveObject(); activeObjects.forEach(obj => canvas.remove(obj)); } }
+        function bringToFront() { const activeObj = canvas.getActiveObject(); if (activeObj) { activeObj.bringToFront(); canvas.discardActiveObject(); canvas.requestRenderAll(); } }
+        function sendToBack() { const activeObj = canvas.getActiveObject(); if (activeObj) { activeObj.sendToBack(); canvas.discardActiveObject(); canvas.requestRenderAll(); } }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && activeObj.isEditing) return;
+                e.preventDefault();
+                if (activeObj) deleteActiveObject();
+            }
+            if (e.key === 'Escape') setMode('select');
+        });
+
+        // モーダル
+        const modal = document.getElementById('custom-confirm-modal');
+        const modalContent = document.getElementById('modal-content');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalButtons = document.getElementById('modal-buttons');
+        const loadingIcon = document.getElementById('loading-icon');
+        const modalTitle = document.getElementById('modal-title');
+        const modalIconContainer = document.getElementById('modal-icon-container');
+
+        let confirmCallback = null;
+
+        function showConfirmModal(message, onConfirm) {
+            // 通常モード
+            modalTitle.innerText = "確認";
+            modalIconContainer.classList.remove('hidden');
+            loadingIcon.classList.add('hidden');
+            modalButtons.classList.remove('hidden');
+            modalMessage.textContent = message;
+            confirmCallback = onConfirm;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95'); modalContent.classList.add('scale-100'); }, 10);
+        }
+
+        function showLoadingModal(message) {
+            // ローディングモード
+            modalTitle.innerText = "処理中";
+            modalIconContainer.classList.add('hidden');
+            loadingIcon.classList.remove('hidden');
+            modalButtons.classList.add('hidden'); // ボタン隠す
+            modalMessage.textContent = message;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95'); modalContent.classList.add('scale-100'); }, 10);
+        }
+
+        function closeConfirmModal() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 200);
+            confirmCallback = null;
+        }
+
+        modalConfirmBtn.onclick = () => { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
+
+        // ページ離脱時の確認アラート
+        window.addEventListener('beforeunload', function (e) {
+            const currentHasObjects = canvas.getObjects().length > 0;
+            const hasMultipleTabs = tabs.length > 1;
+            if (currentHasObjects || hasMultipleTabs) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 初期化処理の実行 (必ず最後に)
+        // ---------------------------------------------------------
+        createNewTab();
+
+    </script>
+</body>
+
+</html>
