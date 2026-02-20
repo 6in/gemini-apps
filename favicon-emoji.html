@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Favicon Generator</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+            gap: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useCallback } = React;
+
+        // --- Inline Icons ---
+        const IconSearch = ({ size = 20 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+        );
+        const IconCopy = ({ size = 20 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+        );
+        const IconCheck = ({ size = 20 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        );
+        const IconSparkles = ({ size = 20 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M3 5h4" /><path d="M21 17v4" /><path d="M19 19h4" /></svg>
+        );
+
+        // Dataset with 170+ items
+        const EMOJI_DATA = [
+            {
+                cat: "人気・開発 (20)",
+                items: [
+                    { char: "🚀", keywords: "rocket ロケット 飛ばす 宇宙 launch" },
+                    { char: "🔥", keywords: "fire 火 炎 人気 hot trending" },
+                    { char: "✨", keywords: "sparkles きらきら 美しい 魔法 magic" },
+                    { char: "💡", keywords: "idea 閃き 電球 ヒント light bulb" },
+                    { char: "🛠️", keywords: "tool 工具 設定 開発 build fix" },
+                    { char: "📦", keywords: "package 箱 梱包 配布 ship box" },
+                    { char: "💻", keywords: "computer pc 開発 プログラミング laptop" },
+                    { char: "📱", keywords: "mobile phone スマホ アプリ smartphone" },
+                    { char: "🎯", keywords: "target 的 ヒット 目的 goal" },
+                    { char: "🎨", keywords: "art デザイン パレット 描画 paint" },
+                    { char: "⚡", keywords: "bolt 雷 高速 実行 fast flash" },
+                    { char: "🌈", keywords: "rainbow 虹 綺麗 多彩 color" },
+                    { char: "🧪", keywords: "test 実験 ラボ 科学 experiment" },
+                    { char: "🧬", keywords: "dna 遺伝子 生物 テクノロジー bio" },
+                    { char: "📡", keywords: "satellite 通信 電波 アンテナ wifi" },
+                    { char: "🛡️", keywords: "shield 防御 セキュリティ 安全 guard" },
+                    { char: "🌐", keywords: "web インターネット グローバル" },
+                    { char: "💎", keywords: "diamond 宝石 価値 クリスタル" },
+                    { char: "🔑", keywords: "key 鍵 パスワード 秘密" },
+                    { char: "🔔", keywords: "bell 通知 お知らせ アラート" }
+                ]
+            },
+            {
+                cat: "表情・人 (25)",
+                items: [
+                    { char: "😀", keywords: "smile 笑い 笑顔 ハッピー happy" },
+                    { char: "😊", keywords: "blush 嬉しい 微笑み enjoy" },
+                    { char: "😎", keywords: "cool かっこいい サングラス sunglasses" },
+                    { char: "🤔", keywords: "think 考える 疑問 はてな question" },
+                    { char: "🤩", keywords: "star 興奮 素晴らしい amazing" },
+                    { char: "🥳", keywords: "party お祝い 誕生 パーティー celebrate" },
+                    { char: "😴", keywords: "sleep 寝る 睡眠 zzz" },
+                    { char: "🤯", keywords: "explode 衝撃 驚き mind blown" },
+                    { char: "😭", keywords: "cry 泣く 悲しい sad" },
+                    { char: "🤫", keywords: "shh 内緒 秘密 quiet" },
+                    { char: "🫠", keywords: "melt 溶ける 暑い hot" },
+                    { char: "🤖", keywords: "robot ロボット ai 機械 bot" },
+                    { char: "👾", keywords: "alien エイリアン ゲーム モンスター monster" },
+                    { char: "👻", keywords: "ghost おばけ 幽霊 ホラー scary" },
+                    { char: "🤡", keywords: "clown ピエロ 怖い 面白い" },
+                    { char: "😺", keywords: "cat 猫 笑い 笑顔" },
+                    { char: "🦊", keywords: "fox 狐 きつね" },
+                    { char: "🦁", keywords: "lion ライオン 強そう 強い" },
+                    { char: "👋", keywords: "wave 振る 挨拶 hello hi" },
+                    { char: "👍", keywords: "up グッド 良い yes" },
+                    { char: "🙌", keywords: "celebrate 万歳 喜び" },
+                    { char: "👏", keywords: "clap 拍手 おめでとう" },
+                    { char: "🤝", keywords: "handshake 握手 協力 パートナー" },
+                    { char: "🧠", keywords: "brain 脳 思考 知能" },
+                    { char: "💖", keywords: "heart 好き ラブ 愛" }
+                ]
+            },
+            {
+                cat: "動物 (20)",
+                items: [
+                    { char: "🐶", keywords: "dog 犬 ペット ワンワン" },
+                    { char: "🐱", keywords: "cat 猫 ねこ ニャー" },
+                    { char: "🐭", keywords: "mouse ネズミ マウス" },
+                    { char: "🐹", keywords: "hamster ハムスター" },
+                    { char: "🐰", keywords: "rabbit 兎 うさぎ" },
+                    { char: "🐼", keywords: "panda パンダ" },
+                    { char: "🐯", keywords: "tiger 虎 とら" },
+                    { char: "🐸", keywords: "frog 蛙 カエル" },
+                    { char: "🐧", keywords: "penguin ペンギン" },
+                    { char: "🐳", keywords: "whale クジラ 海" },
+                    { char: "🐬", keywords: "dolphin イルカ 海" },
+                    { char: "🐙", keywords: "octopus タコ 海" },
+                    { char: "🦋", keywords: "butterfly 蝶" },
+                    { char: "🐝", keywords: "bee 蜂 ハチ" },
+                    { char: "🐞", keywords: "ladybug てんとう虫" },
+                    { char: "🐢", keywords: "turtle 亀 カメ" },
+                    { char: "🦄", keywords: "unicorn ユニコーン ゆめかわ" },
+                    { char: "🐘", keywords: "elephant 象 ゾウ" },
+                    { char: "🦒", keywords: "giraffe キリン" },
+                    { char: "🐆", keywords: "leopard 豹 ヒョウ" }
+                ]
+            },
+            {
+                cat: "自然・植物 (18)",
+                items: [
+                    { char: "🌸", keywords: "flower 花 桜 cherry blossom 春" },
+                    { char: "🍀", keywords: "clover クローバー 幸運 四つ葉" },
+                    { char: "🌿", keywords: "herb 緑 葉っぱ leaf" },
+                    { char: "🌻", keywords: "sunflower ひまわり 夏" },
+                    { char: "🌵", keywords: "cactus サボテン 砂漠" },
+                    { char: "🌲", keywords: "tree 木 森" },
+                    { char: "☀️", keywords: "sun 太陽 晴れ 明るい" },
+                    { char: "🌕", keywords: "moon 月 夜" },
+                    { char: "☁️", keywords: "cloud 雲 クラウド" },
+                    { char: "☔", keywords: "rain 雨 傘" },
+                    { char: "❄️", keywords: "snow 雪 冬" },
+                    { char: "🌊", keywords: "wave 波 海" },
+                    { char: "🌋", keywords: "volcano 火山 山" },
+                    { char: "🍄", keywords: "mushroom きのこ マッシュルーム" },
+                    { char: "🍂", keywords: "leaves 落ち葉 秋" },
+                    { char: "🎋", keywords: "tanabata 七夕 竹 笹" },
+                    { char: "🌓", keywords: "moon 月 宇宙" },
+                    { char: "🌟", keywords: "star 星 きらきら" }
+                ]
+            },
+            {
+                cat: "食べ物・飲み物 (24)",
+                items: [
+                    { char: "☕", keywords: "coffee 珈琲 カフェ break" },
+                    { char: "🍵", keywords: "tea お茶 ティー 日本茶" },
+                    { char: "🍺", keywords: "beer ビール 乾杯 お酒" },
+                    { char: "🍷", keywords: "wine ワイン" },
+                    { char: "🍹", keywords: "cocktail カクテル ジュース" },
+                    { char: "🍎", keywords: "apple りんご フルーツ" },
+                    { char: "🍓", keywords: "strawberry いちご" },
+                    { char: "🍋", keywords: "lemon レモン" },
+                    { char: "🥐", keywords: "croissant パン クロワッサン" },
+                    { char: "🍔", keywords: "hamburger バーガー" },
+                    { char: "🍟", keywords: "fries ポテト" },
+                    { char: "🍕", keywords: "pizza ピザ" },
+                    { char: "🌮", keywords: "taco タコス" },
+                    { char: "🍱", keywords: "bento 弁当 日本食" },
+                    { char: "🍣", keywords: "sushi 寿司" },
+                    { char: "🍜", keywords: "ramen ラーメン 麺" },
+                    { char: "🍛", keywords: "curry カレー" },
+                    { char: "🍙", keywords: "rice ball おにぎり" },
+                    { char: "🍦", keywords: "ice cream アイス" },
+                    { char: "🍩", keywords: "donut ドーナツ" },
+                    { char: "🍰", keywords: "cake ケーキ" },
+                    { char: "🍫", keywords: "chocolate チョコ" },
+                    { char: "🍿", keywords: "popcorn ポップコーン" },
+                    { char: "🥗", keywords: "salad サラダ 健康" }
+                ]
+            },
+            {
+                cat: "旅行・建物 (18)",
+                items: [
+                    { char: "🏠", keywords: "house 家 ホーム home" },
+                    { char: "🏢", keywords: "office ビル 会社" },
+                    { char: "🏰", keywords: "castle 城 観光" },
+                    { char: "🗼", keywords: "tower 東京タワー 塔" },
+                    { char: "🗻", keywords: "fuji 富士山 山" },
+                    { char: "✈️", keywords: "plane 飛行機 旅 travel" },
+                    { char: "🚗", keywords: "car 車 ドライブ" },
+                    { char: "🚢", keywords: "ship 船 フェリー" },
+                    { char: "🚄", keywords: "train 新幹線 鉄道" },
+                    { char: "🚲", keywords: "bike 自転車 サイクリング" },
+                    { char: "🏖️", keywords: "beach ビーチ 休み 夏" },
+                    { char: "🏔️", keywords: "mountain 山" },
+                    { char: "⛩️", keywords: "shrine 神社 日本" },
+                    { char: "🎡", keywords: "ferris wheel 観覧車 遊園地" },
+                    { char: "🏨", keywords: "hotel ホテル 宿泊" },
+                    { char: "⛽", keywords: "gas station ガソリンスタンド 車" },
+                    { char: "🚂", keywords: "locomotive 蒸気機関車 鉄道" },
+                    { char: "🛸", keywords: "ufo 宇宙船 未知" }
+                ]
+            },
+            {
+                cat: "活動・趣味 (22)",
+                items: [
+                    { char: "⚽", keywords: "soccer サッカー スポーツ" },
+                    { char: "🏀", keywords: "basketball バスケ" },
+                    { char: "⚾", keywords: "baseball 野球" },
+                    { char: "🎾", keywords: "tennis テニス" },
+                    { char: "🎮", keywords: "game ゲーム 遊び" },
+                    { char: "🎸", keywords: "guitar ギター 音楽 music" },
+                    { char: "🎹", keywords: "piano ピアノ 音楽" },
+                    { char: "🎤", keywords: "mic マイク 歌 カラオケ" },
+                    { char: "🎧", keywords: "headphones ヘッドホン 音楽" },
+                    { char: "🎨", keywords: "art デザイン パレット" },
+                    { char: "🎬", keywords: "movie 映画 動画" },
+                    { char: "📷", keywords: "camera カメラ 写真 photo" },
+                    { char: "📖", keywords: "book 本 読書 文献" },
+                    { char: "💰", keywords: "money お金 コイン cash" },
+                    { char: "✉️", keywords: "mail メール 手紙" },
+                    { char: "🎁", keywords: "gift プレゼント 贈り物" },
+                    { char: "🏆", keywords: "trophy トロフィー 優勝 win" },
+                    { char: "🔨", keywords: "hammer ハンマー 作成" },
+                    { char: "📅", keywords: "calendar カレンダー 予定" },
+                    { char: "📂", keywords: "folder フォルダ 整理" },
+                    { char: "🎲", keywords: "dice サイコロ ギャンブル ゲーム" },
+                    { char: "🎻", keywords: "violin バイオリン 音楽" }
+                ]
+            },
+            {
+                cat: "記号 (25)",
+                items: [
+                    { char: "❤️", keywords: "heart 好き ラブ ハート" },
+                    { char: "⭐", keywords: "star 星 重要 お気に入り" },
+                    { char: "✅", keywords: "check 完了 ok 正解" },
+                    { char: "❌", keywords: "cross バツ 停止 error 失敗" },
+                    { char: "⚠️", keywords: "warning 警告 注意" },
+                    { char: "🚫", keywords: "forbidden 禁止 拒否" },
+                    { char: "🔔", keywords: "bell 通知 お知らせ" },
+                    { char: "🔍", keywords: "search 検索 探す 見つける" },
+                    { char: "🔄", keywords: "reload 更新 同期 sync" },
+                    { char: "➕", keywords: "plus 追加 プラス" },
+                    { char: "➖", keywords: "minus マイナス 削除" },
+                    { char: "❓", keywords: "question はてな 疑問" },
+                    { char: "❗", keywords: "exclamation びっくり 重要 警告" },
+                    { char: "🔗", keywords: "link リンク 接続" },
+                    { char: "📍", keywords: "pin ピン 場所 マップ" },
+                    { char: "💯", keywords: "hundred 満点 100" },
+                    { char: "💬", keywords: "chat チャット 会話" },
+                    { char: "🌐", keywords: "web ネットワーク 世界" },
+                    { char: "📈", keywords: "chart 成長 アップ 上昇" },
+                    { char: "📉", keywords: "chart ダウン 下落 低下" },
+                    { char: "🏁", keywords: "flag ゴール 終了 フラグ" },
+                    { char: "🛑", keywords: "stop 停止 止まれ" },
+                    { char: "🚩", keywords: "flag 旗 マーク 目印" },
+                    { char: "🔱", keywords: "trident トライデント 武器" },
+                    { char: "⚛️", keywords: "atom 原子 科学 物理" }
+                ]
+            }
+        ];
+
+        const App = () => {
+            const [selectedEmoji, setSelectedEmoji] = useState("🚀");
+            const [searchQuery, setSearchQuery] = useState("");
+            const [copied, setCopied] = useState(false);
+            const [toast, setToast] = useState(null); // { message, id }
+
+            const snippet = `<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${selectedEmoji}</text></svg>">`;
+
+            // Display a floating toast message
+            const showToast = useCallback((message) => {
+                const id = Date.now();
+                setToast({ message, id });
+                setTimeout(() => {
+                    setToast(current => current?.id === id ? null : current);
+                }, 2000);
+            }, []);
+
+            const copyText = useCallback((text, successMsg) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(successMsg);
+                    return true;
+                } catch (err) {
+                    console.error('Failed to copy', err);
+                    return false;
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }, [showToast]);
+
+            const copyCodeSnippet = () => {
+                if (copyText(snippet, "コードをコピーしました！")) {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                }
+            };
+
+            const handleEmojiClick = (emoji) => {
+                setSelectedEmoji(emoji);
+                copyText(emoji, `絵文字「${emoji}」をコピーしました！`);
+            };
+
+            const filteredEmojiData = useMemo(() => {
+                const query = searchQuery.toLowerCase().trim();
+                if (!query) return EMOJI_DATA;
+
+                return EMOJI_DATA.map(group => {
+                    const filteredItems = group.items.filter(item =>
+                        item.keywords?.toLowerCase().includes(query) ||
+                        item.char.includes(query)
+                    );
+                    return { ...group, items: filteredItems };
+                }).filter(group => group.items.length > 0);
+            }, [searchQuery]);
+
+            const totalCount = useMemo(() => {
+                return EMOJI_DATA.reduce((acc, group) => acc + group.items.length, 0);
+            }, []);
+
+            const hasResults = filteredEmojiData.length > 0;
+
+            return (
+                <div className="max-w-2xl mx-auto p-4 md:p-12 relative">
+                    {/* Toast Notification */}
+                    {toast && (
+                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                            <div className="bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border border-slate-700 whitespace-nowrap">
+                                <IconCheck size={18} className="text-green-400" />
+                                <span className="text-sm font-medium">{toast.message}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="mb-8 text-center">
+                        <h1 className="text-3xl font-extrabold text-slate-800 flex items-center justify-center gap-3">
+                            <IconSparkles className="text-amber-500" size={32} />
+                            Emoji Favicon Generator
+                        </h1>
+                        <p className="text-slate-500 mt-2">{totalCount}種類以上の絵文字から軽量なFaviconを生成します。</p>
+                    </header>
+
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="p-4 md:p-8">
+                            {/* Search Input */}
+                            <div className="mb-6">
+                                <div className="relative mb-4">
+                                    <div className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                                        <IconSearch size={18} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="キーワード検索（例: 火, ロケット, コーヒー）"
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-slate-600 shadow-sm"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="h-80 overflow-y-auto pr-2 custom-scrollbar border border-slate-50 rounded-lg p-3 bg-slate-50/50">
+                                    {hasResults ? (
+                                        filteredEmojiData.map((group, idx) => (
+                                            <div key={idx} className="mb-6 animate-fade-in">
+                                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3 px-1">{group.cat}</h3>
+                                                <div className="emoji-grid">
+                                                    {group.items.map(item => (
+                                                        <button
+                                                            key={item.char}
+                                                            onClick={() => handleEmojiClick(item.char)}
+                                                            className={`text-2xl w-11 h-11 flex items-center justify-center rounded-xl transition-all ${selectedEmoji === item.char
+                                                                    ? 'bg-blue-600 shadow-md transform scale-110 text-white z-10'
+                                                                    : 'bg-white hover:bg-white hover:shadow-md hover:scale-105 border border-slate-200 hover:border-blue-200'
+                                                                }`}
+                                                            title={`クリックして「${item.char}」をコピー`}
+                                                        >
+                                                            {item.char}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                                            <IconSearch size={48} className="opacity-10 mb-2" />
+                                            <p className="text-sm">お探しの絵文字は見つかりませんでした</p>
+                                            <button
+                                                onClick={() => setSearchQuery("")}
+                                                className="text-xs text-blue-500 mt-2 hover:underline"
+                                            >
+                                                すべての絵文字を表示
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2 text-center italic">※ 絵文字をクリックするとその文字自体をコピーします</p>
+                            </div>
+
+                            {/* Result Area */}
+                            <div className="space-y-4 pt-6 border-t border-slate-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-slate-700">HTML Snippet</span>
+                                    <button
+                                        onClick={copyCodeSnippet}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${copied
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-slate-800 text-white hover:bg-slate-700 active:scale-95 shadow-lg'
+                                            }`}
+                                    >
+                                        {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                                        {copied ? 'コピー完了' : 'コードをコピー'}
+                                    </button>
+                                </div>
+
+                                <div className="relative group">
+                                    <pre className="p-4 bg-slate-900 rounded-xl text-blue-300 text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-800 shadow-inner">
+                                        {snippet}
+                                    </pre>
+                                </div>
+
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-4">
+                                    <div className="text-4xl p-2 bg-white rounded-lg shadow-sm border border-blue-100 select-none">
+                                        {selectedEmoji}
+                                    </div>
+                                    <div className="text-xs text-blue-700 leading-relaxed">
+                                        <span className="font-bold block mb-1">使い方:</span>
+                                        上のコードを <code>&lt;head&gt;</code> 内に貼り付けてください。
+                                        外部ファイルなしで、ブラウザのタブにこの絵文字が表示されます。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
