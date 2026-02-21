@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gemini-apps</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .app-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .app-emoji {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .app-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .app-description {
+            font-size: 0.95rem;
+            color: #6b7280;
+            flex-grow: 1;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="header-section">
+                <h1 class="header-title">gemini-apps</h1>
+                <p class="header-subtitle">Google Gemini Canvas Apps</p>
+            </div>
+
+            <!-- Apps Grid -->
+            <div class="app-grid">
+                <!-- ai-ui-generator -->
+                <a href="ai-ui-generator.html" class="app-card">
+                    <div class="app-emoji">🎨</div>
+                    <h2 class="app-title">ai-ui-generator</h2>
+                    <p class="app-description">UIのDSLコードを生成するツール</p>
+                </a>
+
+                <!-- capture-image-editor -->
+                <a href="capture-image-editor.html" class="app-card">
+                    <div class="app-emoji">🖼️</div>
+                    <h2 class="app-title">capture-image-editor</h2>
+                    <p class="app-description">キャプチャした画像を編集するツール</p>
+                </a>
+
+                <!-- capture-tool -->
+                <a href="capture-tool.html" class="app-card">
+                    <div class="app-emoji">📸</div>
+                    <h2 class="app-title">capture-tool</h2>
+                    <p class="app-description">定期的に画面をスクリーンショットして保存するツール</p>
+                </a>
+
+                <!-- easy-mermaid -->
+                <a href="easy-mermaid.html" class="app-card">
+                    <div class="app-emoji">📊</div>
+                    <h2 class="app-title">easy-mermaid</h2>
+                    <p class="app-description">Mermaidダイアグラムをノーコードで作成するツール</p>
+                </a>
+
+                <!-- favicon-emoji -->
+                <a href="favicon-emoji.html" class="app-card">
+                    <div class="app-emoji">🛠️</div>
+                    <h2 class="app-title">favicon-emoji</h2>
+                    <p class="app-description">絵文字からFaviconを生成するツール</p>
+                </a>
+
+                <!-- keisensan-2026 -->
+                <a href="keisensan-2026.html" class="app-card">
+                    <div class="app-emoji">📋</div>
+                    <h2 class="app-title">keisensan-2026</h2>
+                    <p class="app-description">ASCIIアート（罫線図）を生成するツール</p>
+                </a>
+
+                <!-- mermaid-to-x -->
+                <a href="mermaid-to-x.html" class="app-card">
+                    <div class="app-emoji">🔄</div>
+                    <h2 class="app-title">mermaid-to-x</h2>
+                    <p class="app-description">MermaidダイアグラムをExcel/PPT形式に変換するツール</p>
+                </a>
+
+                <!-- reading-support -->
+                <a href="reading-support.html" class="app-card">
+                    <div class="app-emoji">🤖</div>
+                    <h2 class="app-title">reading-support</h2>
+                    <p class="app-description">AI読書サポート用プロンプト集</p>
+                </a>
+
+                <!-- scheduler -->
+                <a href="scheduler.html" class="app-card">
+                    <div class="app-emoji">⏰</div>
+                    <h2 class="app-title">scheduler</h2>
+                    <p class="app-description">WebWorkerを使った定期実行スケジューラー</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
