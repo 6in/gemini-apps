@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思考の全技術 - Idea Generation Tool</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .serif {
+            font-family: 'Noto Serif JP', serif;
+        }
+        /* Custom Scrollbar Utilities */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- アイコンコンポーネント (Lucide互換 - Inline SVG) ---
+        const Menu = ({ size = 24, className = "", onClick }) => (
+            <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
+        );
+        const X = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+        );
+        const Check = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M20 6 9 17l-5-5" />
+            </svg>
+        );
+        const Copy = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+            </svg>
+        );
+        const CheckCircle = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" />
+            </svg>
+        );
+        const BookOpen = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+        );
+
+        // --- データ定義 ---
+        const TECHNIQUES = [
+            // --- 第1部：すぐにアイデアがほしいとき ---
+            // 第1章 AI特有の力
+            {
+                id: 1, chapter: 1, title: "多様な特徴 (バイオミミクリー)", 
+                description: "生物の特徴を強制的に組み合わせて、予想外のアイデアを生み出す。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：新しい傘のアイデア" }],
+                template: "まず、特徴が異なる動物や生物を10個あげてください。\n次にその動物から連想できる特徴や機能を各10個あげてください。\n最後に、連想した単語と組み合わせて有益な機能を持つ「{{topic}}」のアイデアを7つ考えてください。\n「動物・生物」が持つ機能や特徴をヒントにして、アイデアを発想します。"
+            },
+            {
+                id: 2, chapter: 1, title: "10倍の目標", 
+                description: "目標を極端に高く設定することで、既存の延長線上にない解決策を探る。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：売上を上げる施策" }],
+                template: "本来の発想のお題「{{topic}}」に含まれる目標を10倍高い目標にしたお題を生成してください。\n次にその目標が実現している状態を7つ連想してください。\n最後に各々の状態を切り口にして「{{topic}}」のアイデアを考えてください。"
+            },
+            {
+                id: 3, chapter: 1, title: "制約なき発想", 
+                description: "予算や技術などの制約を一切無視して、自由な発想を広げる。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：理想のオフィス環境" }],
+                template: "エネルギー、資金、技術力、法規制、倫理観などの制約が一切ないとしたら、「{{topic}}」についてどのようなアイデアが考えられますか？\nSF的でも魔法のようでも構いません。常識外れのアイデアを10個出してください。"
+            },
+            {
+                id: 4, chapter: 1, title: "未来からの視点 (バックキャスティング)", 
+                description: "成功した未来から逆算して、現在やるべきことを考える。",
+                inputs: [
+                    { id: "topic", label: "お題", placeholder: "例：新規事業の立ち上げ" },
+                    { id: "years", label: "何年後？", placeholder: "例：10年後" }
+                ],
+                template: "今は{{years}}の未来です。「{{topic}}」は大成功を収め、社会に定着しています。\nなぜ成功したのか、どのような経緯で普及したのか、成功の要因となった重要な決断は何だったのかを、過去（現在）を振り返る形式で具体的に語ってください。"
+            },
+            {
+                id: 5, chapter: 1, title: "各種専門家の案", 
+                description: "AIに複数の専門家のペルソナを与え、多角的な視点で案を出させる。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：地域活性化のイベント" }],
+                template: "多数の専門家（クリエイティブな専門家、技術専門家、ビジネス専門家、学術研究者、社会科学者、ユーザー、ディスラプター、ユーモアのセンスを持つ人々、冒険家）として、「{{topic}}」について具体的な案を考えてください。\nそれぞれの視点からユニークな提案をお願いします。"
+            },
+            {
+                id: 6, chapter: 1, title: "バイアスブレーカー", 
+                description: "人間の思考の偏り（バイアス）を指摘させ、逆の視点を持つ。",
+                inputs: [{ id: "idea", label: "現在の考え", placeholder: "例：若者向けにはSNSマーケティングが必須だ" }],
+                template: "「{{idea}}」という考えに含まれている認知バイアスや思い込みを指摘してください。\nまた、その逆の視点や、全く異なる前提に立った場合のアプローチを提案してください。"
+            },
+
+            // 第2章 自由な発想
+            {
+                id: 7, chapter: 2, title: "関連する要素", 
+                description: "連想ゲームのように要素を広げ、意外な組み合わせを見つける。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：リラックスできるカフェ" }],
+                template: "「{{topic}}」から連想できる単語を30個挙げてください。\n次に、「{{topic}}」とは一見関係が薄そうな単語を100個リストアップしてください。\nそれらをランダムに組み合わせて、意外性のある「{{topic}}」のアイデアを10個生成してください。"
+            },
+            {
+                id: 8, chapter: 2, title: "広い観点", 
+                description: "6つの観点（人、モノ、プロセス等）から網羅的に考える。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：ゴミを減らす方法" }],
+                template: "広くアイデアを出すには以下に示す6観点が役立ちます。\n1. 人（主体、客体、立場、能力、市場...）\n2. モノ（製品、素材、設備...）\n3. プロセス（時間、場所、方法、量...）\n4. 環境（自然、社会、経済...）\n5. 意味・価値（機能、情緒、象徴...）\n6. 五感（視覚、聴覚、触覚...）\n\nこれらを参考にして、「{{topic}}」について多様なアイデアを生成してください。"
+            },
+            {
+                id: 9, chapter: 2, title: "ランダムな単語", 
+                description: "無関係な単語を強制的に結びつけ、思考のジャンプを起こす。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：新しい文房具" }],
+                template: "全く無関係な名詞をランダムに5つ選出してください。\nそれぞれの単語の持つイメージや特性を無理やり「{{topic}}」と結びつけて、斬新なアイデアを考えてください。"
+            },
+            {
+                id: 10, chapter: 2, title: "常識の逆転", 
+                description: "業界の常識を洗い出し、それを逆転させる。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：レストランのサービス" }],
+                template: "「{{topic}}」における常識や当たり前と思われていることを10個リストアップしてください。\n次に、それらをあえて「逆転」させたり「否定」したりすることで生まれる新しいアイデアを考えてください。"
+            },
+            {
+                id: 11, chapter: 2, title: "子供の視点", 
+                description: "純粋で好奇心旺盛な子供の視点で問い直す。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：会議の進め方" }],
+                template: "あなたは好奇心旺盛で、忖度を知らない5歳の子供です。\n「{{topic}}」について、大人が気づかないような素朴な疑問や、「なんでこうしないの？」という提案を5つ話してください。"
+            },
+            {
+                id: 12, chapter: 2, title: "制約の活用", 
+                description: "あえて厳しい制約を設けることで、創造的な工夫を引き出す。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：商品開発" }, { id: "constraint", label: "制約", placeholder: "例：予算0円で、または3日以内で" }],
+                template: "「{{topic}}」のアイデアを考えますが、ここではあえて「{{constraint}}」という厳しい制約を設けます。\nこの制約があるからこそ生まれる、ユニークで工夫に満ちた解決策を5つ提案してください。"
+            },
+
+            // 第3章 ロジカルな発想
+            {
+                id: 13, chapter: 3, title: "工夫のパターン (TRIZ)", 
+                description: "40の発明原理を用いて、技術的・物理的な矛盾を解決する。",
+                inputs: [{ id: "topic", label: "お題・課題", placeholder: "例：スマホのバッテリー持ち" }],
+                template: "TRIZの40の発明原理の中から、「{{topic}}」の解決に役立ちそうな原理を5つ選び、それぞれに基づいた具体的なアイデアを出してください。"
+            },
+            {
+                id: 14, chapter: 3, title: "理想の状態 (IFR)", 
+                description: "コストや害がゼロで、機能が無限大の「究極の理想」を定義する。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：移動手段" }],
+                template: "「{{topic}}」における究極の理想解（Ideal Final Result）を定義してください。\nコストや害がゼロで、メリットが最大化された状態です。\nその理想状態に少しでも近づくための現実的なアプローチを3段階で提案してください。"
+            },
+            {
+                id: 15, chapter: 3, title: "未来の変化因子", 
+                description: "将来起こりうる変化を予測し、現在に活かす。",
+                inputs: [{ id: "topic", label: "お題", placeholder: "例：教育ビジネス" }],
+                template: "「{{topic}}」に関連する分野で、今後10年間に起こりうる技術的、社会的、経済的な変化因子を5つ挙げてください。\nそれぞれの変化が「{{topic}}」にどのような影響を与え、どのような新しい機会を生むか解説してください。"
+            },
+            {
+                id: 16, chapter: 3, title: "SCAMPER法", 
+                description: "7つの変形操作で既存のアイデアを改変する。",
+                inputs: [{ id: "idea", label: "既存のアイデア", placeholder: "例：ハンバーガー" }],
+                template: "「{{idea}}」に対して、SCAMPER法の各要素（Substitute, Combine, Adapt, Modify, Put to other uses, Eliminate, Reverse）を適用して新しいアイデアを出してください。"
+            },
+            {
+                id: 17, chapter: 3, title: "マトリクス分析", 
+                description: "2つの軸でマトリクスを作り、空白領域（ブルーオーシャン）を探す。",
+                inputs: [
+                    { id: "axis1", label: "軸1", placeholder: "例：価格（高・低）" },
+                    { id: "axis2", label: "軸2", placeholder: "例：機能（シンプル・多機能）" },
+                    { id: "topic", label: "分析対象", placeholder: "例：市場のノートPC" }
+                ],
+                template: "「{{topic}}」について、「{{axis1}}」を横軸、「{{axis2}}」を縦軸にとったマトリクスを作成してください。\n各象限に既存の事例を配置し、空いている象限（ブルーオーシャン）があれば、そこにどのような可能性がありますか？"
+            },
+
+            // --- 第2部：アイデアを磨きたいとき ---
+            // 第4章 発展
+            {
+                id: 18, chapter: 4, title: "新しい地平の探索", 
+                description: "現在のアイデア群の偏りを分析し、欠けている視点を指摘する。",
+                inputs: [{ id: "ideas", label: "アイデア群", type: "textarea", placeholder: "アイデアリスト..." }],
+                template: "以下のアイデア群を分析してください。\n{{ideas}}\n\nこれらのアイデアに共通する傾向（偏り）は何ですか？\nまた、まだ考えられていない方向性（空白領域）や、欠落している視点を見つけ、そこを埋める新しいアイデアを提案してください。"
+            },
+            {
+                id: 19, chapter: 4, title: "着想の良いところ", 
+                description: "否定せずにまずは褒め、その上で発展させる。",
+                inputs: [{ id: "idea", label: "自信のないアイデア", type: "textarea", placeholder: "アイデア..." }],
+                template: "次のアイデアの「良いところ」を4つ挙げてください。\nまた、このアイデアをさらに発展させるために考慮すべき課題やヒントを1つだけ優しくコメントしてください。\n\nアイデア：{{idea}}"
+            },
+            {
+                id: 20, chapter: 4, title: "シナリオライティング", 
+                description: "アイデアが実際に使われているシーンを物語として描く。",
+                inputs: [
+                    { id: "idea", label: "アイデア", placeholder: "例：全自動朝食メーカー" },
+                    { id: "target", label: "主人公", placeholder: "例：忙しい独身サラリーマン" }
+                ],
+                template: "「{{target}}」が「{{idea}}」を利用している日常のシナリオを、物語風に書いてください。\n利用前、利用中、利用後の感情の変化や、具体的なメリットが伝わるように描写してください。"
+            },
+            {
+                id: 21, chapter: 4, title: "感情の分析", 
+                description: "ユーザーが抱くであろう感情をポジティブ・ネガティブ両面から分析する。",
+                inputs: [{ id: "idea", label: "アイデア", placeholder: "アイデア..." }],
+                template: "「{{idea}}」というアイデアに対して、ユーザーが抱く可能性のある「ポジティブな感情（喜び、安心など）」と「ネガティブな感情（不安、面倒など）」をそれぞれ3つずつ深く分析してください。"
+            },
+            {
+                id: 22, chapter: 4, title: "ターゲットの憑依", 
+                description: "特定のターゲットになりきってアイデアを評価する。",
+                inputs: [
+                    { id: "idea", label: "アイデア", placeholder: "アイデア..." },
+                    { id: "persona", label: "憑依する人物", placeholder: "例：辛口な批評家" }
+                ],
+                template: "あなたは「{{persona}}」になりきってください。その視点から見ると、「{{idea}}」はどう映りますか？\n率直な感想、不満点、そして「こうすればもっと良くなる」というアドバイスを語ってください。"
+            },
+            {
+                id: 23, chapter: 4, title: "比喩とメタファー", 
+                description: "アイデアを別のものに例えて、本質を明確にする。",
+                inputs: [{ id: "idea", label: "アイデア", placeholder: "アイデア..." }],
+                template: "「{{idea}}」の特徴や価値を、全く別の分野（料理、スポーツ、自然現象など）に例えて説明してください（メタファー）。\nその例えを使うことで、このアイデアのどの本質的な価値が強調されますか？"
+            },
+
+            // 第5章 具体化
+            {
+                id: 24, chapter: 5, title: "アイデアスケッチ", 
+                description: "1行のタイトルと3行の詳細で、アイデアの骨子を固める。",
+                inputs: [{ id: "idea", label: "アイデアの種", type: "textarea", placeholder: "アイデア..." }],
+                template: "このアイデアを「アイデアのタイトル（1行）」および「アイデアの詳細内容（3行）」という形式で記述してください。\n誰向けの、何で、狙いは何かがわかるようにしてください。\n方向性を大きく変えて3パターン書いてください。\n\nアイデアの種：{{idea}}"
+            },
+            {
+                id: 25, chapter: 5, title: "6W3H", 
+                description: "実行計画に必要な要素を網羅的に洗い出す。",
+                inputs: [{ id: "idea", label: "具体化したいアイデア", placeholder: "アイデア..." }],
+                template: "「{{idea}}」を実現するための計画を、6W3H（When, Where, Who, Whom, Why, What, How, How much, How many）のフレームワークですべて具体的に埋めてください。"
+            },
+            {
+                id: 26, chapter: 5, title: "ステップ化", 
+                description: "実現までのプロセスを細分化し、最初の一歩を明確にする。",
+                inputs: [{ id: "goal", label: "実現したいゴール", placeholder: "例：アプリを1万DL達成" }],
+                template: "「{{goal}}」を実現するためのロードマップを作成してください。\nプロセスを10段階のステップに分解し、特に最初のステップ（明日からできること）は具体的に記述してください。"
+            },
+
+            // 第6章 検証
+            {
+                id: 27, chapter: 6, title: "妥当性の検証", 
+                description: "客観的な数値で評価し、独りよがりな熱狂を冷ます。",
+                inputs: [{ id: "idea", label: "評価したいアイデア", type: "textarea", placeholder: "アイデア..." }],
+                template: "以下のアイデアについて、その妥当性（実現可能性、市場性、収益性など）を1〜10点で評価してください（最高が10点）。\n点数の理由を辛口に解説し、スコアを上げるための改善案を提示してください。\n\nアイデア：{{idea}}"
+            },
+            {
+                id: 28, chapter: 6, title: "強みの検証 (VRIO)", 
+                description: "自社のリソースと合致しているか、模倣困難かを問う。",
+                inputs: [
+                    { id: "idea", label: "事業アイデア", placeholder: "アイデア..." },
+                    { id: "resource", label: "自分の強み", placeholder: "例：デザインスキル" }
+                ],
+                template: "「{{idea}}」を行うにあたり、私の持つ「{{resource}}」は強みになりますか？\nVRIO分析（価値、希少性、模倣困難性、組織）の観点から分析し、競争優位性を築く戦略をアドバイスしてください。"
+            },
+            {
+                id: 29, chapter: 6, title: "影響力の人", 
+                description: "キーマンとなる人物やインフルエンサーの影響を考える。",
+                inputs: [{ id: "idea", label: "アイデア", placeholder: "アイデア..." }],
+                template: "「{{idea}}」が普及するために鍵となる人物（キーマン、インフルエンサー、ゲートキーパー）はどのような人ですか？\n彼らを味方につけるためのアプローチ方法を考えてください。"
+            },
+            {
+                id: 30, chapter: 6, title: "阻害の要因", 
+                description: "解決を妨げている根本的な原因を探る。",
+                inputs: [{ id: "problem", label: "解決したい課題", placeholder: "課題..." }],
+                template: "「{{problem}}」という課題がこれまで解決されずに残っている根本的な「阻害要因」は何でしょうか？\n技術的、心理的、構造的な側面から分析してください。"
+            },
+            {
+                id: 31, chapter: 6, title: "プレモータム分析", 
+                description: "プロジェクトが失敗した未来を想定し、原因を探る。",
+                inputs: [{ id: "project", label: "プロジェクト概要", placeholder: "例：社内SNSの導入" }],
+                template: "今はプロジェクト開始から1年後です。残念ながら「{{project}}」は大失敗に終わりました。\nなぜ失敗したのでしょうか？考えられる致命的な原因を5つ挙げ、それぞれの予防策を現在に戻って提案してください。"
+            },
+            {
+                id: 32, chapter: 6, title: "不満の要素", 
+                description: "ユーザーが感じる潜在的な不満を洗い出す。",
+                inputs: [{ id: "product", label: "商品・サービス", placeholder: "商品..." }],
+                template: "「{{product}}」に対して、ユーザーが口には出さないものの感じている「地味な不満」や「ストレス」を10個挙げてください。\nそれらを解消することで得られる新しい価値は何ですか？"
+            },
+
+            // --- 第3部：アイデアを実現したいとき ---
+            // 第7章 伝え方
+            {
+                id: 33, chapter: 7, title: "未来の報道発表", 
+                description: "プレスリリースの形式で、社会的なインパクトを表現する。",
+                inputs: [
+                    { id: "project", label: "企画詳細", type: "textarea", placeholder: "企画..." },
+                    { id: "years", label: "何年後", placeholder: "例：3年後" }
+                ],
+                template: "「{{project}}」が{{years}}にリリースされたときのプレスリリースを書いてください。\nサービス名、ユーザーの生の声、担当者の意気込み、売上目標を含め、社会的なニュースとして記述してください。"
+            },
+            {
+                id: 34, chapter: 7, title: "売上の計画", 
+                description: "ビジネスとして成立するか、数字でシミュレーションする。",
+                inputs: [{ id: "idea", label: "ビジネスアイデア", placeholder: "アイデア..." }],
+                template: "「{{idea}}」を事業化した際の月次の売上、コスト、利益の推移を、1か月目から18か月目まで表形式でシミュレーションしてください。\n現実的な数値前提も併せて示してください。"
+            },
+            {
+                id: 35, chapter: 7, title: "初期の顧客獲得", 
+                description: "最初の一人、最初の100人をどう集めるかを具体化する。",
+                inputs: [{ id: "product", label: "商品・サービス", placeholder: "商品..." }],
+                template: "「{{product}}」のローンチ直後、初期の顧客（アーリーアダプター）を最初の100人獲得するための泥臭く具体的な戦略を5つ提案してください。"
+            },
+            {
+                id: 36, chapter: 7, title: "魅力的な見せ方", 
+                description: "相手のメリットに変換して伝える（FAB分析など）。",
+                inputs: [
+                    { id: "feature", label: "機能・特徴", type: "textarea", placeholder: "例：チタン製で軽い" },
+                    { id: "target", label: "伝えたい相手", placeholder: "例：高齢の登山者" }
+                ],
+                template: "「{{feature}}」という特徴を、「{{target}}」にとっての具体的な「メリット（利点）」と「ベネフィット（利益・恩恵）」に変換して伝えてください。\n刺さるキャッチコピーも3つ考えてください。"
+            },
+            
+            // 第8章 実行策 (ここから追加技法)
+            {
+                id: 37, chapter: 8, title: "WBSの作成", 
+                description: "作業分解図(WBS)を作成し、タスクを漏れなく洗い出す。",
+                inputs: [{ id: "project", label: "プロジェクト", placeholder: "例：Webサイトリニューアル" }],
+                template: "「{{project}}」を実行するためのWBS（作業分解図）を作成してください。\n大項目、中項目、小項目に分け、それぞれのタスクの所要時間の目安も記載してください。"
+            },
+            {
+                id: 38, chapter: 8, title: "リスク管理シート", 
+                description: "想定されるリスクとその対策を一覧化する。",
+                inputs: [{ id: "project", label: "プロジェクト", placeholder: "プロジェクト..." }],
+                template: "「{{project}}」において想定されるリスク（技術、スケジュール、人間関係、外部要因）を10個挙げてください。\nそれぞれのリスクの発生確率、影響度、および事前の対策案を表形式でまとめてください。"
+            },
+            {
+                id: 39, chapter: 8, title: "チームビルディング", 
+                description: "プロジェクトに必要なメンバーと役割を定義する。",
+                inputs: [{ id: "project", label: "プロジェクト", placeholder: "プロジェクト..." }],
+                template: "「{{project}}」を成功させるために必要なドリームチームを構成してください。\n必要な役割（ロール）、スキルセット、およびその役割がなぜ重要かを解説してください。"
+            },
+            {
+                id: 40, chapter: 8, title: "撤退ラインの決定", 
+                description: "感情的な深入りを防ぐため、事前に撤退基準を決める。",
+                inputs: [{ id: "project", label: "プロジェクト", placeholder: "プロジェクト..." }],
+                template: "「{{project}}」において、これ以上続けると危険であるという「撤退ライン（損切り基準）」を具体的・定量的に3つ設定してください。\n冷静な判断を下すためのガイドラインとして機能するようにしてください。"
+            },
+
+            // --- 第4部：考えるヒントがほしいとき ---
+            // 第9章 課題分析
+            {
+                id: 41, chapter: 9, title: "なぜなぜ分析", 
+                description: "「なぜ」を繰り返して根本原因を究明する。",
+                inputs: [{ id: "problem", label: "発生した問題", placeholder: "例：売上が急落した" }],
+                template: "「{{problem}}」という問題に対して、「なぜ？」を5回繰り返すことで根本原因（真因）を究明してください。\n表面的な原因から深層心理や構造的な欠陥まで掘り下げてください。"
+            },
+            {
+                id: 42, chapter: 9, title: "因果ループ図", 
+                description: "要素間の因果関係をループ構造で捉える。",
+                inputs: [{ id: "system", label: "分析対象のシステム", placeholder: "例：忙しいのに儲からない状況" }],
+                template: "「{{system}}」における因果関係を分析し、悪循環（または好循環）のループ構造を言葉で説明してください。\nどこに介入すれば（レバレッジポイント）、この構造を劇的に変えられるかを提案してください。"
+            },
+            {
+                id: 43, chapter: 9, title: "パレート分析", 
+                description: "重要な2割の要素を特定し、優先順位をつける。",
+                inputs: [{ id: "tasks", label: "課題やタスクのリスト", type: "textarea", placeholder: "リスト..." }],
+                template: "以下のリストの中で、成果の8割を生み出すと思われる「重要な2割」の要素はどれですか？\nパレートの法則に基づいて優先順位をつけ、リソースを集中すべきポイントを指摘してください。\n\nリスト：{{tasks}}"
+            },
+            {
+                id: 44, chapter: 9, title: "プロセスの可視化", 
+                description: "業務や体験のフローを書き出し、ボトルネックを見つける。",
+                inputs: [{ id: "process", label: "プロセス名", placeholder: "例：顧客の問い合わせ対応" }],
+                template: "「{{process}}」の理想的なフローと、現状のボトルネックになりやすい箇所をステップごとに書き出してください。\nどこを改善すれば全体のスピードや質が最も向上しますか？"
+            },
+
+            // 第10章 悩み分析
+            {
+                id: 45, chapter: 10, title: "悩みの分割", 
+                description: "漠然とした悩みを、解決可能なサイズのお題に分割する。",
+                inputs: [{ id: "worry", label: "漠然とした悩み", placeholder: "例：将来が不安だ" }],
+                template: "「{{worry}}」という漠然とした悩みを、時間（短期・長期）、空間（家庭・職場）、要素（金・健康・人間関係）などの切り口で分解してください。\nそれぞれを具体的な「解決可能な課題（問い）」の形に変換してください。"
+            },
+            {
+                id: 46, chapter: 10, title: "リフレーミング", 
+                description: "ネガティブな事象をポジティブな意味づけに変換する。",
+                inputs: [{ id: "negative", label: "ネガティブな事実", placeholder: "例：失敗して恥をかいた" }],
+                template: "「{{negative}}」という事実を、全く異なる視点からポジティブに解釈し直してください（リフレーミング）。\nこの経験があったからこそ得られた価値や、未来への資産となる側面を3つ挙げてください。"
+            },
+            {
+                id: 47, chapter: 10, title: "悩みの外部化", 
+                description: "悩みを自分から切り離し、客観的な対象として扱う。",
+                inputs: [{ id: "worry", label: "悩み", placeholder: "悩み..." }],
+                template: "「{{worry}}」という悩みを、まるで「やんちゃなモンスター」や「手のかかるペット」であるかのように擬人化して名前を付け、特徴を描写してください。\nそのキャラクターとどのように付き合っていけばよいか、ユーモアを交えてアドバイスしてください。"
+            },
+            {
+                id: 48, chapter: 10, title: "コントロールの輪", 
+                description: "「変えられるもの」と「変えられないもの」を仕分ける。",
+                inputs: [{ id: "situation", label: "苦しい状況", placeholder: "状況..." }],
+                template: "「{{situation}}」において、自分の力で「コントロールできること」と「コントロールできないこと」を明確に仕分けてください。\nコントロールできることだけにエネルギーを集中するための具体的なアクションプランを提示してください。"
+            },
+
+            // 第11章 人分析
+            {
+                id: 49, chapter: 11, title: "共感マップ", 
+                description: "対象人物の言動や感情を深く理解する。",
+                inputs: [{ id: "person", label: "分析したい人", placeholder: "例：部下の佐藤さん" }],
+                template: "「{{person}}」の立場になって、以下の要素を想像して埋めてください。\n・見ているもの\n・聞いていること\n・考えていること、感じていること\n・言っていること、していること\n・痛み（恐れ、不満）\n・得られるもの（願望、ニーズ）"
+            },
+            {
+                id: 50, chapter: 11, title: "カスタマージャーニー", 
+                description: "顧客の体験を時系列で追い、感情の起伏を可視化する。",
+                inputs: [{ id: "target", label: "顧客", placeholder: "例：初めてジムに通う人" }],
+                template: "「{{target}}」がサービスを認知してから利用・継続するまでのカスタマージャーニーマップを描いてください。\n各フェーズ（認知、検討、購入、利用、推奨）における行動、思考、感情の起伏（テンション）を記述してください。"
+            },
+            {
+                id: 51, chapter: 11, title: "ステークホルダー分析", 
+                description: "関係者を洗い出し、利害関係を整理する。",
+                inputs: [{ id: "project", label: "プロジェクト", placeholder: "プロジェクト..." }],
+                template: "「{{project}}」に関わるステークホルダー（利害関係者）をすべて洗い出してください。\nそれぞれを「影響力」と「関心度」の2軸でマッピングし、誰にどのようなコミュニケーションを取るべきか戦略を立ててください。"
+            },
+            {
+                id: 52, chapter: 11, title: "ジョブ理論", 
+                description: "顧客がその商品を雇う（Hire）本当の目的を探る。",
+                inputs: [{ id: "product", label: "商品", placeholder: "例：ミルクシェイク" }],
+                template: "顧客が「{{product}}」を雇う（購入する）ことで片付けようとしている「ジョブ（用事・仕事）」は何ですか？\n機能的なジョブだけでなく、感情的ジョブ、社会的ジョブも含めて分析してください。"
+            },
+
+            // 第12章 未来予測
+            {
+                id: 53, chapter: 12, title: "シナリオプランニング", 
+                description: "不確実な未来に対して、複数のシナリオを用意する。",
+                inputs: [{ id: "theme", label: "テーマ", placeholder: "例：自動車業界の未来" }],
+                template: "「{{theme}}」に関して、今後起こりうる未来を「楽観シナリオ」「悲観シナリオ」「現状維持シナリオ」「予想外の展開シナリオ」の4パターンで描いてください。\nそれぞれのシナリオへの備えも記述してください。"
+            },
+            {
+                id: 54, chapter: 12, title: "PEST分析", 
+                description: "マクロ環境を4つの要因で分析する。",
+                inputs: [{ id: "industry", label: "業界・テーマ", placeholder: "例：飲食業界" }],
+                template: "「{{industry}}」を取り巻くマクロ環境を、PEST（政治、経済、社会、技術）のフレームワークで分析してください。\n特に今後5年でインパクトの大きい要因を特定してください。"
+            },
+            {
+                id: 55, chapter: 12, title: "技術ロードマップ", 
+                description: "技術の進化と市場のニーズを時系列で結びつける。",
+                inputs: [{ id: "tech", label: "注目技術", placeholder: "例：生成AI" }],
+                template: "「{{tech}}」に関する今後10年間の技術ロードマップを予測してください。\n「黎明期」「普及期」「成熟期」に分け、各フェーズでどのような製品・サービスが登場し、社会にどう実装されていくかを描いてください。"
+            },
+            {
+                id: 56, chapter: 12, title: "SFプロトタイピング", 
+                description: "SF的な想像力を使って、飛躍した未来を描く。",
+                inputs: [{ id: "theme", label: "テーマ", placeholder: "例：食の未来" }],
+                template: "今は50年後の未来です。「{{theme}}」はどうなっていますか？\nSF作家になったつもりで、驚くような技術や生活様式が当たり前になっている世界観をショートストーリーで描写してください。"
+            }
+        ];
+
+        // 章の定義
+        const CHAPTERS = [
+            { id: 1, title: "第1章 AI特有の力", color: "bg-indigo-600", section: "第1部 すぐにアイデアがほしいとき" },
+            { id: 2, title: "第2章 自由な発想", color: "bg-sky-500", section: "第1部" },
+            { id: 3, title: "第3章 ロジカルな発想", color: "bg-emerald-500", section: "第1部" },
+            { id: 4, title: "第4章 発展", color: "bg-amber-500", section: "第2部 アイデアを磨きたいとき" },
+            { id: 5, title: "第5章 具体化", color: "bg-orange-500", section: "第2部" },
+            { id: 6, title: "第6章 検証", color: "bg-rose-500", section: "第2部" },
+            { id: 7, title: "第7章 伝え方", color: "bg-purple-600", section: "第3部 アイデアを実現したいとき" },
+            { id: 8, title: "第8章 実行策", color: "bg-purple-800", section: "第3部" },
+            { id: 9, title: "第9章 課題分析", color: "bg-teal-600", section: "第4部 考えるヒントがほしいとき" },
+            { id: 10, title: "第10章 悩み分析", color: "bg-teal-700", section: "第4部" },
+            { id: 11, title: "第11章 人分析", color: "bg-teal-800", section: "第4部" },
+            { id: 12, title: "第12章 未来予測", color: "bg-teal-900", section: "第4部" },
+        ];
+
+        // --- メインコンポーネント ---
+        const App = () => {
+            const [selectedChapter, setSelectedChapter] = useState(1);
+            const [selectedTechniqueId, setSelectedTechniqueId] = useState(1);
+            const [inputValues, setInputValues] = useState({});
+            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+            const [copyFeedback, setCopyFeedback] = useState(false);
+
+            const selectedTechnique = useMemo(() => 
+                TECHNIQUES.find(t => t.id === selectedTechniqueId) || TECHNIQUES[0]
+            , [selectedTechniqueId]);
+
+            const filteredTechniques = useMemo(() => 
+                TECHNIQUES.filter(t => t.chapter === selectedChapter)
+            , [selectedChapter]);
+
+            useEffect(() => {
+                const initialInputs = {};
+                if(selectedTechnique.inputs) {
+                    selectedTechnique.inputs.forEach(input => {
+                        initialInputs[input.id] = "";
+                    });
+                }
+                setInputValues(initialInputs);
+            }, [selectedTechniqueId]);
+
+            const handleInputChange = (id, value) => {
+                setInputValues(prev => ({ ...prev, [id]: value }));
+            };
+
+            const generatedPrompt = useMemo(() => {
+                let prompt = selectedTechnique.template;
+                if(selectedTechnique.inputs) {
+                    selectedTechnique.inputs.forEach(input => {
+                        const val = inputValues[input.id] || `[${input.label}を入力してください]`;
+                        prompt = prompt.split(`{{${input.id}}}`).join(val);
+                    });
+                }
+                return prompt;
+            }, [selectedTechnique, inputValues]);
+
+            const copyToClipboard = () => {
+                const tempTextArea = document.createElement("textarea");
+                tempTextArea.value = generatedPrompt;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    setCopyFeedback(true);
+                    setTimeout(() => setCopyFeedback(false), 2000);
+                } catch (err) {
+                    console.error("Copy failed", err);
+                }
+                document.body.removeChild(tempTextArea);
+            };
+
+            const currentSectionName = useMemo(() => {
+                const chapter = CHAPTERS.find(c => c.id === selectedChapter);
+                return chapter ? chapter.section : "";
+            }, [selectedChapter]);
+
+            return (
+                <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans">
+                    {/* --- Sidebar (Input Area) --- */}
+                    <aside className={`
+                        fixed inset-y-0 left-0 z-30 w-full md:w-96 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl
+                        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+                    `}>
+                        <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-950">
+                            <div>
+                                <h1 className="text-xl font-bold tracking-wider serif text-amber-400">思考の全技術</h1>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded border border-amber-500/30">
+                                        全56技法 完全版
+                                    </span>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white cursor-pointer">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-900">
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                        Technique No.{selectedTechnique.id}
+                                    </span>
+                                </div>
+                                <h2 className="text-2xl font-bold serif mb-3 leading-tight text-slate-100">{selectedTechnique.title}</h2>
+                                <p className="text-sm text-slate-400 leading-relaxed border-l-2 border-slate-700 pl-3">
+                                    {selectedTechnique.description}
+                                </p>
+                            </div>
+
+                            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                                {selectedTechnique.inputs && selectedTechnique.inputs.map(input => (
+                                    <div key={input.id} className="group">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-amber-500 mb-2 group-focus-within:text-amber-400 transition-colors">
+                                            {input.label}
+                                        </label>
+                                        {input.type === 'textarea' ? (
+                                            <textarea
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-md p-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all h-32 resize-none placeholder-slate-600"
+                                                placeholder={input.placeholder}
+                                                value={inputValues[input.id] || ''}
+                                                onChange={(e) => handleInputChange(input.id, e.target.value)}
+                                            />
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-md p-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder-slate-600"
+                                                placeholder={input.placeholder}
+                                                value={inputValues[input.id] || ''}
+                                                onChange={(e) => handleInputChange(input.id, e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </form>
+
+                            <div className="mt-10 bg-slate-800 rounded-lg p-4 border border-slate-700 shadow-inner">
+                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                                    <span className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                                        <BookOpen size={12} /> Generated Prompt
+                                    </span>
+                                    <button 
+                                        onClick={copyToClipboard}
+                                        className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded transition-all duration-200 cursor-pointer ${
+                                            copyFeedback 
+                                            ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(5,150,105,0.4)]' 
+                                            : 'bg-amber-500 hover:bg-amber-400 text-slate-900 hover:shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                                        }`}
+                                    >
+                                        {copyFeedback ? <Check size={14} /> : <Copy size={14} />}
+                                        {copyFeedback ? "Copied!" : "Copy to Clipboard"}
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed opacity-90 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {generatedPrompt}
+                                    </pre>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* --- Main Content --- */}
+                    <main className="flex-1 md:ml-96 h-full flex flex-col overflow-hidden bg-slate-50">
+                        
+                        {/* Mobile Header */}
+                        <div className="md:hidden bg-white border-b p-4 flex justify-between items-center shadow-sm z-20">
+                            <h1 className="font-bold serif text-slate-800">思考の全技術</h1>
+                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer">
+                                <Menu size={24} />
+                            </button>
+                        </div>
+
+                        {/* Chapter Tabs */}
+                        <div className="bg-white border-b border-slate-200 shadow-sm z-10">
+                                <div className="px-4 py-2 bg-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                {currentSectionName.split(' ')[0]} <span className="text-slate-400 font-normal normal-case ml-2">{currentSectionName.split(' ').slice(1).join(' ')}</span>
+                            </div>
+                            <div className="w-full">
+                                <div className="flex flex-wrap px-4 py-3 gap-2">
+                                    {CHAPTERS.map(chapter => (
+                                        <button
+                                            key={chapter.id}
+                                            onClick={() => setSelectedChapter(chapter.id)}
+                                            className={`
+                                                flex flex-col items-start px-4 py-2 rounded-lg text-sm transition-all duration-200 border cursor-pointer
+                                                ${selectedChapter === chapter.id 
+                                                    ? `${chapter.color} text-white border-transparent shadow-md transform scale-105` 
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                                }
+                                            `}
+                                        >
+                                            <span className={`text-[10px] opacity-80 uppercase tracking-wider ${selectedChapter === chapter.id ? 'text-white' : 'text-slate-400'}`}>Chapter {chapter.id}</span>
+                                            <span className="font-bold font-serif">{chapter.title.replace(/^第\d章\s/, '')}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Technique Grid */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+                            <div className="max-w-6xl mx-auto">
+                                <div className="mb-6 flex items-end justify-between">
+                                    <h2 className="text-xl md:text-2xl font-bold serif text-slate-800 flex items-center gap-3">
+                                        <span className={`w-1.5 h-8 rounded-full ${CHAPTERS.find(c => c.id === selectedChapter).color}`}></span>
+                                        {CHAPTERS.find(c => c.id === selectedChapter).title}
+                                    </h2>
+                                    <span className="text-xs text-slate-400 hidden sm:inline-block">
+                                        {filteredTechniques.length} Techniques available
+                                    </span>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                                    {filteredTechniques.map(tech => (
+                                        <button
+                                            key={tech.id}
+                                            onClick={() => {
+                                                setSelectedTechniqueId(tech.id);
+                                                if (window.innerWidth < 768) setIsSidebarOpen(true);
+                                            }}
+                                            className={`
+                                                group relative text-left p-5 rounded-xl border transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer
+                                                ${selectedTechniqueId === tech.id 
+                                                    ? 'bg-white border-amber-400 ring-1 ring-amber-400 shadow-md' 
+                                                    : 'bg-white border-slate-200 hover:border-amber-300'
+                                                }
+                                            `}
+                                        >
+                                            <div className="flex justify-between items-start mb-3">
+                                                <span className={`
+                                                    inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-bold font-mono
+                                                    ${selectedTechniqueId === tech.id 
+                                                        ? 'bg-amber-100 text-amber-700' 
+                                                        : 'bg-slate-100 text-slate-500 group-hover:bg-amber-50 group-hover:text-amber-600'
+                                                    }
+                                                `}>
+                                                    {tech.id}
+                                                </span>
+                                                {selectedTechniqueId === tech.id && (
+                                                    <CheckCircle className="text-amber-500" size={18} />
+                                                )}
+                                            </div>
+                                            <h3 className={`font-bold text-base mb-2 group-hover:text-amber-700 transition-colors ${selectedTechniqueId === tech.id ? 'text-slate-900' : 'text-slate-700'}`}>
+                                                {tech.title}
+                                            </h3>
+                                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">
+                                                {tech.description}
+                                            </p>
+                                        </button>
+                                    ))}
+                                    
+                                    {/* Empty State */}
+                                    {filteredTechniques.length === 0 && (
+                                        <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                                            <div className="inline-block p-4 rounded-full bg-slate-100 text-slate-400 mb-3">
+                                                <BookOpen size={32} />
+                                            </div>
+                                            <p className="text-slate-500 font-medium">この章の技法は準備中です。</p>
+                                            <p className="text-xs text-slate-400 mt-1">Coming soon...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
