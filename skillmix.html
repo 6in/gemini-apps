@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+    <title>GitHub to Repomix Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary: #1e293b;
+            --secondary-hover: #334155;
+            --glass-bg: rgba(30, 41, 59, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius-lg: 16px;
+            --radius-md: 8px;
+            --transition: all 0.2s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.15), transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.15), transparent 50%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-color);
+            padding: 1rem 1.2rem;
+            font-size: 1.1rem;
+            font-family: inherit;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px -2px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: var(--secondary);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--secondary-hover);
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.3);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .toolbar-title {
+            font-weight: 600;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .toolbar-actions button {
+            padding: 0.6rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .editor-container {
+            height: 260px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        #editor {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Loading Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-text {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        /* Prompts Section */
+        .prompts-section {
+            margin-top: 1rem;
+        }
+
+        .category-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            width: 100%;
+        }
+
+        .category-section {
+            margin-bottom: 1.5rem;
+            width: 100%;
+        }
+
+        .prompts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .prompt-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .prompt-card:hover {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(96, 165, 250, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .prompt-title {
+            font-weight: 600;
+            color: #e2e8f0;
+            font-size: 1.05rem;
+        }
+
+        .prompt-text {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .prompt-card {
+            cursor: pointer;
+        }
+
+        .prompt-card:hover {
+            border-color: rgba(96, 165, 250, 0.35);
+            background: rgba(96, 165, 250, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+
+            .input-group button {
+                width: 100%;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            .toolbar-actions {
+                width: 100%;
+            }
+
+            .toolbar-actions button {
+                flex: 1;
+            }
+        }
+
+        /* Tabs UI */
+        .tabs {
+            display: flex;
+            gap: 1px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 0 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 0.8rem 1.2rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #a78bfa;
+            border-bottom-color: #a78bfa;
+            font-weight: 500;
+        }
+
+        /* Skill Finder Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        .modal-close:hover {
+            opacity: 1;
+        }
+
+        /* Scoped Skill Finder CSS variables (avoiding conflict with Repomix styles) */
+        .skill-finder-app {
+            --sf-bg: transparent;
+            --sf: #1e293b;
+            --sf2: #334155;
+            --bd: var(--glass-border);
+            --bd-act: var(--primary);
+            --tx: var(--text-color);
+            --dim: #94a3b8;
+            --mt: #64748b;
+            --blue: var(--primary);
+            --bg-blue: rgba(59, 130, 246, 0.12);
+            --green: var(--success);
+            --bg-green: rgba(16, 185, 129, 0.12);
+            --violet: #8b5cf6;
+            --amber: #f59e0b;
+            --red: var(--danger);
+            --mono: 'IBM Plex Mono', monospace;
+            --body: 'Noto Sans JP', 'IBM Plex Mono', sans-serif;
+            font-family: var(--body);
+            color: var(--tx);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>GitHub to Repomix Converter</h1>
+            <p class="subtitle">Extract any public GitHub repository directly into a single XML representation.</p>
+        </header>
+
+        <section class="glass-panel" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div
+                style="background: rgba(15, 23, 42, 0.4); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                <label
+                    style="display: block; margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0;">1.
+                    Target Repository</label>
+                <input type="text" id="repoUrl"
+                    placeholder="Enter Repository URL (e.g. https://github.com/facebook/react or gitlab.com/...)"
+                    autocomplete="off" style="display: block; width: 100%; margin-bottom: 0;">
+
+                <details style="margin-top: 1rem;">
+                    <summary
+                        style="cursor: pointer; font-size: 0.85rem; color: #64748b; opacity: 0.8; user-select: none;">⚙️
+                        Advanced Options (Private Repos / GitLab Self-Hosted)</summary>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <label
+                                style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: #cbd5e1;">Access
+                                Token (Optional)</label>
+                            <input type="password" id="accessToken" placeholder="ghp_... or glpat_..."
+                                autocomplete="off"
+                                style="width: 100%; padding: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 4px; color: white;">
+                        </div>
+                        <div style="flex: 1; min-width: 250px;">
+                            <label
+                                style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: #cbd5e1;">Custom
+                                GitLab API URL (Self-Hosted)</label>
+                            <input type="text" id="customApiUrl" placeholder="e.g. https://git.mycompany.com/api/v4"
+                                autocomplete="off"
+                                style="width: 100%; padding: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 4px; color: white;">
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Agent Skills (React Mount Point) -->
+            <details
+                style="background: rgba(15, 23, 42, 0.4); border-radius: 8px; border: 1px solid var(--glass-border);">
+                <summary
+                    style="padding: 1rem 1.5rem; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: #e2e8f0; user-select: none; list-style: none; display: flex; align-items: center; gap: 8px;">
+                    <span style="opacity: 0.5; font-size: 0.8rem;">▶</span>
+                    2. Attach Agent Skills 🧠 <span
+                        style="font-size: 0.8rem; color: #64748b; font-weight: 400;">(Optional)</span>
+                </summary>
+                <div style="padding: 0 1.5rem 1.5rem;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem;">Search and select AI skills to
+                        merge into your Repomix output.</div>
+
+                    <!-- Hidden input to hold selected skills for the vanilla JS to read -->
+                    <input type="hidden" id="customSkills" value="">
+
+                    <div id="skillFinderRoot"></div>
+                </div>
+            </details>
+
+            <div style="margin-top: 0.5rem;">
+                <button id="convertBtn" style="width: 100%; padding: 1.2rem; font-size: 1.2rem;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Get Sources
+                </button>
+            </div>
+        </section>
+
+        <section class="glass-panel editor-section"
+            style="display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div style="padding: 1rem 1.5rem 0.5rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0;">3. Repomix
+                Output</div>
+            <div class="tabs">
+                <button class="tab-btn active" data-target="source">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                    Source Code
+                </button>
+                <button class="tab-btn" data-target="skills" id="skillsTabBtn" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Agent Skills
+                </button>
+            </div>
+            <div class="toolbar" style="border-bottom: none;">
+                <div class="toolbar-title" id="activeTabTitle" style="font-size: 0.95rem; color: #94a3b8;">
+                    Source Code Output
+                </div>
+                <div class="toolbar-actions">
+                    <button id="expandEditorBtn" class="btn-secondary" title="Toggle editor height"
+                        style="font-size:13px;">
+                        ⇕ Expand
+                    </button>
+                    <button id="copyBtn" class="btn-secondary" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy XML
+                    </button>
+                    <button id="downloadBtn" class="btn-secondary" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download
+                    </button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div id="editor"></div>
+                <div class="overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div class="status-text" id="statusText">Fetching repository...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analysis Prompts Section -->
+        <section class="glass-panel prompts-section">
+            <div style="margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0;">4. Analysis
+                Prompts</div>
+            <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 1rem; color: #64748b;">Click any card to copy
+                and paste into NotebookLM alongside your Repomix XML.</p>
+
+            <div class="prompts-grid" id="promptsGrid">
+                <!-- Prompts will be dynamically generated here -->
+            </div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <span id="toastMsg">Copied to clipboard!</span>
+    </div>
+
+    <script>
+        // Monaco Editor setup
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+
+        let editor;
+        let sourceOutput = '';
+        let skillsOutput = '';
+        let currentActiveTab = 'source';
+        let currentRepoName = 'repo';
+
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: '<!-- Enter a GitHub repository URL and click Convert -->\n<files>\n</files>',
+                language: 'xml',
+                theme: 'vs-dark',
+                readOnly: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                lineHeight: 1.5,
+                padding: { top: 16, bottom: 16 }
+            });
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                editor.layout();
+            });
+
+            // Expand / collapse toggle for editor
+            const expandEditorBtn = document.getElementById('expandEditorBtn');
+            const editorContainer = document.querySelector('.editor-container');
+            let editorExpanded = false;
+            expandEditorBtn.addEventListener('click', () => {
+                editorExpanded = !editorExpanded;
+                editorContainer.style.height = editorExpanded ? '1040px' : '260px';
+                expandEditorBtn.textContent = editorExpanded ? '⇔ Collapse' : '⇕ Expand';
+                editor.layout();
+            });
+        });
+
+        // Tab Switching Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = e.currentTarget.getAttribute('data-target');
+                if (currentActiveTab === target || !editor) return;
+
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                currentActiveTab = target;
+
+                if (target === 'source') {
+                    document.getElementById('activeTabTitle').textContent = 'Source Code Output';
+                    editor.setValue(sourceOutput || '<!-- No source code generated yet -->');
+                } else if (target === 'skills') {
+                    document.getElementById('activeTabTitle').textContent = 'Agent Skills Output';
+                    editor.setValue(skillsOutput || '<!-- No agent skills generated yet -->');
+                }
+            });
+        });
+
+        // Excluded extensions (images, binaries, etc.)
+        const excludedExtensions = new Set([
+            'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp',
+            'mp4', 'webm', 'ogg', 'mp3', 'wav',
+            'zip', 'tar', 'gz', 'rar', '7z',
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'exe', 'dll', 'so', 'dylib', 'a', 'o', 'class', 'jar',
+            'ttf', 'otf', 'woff', 'woff2', 'eot',
+            'pyc', 'gem', 'lock'
+        ]);
+
+        const textEncoder = new TextDecoder('utf-8');
+
+        // UI Elements
+        const repoUrlInput = document.getElementById('repoUrl');
+        const convertBtn = document.getElementById('convertBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const statusText = document.getElementById('statusText');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+
+        function showToast(message, isError = false) {
+            toastMsg.textContent = message;
+            if (isError) {
+                toast.classList.add('error');
+            } else {
+                toast.classList.remove('error');
+            }
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize NotebookLM Prompts
+        const promptCategories = [
+            {
+                name: "1. Overview & Onboarding (概要・導入)",
+                prompts: [
+                    { title: "Repository Overview", text: "このリポジトリの目的、主要な機能、ターゲットとなるユーザー層を要約して。" },
+                    { title: "Business Logic", text: "このコードベースが解決しようとしているコアなビジネスロジックや課題は何かを説明して。" },
+                    { title: "Tech Stack & Dependencies", text: "使用されている主要な言語、フレームワーク、ライブラリをリストし、それぞれの役割を説明して。" },
+                    { title: "Onboarding Guide", text: "新人開発者向けに、このプロジェクトの全体像を掴むために最初に読むべきファイルとその理由を教えて。" }
+                ]
+            },
+            {
+                name: "2. Architecture & Design (設計・構造)",
+                prompts: [
+                    { title: "Architecture Analysis", text: "全体のアーキテクチャパターン（MVC、マイクロサービスなど）を特定し、主要コンポーネントの役割を解説して。" },
+                    { title: "Data Flow", text: "ユーザーの入力からバックエンド処理、結果の返却に至るまでの典型的なデータフローを追跡して。" },
+                    { title: "Database & State Management", text: "データや状態がどのように管理・永続化されているか、関連するファイルや仕組みを教えて。" },
+                    { title: "API Design", text: "実装されている主要なAPIエンドポイントやインターフェースの設計方針についてまとめて。" }
+                ]
+            },
+            {
+                name: "3. Code Quality & Refactoring (品質・リファクタリング)",
+                prompts: [
+                    { title: "Code Quality Review", text: "全体的なコード品質を評価し、ベストプラクティスから逸脱している部分を指摘して。" },
+                    { title: "Refactoring Suggestions", text: "最も複雑で「コードの匂い」がする箇所を特定し、具体的なリファクタリング案を提示して。" },
+                    { title: "Naming Conventions", text: "変数や関数の命名規則に一貫性はあるか？改善すべき点があれば例を挙げて。" },
+                    { title: "Performance Bottlenecks", text: "パフォーマンス上のボトルネックになり得る非効率な処理や不要なループ処理を探して。" }
+                ]
+            },
+            {
+                name: "4. Testing & Debugging (テスト・デバッグ)",
+                prompts: [
+                    { title: "Bug Hunting", text: "現状の実装で、適切に処理されていないエッジケースや潜在的なバグの原因になりそうな箇所を特定して。" },
+                    { title: "Error Handling Audit", text: "エラーハンドリング機構（try-catchなど）の網羅性を評価し、エラーが握りつぶされている箇所がないか確認して。" },
+                    { title: "Test Case Generation", text: "最も重要なコアロジックを特定し、その部分に対する網羅的な単体テストのケースを5つ提案して。" },
+                    { title: "Logging Review", text: "アプリケーションのログ出力は十分か？トラブルシューティングに役立つ情報が出力されているかを評価して。" }
+                ]
+            },
+            {
+                name: "5. Security & Compliance (セキュリティ)",
+                prompts: [
+                    { title: "Security Vulnerabilities", text: "インジェクション、XSS、CSRFなどの一般的なセキュリティ脆弱性が潜んでいないか監査して。" },
+                    { title: "Hardcoded Secrets", text: "APIキー、パスワード、トークンなどの機密情報がソースコードにハードコードされていないか確認して。" },
+                    { title: "Dependency Risks", text: "使われているライブラリのバージョンや構成から、既知のセキュリティリスクに繋がりそうなものがあれば指摘して。" },
+                    { title: "Access Control", text: "ユーザーの認証・認可に関するロジックを分析し、権限昇格などの抜け道がないかをチェックして。" }
+                ]
+            }
+        ];
+
+        const promptsGrid = document.getElementById('promptsGrid');
+        promptsGrid.style.display = 'block'; // Remove overall grid to allow stacked sections
+
+        promptCategories.forEach(category => {
+            // Container for this category
+            const categorySection = document.createElement('div');
+            categorySection.className = 'category-section';
+
+            // Add Category Title
+            const catTitle = document.createElement('h3');
+            catTitle.className = 'category-title';
+            catTitle.textContent = category.name;
+            categorySection.appendChild(catTitle);
+
+            // Add inner row/grid for this category's cards
+            const innerGrid = document.createElement('div');
+            innerGrid.className = 'prompts-grid';
+
+            category.prompts.forEach(prompt => {
+                const card = document.createElement('div');
+                card.className = 'prompt-card';
+
+                card.innerHTML = `
+                    <div class="prompt-title" style="font-weight:600; margin-bottom:0.4rem; font-size:0.9rem;">${escapeXml(prompt.title)}</div>
+                    <div class="prompt-text">${escapeXml(prompt.text)}</div>
+                `;
+                card.setAttribute('data-text', prompt.text);
+                card.title = 'Click to copy';
+
+                innerGrid.appendChild(card);
+            });
+
+            categorySection.appendChild(innerGrid);
+            promptsGrid.appendChild(categorySection);
+        });
+
+        // Make prompt cards clickable to copy
+        document.querySelectorAll('.prompt-card').forEach(card => {
+            card.addEventListener('click', function () {
+                const textToCopy = this.getAttribute('data-text');
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast('Prompt copied to clipboard!');
+                }).catch(err => {
+                    showToast('Failed to copy prompt', true);
+                    console.error(err);
+                });
+            });
+        });
+
+        function extractRepoInfo(url, customApiUrl) {
+            try {
+                url = url.trim();
+                if (!url.startsWith('http')) {
+                    url = 'https://' + url;
+                }
+                const parsedUrl = new URL(url);
+                const parts = parsedUrl.pathname.split('/').filter(p => p.length > 0);
+                if (parts.length < 2) {
+                    throw new Error('Invalid repository URL');
+                }
+
+                let platform = 'unknown';
+                if (parsedUrl.hostname === 'github.com') platform = 'github';
+                else if (parsedUrl.hostname === 'gitlab.com') platform = 'gitlab';
+                else if (customApiUrl) platform = 'gitlab'; // Assume self-hosted Gitlab if custom API set
+                else {
+                    if (parsedUrl.hostname.includes('gitlab')) platform = 'gitlab';
+                    else platform = 'github'; // fallback estimation
+                }
+                let subPath = '';
+                let branchHint = '';
+
+                // Parse potential branch and subdirectory (GitHub style: /tree/{branch}/{path})
+                const treeIndex = parts.indexOf('tree');
+                if (treeIndex !== -1 && parts.length > treeIndex + 2) {
+                    branchHint = parts[treeIndex + 1];
+                    subPath = parts.slice(treeIndex + 2).join('/');
+                    // Remove tree parsing from repo full path
+                    parts = parts.slice(0, treeIndex);
+                } else {
+                    // GitLab style: /-/tree/{branch}/{path}
+                    const glTreeIndex = parts.indexOf('-');
+                    if (glTreeIndex !== -1 && parts[glTreeIndex + 1] === 'tree' && parts.length > glTreeIndex + 3) {
+                        branchHint = parts[glTreeIndex + 2];
+                        subPath = parts.slice(glTreeIndex + 3).join('/');
+                        parts = parts.slice(0, glTreeIndex);
+                    }
+                }
+
+                // Handle skills.sh mapping (skills.sh/vercel-labs/agent-skills/vercel-react-best-practices -> github.com/vercel-labs/agent-skills/tree/main/skills/vercel-react-best-practices)
+                if (parsedUrl.hostname === 'skills.sh') {
+                    platform = 'github';
+                    if (parts.length >= 3) {
+                        subPath = `skills/${parts.slice(2).join('/')}`;
+                    }
+                    if (!branchHint) branchHint = 'main';
+                    // Reconstruct fullPath manually for skills.sh URLs (owner/repo)
+                    const tempFullPath = parts.slice(0, 2).join('/');
+                    return {
+                        platform,
+                        hostname: 'github.com',
+                        fullPath: tempFullPath,
+                        gitlabPath: '',
+                        repoName: parts[1],
+                        subPath: subPath,
+                        branchHint: branchHint
+                    };
+                }
+
+                return {
+                    platform,
+                    hostname: parsedUrl.hostname,
+                    fullPath: parts.slice(0, 2).join('/'), // GitHub style (owner/repo)
+                    gitlabPath: parts.join('/'), // GitLab style supports subgroups
+                    repoName: parts[parts.length - 1],
+                    subPath: subPath,
+                    branchHint: branchHint
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function escapeXml(unsafe) {
+            return unsafe.replace(/[<>&'"]/g, function (c) {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                }
+            });
+        }
+
+        // Escape CDATA end marker ']]>' if it exists within the text
+        function escapeCdata(content) {
+            return content.replace(/\]\]>/g, ']]]]><![CDATA[>');
+        }
+
+        async function fetchRepositoryFiles(urlRaw, customApiValue, tokenValue, isSkill = false) {
+            const info = extractRepoInfo(urlRaw, customApiValue);
+            if (!info) {
+                throw new Error(`Invalid URL: ${urlRaw}`);
+            }
+
+            const { platform, hostname, fullPath, gitlabPath, repoName, subPath, branchHint } = info;
+            const prefix = isSkill ? `${repoName}${subPath ? '-' + subPath.split('/').pop() : ''}` : '';
+
+            const fetchHeaders = {};
+            if (tokenValue) {
+                if (platform === 'github') fetchHeaders['Authorization'] = `Bearer ${tokenValue}`;
+                else fetchHeaders['PRIVATE-TOKEN'] = tokenValue;
+            }
+
+            let validFiles = [];
+            let branch = branchHint || 'main';
+
+            if (platform === 'github') {
+                statusText.textContent = `Fetching info for ${fullPath}...`;
+                const repoResponse = await fetch(`https://api.github.com/repos/${fullPath}`, { headers: fetchHeaders });
+                if (!repoResponse.ok) {
+                    if (repoResponse.status === 403) throw new Error(`API Rate limit exceeded for ${fullPath}.`);
+                    if (repoResponse.status === 404) throw new Error(`Repository not found: ${fullPath} (is it private?).`);
+                    throw new Error(`Failed to fetch repo info: ${repoResponse.status}`);
+                }
+                if (!branchHint) {
+                    const repoData = await repoResponse.json();
+                    branch = repoData.default_branch || 'main';
+                }
+
+                statusText.textContent = `Fetching tree for ${fullPath} (${branch})...`;
+                const treeResponse = await fetch(`https://api.github.com/repos/${fullPath}/git/trees/${branch}?recursive=1`, { headers: fetchHeaders });
+                if (!treeResponse.ok) throw new Error(`Failed to fetch tree: ${treeResponse.status}`);
+
+                const treeData = await treeResponse.json();
+                if (treeData.truncated) console.warn("Tree truncated by GitHub.");
+
+                validFiles = treeData.tree.filter(item => {
+                    if (item.type !== 'blob') return false;
+                    const path = item.path;
+                    if (subPath && !path.startsWith(`${subPath}/`) && path !== subPath) return false;
+
+                    const lastDot = path.lastIndexOf('.');
+                    const ext = lastDot !== -1 ? path.substring(lastDot + 1).toLowerCase() : '';
+                    if (excludedExtensions.has(ext)) return false;
+                    if (item.size > 500000) return false;
+                    return true;
+                });
+            } else if (platform === 'gitlab') {
+                const encodedId = encodeURIComponent(gitlabPath);
+                const baseUrl = customApiValue || `https://${hostname}/api/v4`;
+
+                statusText.textContent = `Fetching GitLab info for ${gitlabPath}...`;
+                const repoResponse = await fetch(`${baseUrl}/projects/${encodedId}`, { headers: fetchHeaders });
+                if (!repoResponse.ok) throw new Error(`Failed to fetch repo: ${repoResponse.status}`);
+
+                const repoData = await repoResponse.json();
+                branch = repoData.default_branch || 'main';
+
+                statusText.textContent = `Fetching tree for ${gitlabPath} (${branch})...`;
+                const treeResponse = await fetch(`${baseUrl}/projects/${encodedId}/repository/tree?recursive=true&per_page=1000`, { headers: fetchHeaders });
+                if (!treeResponse.ok) throw new Error(`Failed to fetch tree: ${treeResponse.status}`);
+
+                const treeData = await treeResponse.json();
+
+                validFiles = treeData.filter(item => {
+                    if (item.type !== 'blob') return false;
+                    const path = item.path;
+                    if (subPath && !path.startsWith(`${subPath}/`) && path !== subPath) return false;
+                    const lastDot = path.lastIndexOf('.');
+                    const ext = lastDot !== -1 ? path.substring(lastDot + 1).toLowerCase() : '';
+                    if (excludedExtensions.has(ext)) return false;
+                    return true;
+                });
+            }
+
+            if (validFiles.length === 0) {
+                throw new Error(`No valid files found for: ${urlRaw}`);
+            }
+
+            // Cap files
+            const MAX_FILES = 1000;
+            if (validFiles.length > MAX_FILES) {
+                validFiles = validFiles.slice(0, MAX_FILES);
+                showToast(`Warning: ${repoName} is large. Limited to ${MAX_FILES} files.`, true);
+            }
+
+            let fileContents = [];
+            const BATCH_SIZE = 10;
+            for (let i = 0; i < validFiles.length; i += BATCH_SIZE) {
+                const batch = validFiles.slice(i, i + BATCH_SIZE);
+                statusText.textContent = `Downloading ${repoName} files (${i} / ${validFiles.length})...`;
+
+                const promises = batch.map(async (item) => {
+                    try {
+                        let res;
+                        if (platform === 'github') {
+                            const rawUrl = `https://raw.githubusercontent.com/${fullPath}/${branch}/${item.path}`;
+                            res = await fetch(rawUrl, { headers: fetchHeaders });
+                        } else {
+                            const baseUrl = customApiValue || `https://${hostname}/api/v4`;
+                            const encodedId = encodeURIComponent(gitlabPath);
+                            const encodedPath = encodeURIComponent(item.path);
+                            const rawUrl = `${baseUrl}/projects/${encodedId}/repository/files/${encodedPath}/raw?ref=${branch}`;
+                            res = await fetch(rawUrl, { headers: fetchHeaders });
+                        }
+
+                        if (!res.ok) return null;
+
+                        const buffer = await res.arrayBuffer();
+                        const uint8arr = new Uint8Array(buffer);
+                        if (uint8arr.some(byte => byte === 0)) return null;
+
+                        const content = textEncoder.decode(uint8arr);
+                        let displayPath = subPath && item.path.startsWith(`${subPath}/`) ? item.path.substring(subPath.length + 1) : item.path;
+                        if (isSkill) {
+                            displayPath = `${prefix}/${displayPath}`; // Used as instruction name/path
+                        }
+
+                        return { path: displayPath, content: content };
+                    } catch (e) {
+                        return null;
+                    }
+                });
+
+                const results = await Promise.all(promises);
+                for (const res of results) {
+                    if (res) {
+                        fileContents.push(res);
+                    }
+                }
+            }
+
+            return {
+                repoInfo: info,
+                files: fileContents
+            };
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            const urlRaw = repoUrlInput.value.trim();
+            const customApiValue = document.getElementById('customApiUrl')?.value.trim();
+            const tokenValue = document.getElementById('accessToken')?.value.trim();
+            const customSkillsRaw = document.getElementById('customSkills')?.value.trim();
+
+            if (!urlRaw && !customSkillsRaw) {
+                showToast('Please enter a repository URL or select at least one skill', true);
+                return;
+            }
+
+            // Gather all skill URLs
+            const skillUrls = [];
+            if (customSkillsRaw) {
+                customSkillsRaw.split(',').forEach(s => {
+                    const trimmed = s.trim();
+                    if (trimmed) skillUrls.push(trimmed);
+                });
+            }
+
+            convertBtn.disabled = true;
+            copyBtn.disabled = true;
+            downloadBtn.disabled = true;
+            loadingOverlay.classList.add('active');
+
+            try {
+                let allFiles = [];
+                let skillFiles = [];
+                let directoryStructure = '';
+
+                // 1. Fetch main repo (only if URL is provided)
+                if (urlRaw) {
+                    const mainRepoResult = await fetchRepositoryFiles(urlRaw, customApiValue, tokenValue, false);
+                    const { platform, repoName, subPath } = mainRepoResult.repoInfo;
+                    currentRepoName = subPath ? `${platform}-${repoName}-${subPath.split('/').pop()}` : `${platform}-${repoName}`;
+
+                    allFiles = allFiles.concat(mainRepoResult.files);
+                    mainRepoResult.files.forEach(f => {
+                        directoryStructure += `${f.path}\n`;
+                    });
+                } else {
+                    currentRepoName = 'skills-only';
+                }
+
+                // 2. Fetch skills into a separate bucket
+                for (const skillUrl of skillUrls) {
+                    try {
+                        // Check if the React component pre-fetched this skill
+                        const cached = window._skillCache && window._skillCache[skillUrl];
+                        if (cached && cached.content) {
+                            // Use pre-fetched content directly
+                            skillFiles.push({ path: cached.path || (skillUrl.split('/').pop() + '/SKILL.md'), content: cached.content });
+                            console.log(`Using cached skill: ${skillUrl}`);
+                        } else {
+                            // Fall back to live fetch
+                            const skillResult = await fetchRepositoryFiles(skillUrl, customApiValue, tokenValue, true);
+                            skillFiles = skillFiles.concat(skillResult.files);
+                        }
+                    } catch (skillErr) {
+                        console.warn(`Failed to fetch skill: ${skillUrl}`, skillErr);
+                        showToast(`Skipped skill: ${skillErr.message}`, true);
+                    }
+                }
+
+                if (allFiles.length === 0 && skillFiles.length === 0) {
+                    throw new Error("No files found. Enter a repository URL or select at least one skill.");
+                }
+
+                // Build Source XML Output
+                let sourceXml = `This file is a merged representation of the codebase, combined into a single document by Repomix.\n\n`;
+                sourceXml += `<file_summary>\nThis section contains a summary of this file.\n\n<notes>\n- Binary files are not included.\n</notes>\n</file_summary>\n\n`;
+                sourceXml += `<directory_structure>\n${directoryStructure}</directory_structure>\n\n`;
+                sourceXml += `<files>\nThis section contains the contents of the repository's files.\n\n`;
+                allFiles.forEach(f => {
+                    sourceXml += `\n<file path="${escapeXml(f.path)}">\n${f.content}\n</file>\n`;
+                });
+                sourceXml += `</files>`;
+
+                sourceOutput = sourceXml;
+
+                // Build Skills XML Output
+                if (skillFiles.length > 0) {
+                    let skillXml = `This file contains a merged representation of Agent Skills and Best Practices.\n\n`;
+                    skillXml += `<custom_instructions>\nThis section contains agent skills and best practices that you must closely follow when analyzing or modifying the codebase.\n\n`;
+                    skillFiles.forEach(f => {
+                        skillXml += `\n<instruction path="${escapeXml(f.path)}">\n${f.content}\n</instruction>\n`;
+                    });
+                    skillXml += `</custom_instructions>`;
+                    skillsOutput = skillXml;
+
+                    document.getElementById('skillsTabBtn').style.display = 'flex';
+                } else {
+                    skillsOutput = '';
+                    document.getElementById('skillsTabBtn').style.display = 'none';
+                    if (currentActiveTab === 'skills') {
+                        document.querySelector('.tab-btn[data-target="source"]').click();
+                    }
+                }
+
+                // Update UI
+                if (editor) {
+                    editor.setValue(currentActiveTab === 'source' ? sourceOutput : skillsOutput);
+                }
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                statusText.textContent = 'Done!';
+                showToast(`Successfully extracted ${allFiles.length} files` + (skillFiles.length > 0 ? ` and ${skillFiles.length} skills` : ''));
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || 'An error occurred during conversion', true);
+                if (editor) {
+                    editor.setValue(`<!-- Error: ${error.message} -->\n<files></files>`);
+                }
+            } finally {
+                loadingOverlay.classList.remove('active');
+                convertBtn.disabled = false;
+            }
+        });
+
+        // Copy functionality
+        copyBtn.addEventListener('click', () => {
+            const textToCopy = currentActiveTab === 'source' ? sourceOutput : skillsOutput;
+            if (!textToCopy) return;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast(`Copied ${currentActiveTab === 'source' ? 'Source' : 'Skills'} XML to clipboard!`);
+            }).catch(err => {
+                showToast('Failed to copy', true);
+                console.error(err);
+            });
+        });
+
+        // Download functionality
+        downloadBtn.addEventListener('click', () => {
+            const textToDownload = currentActiveTab === 'source' ? sourceOutput : skillsOutput;
+            if (!textToDownload) return;
+            const blob = new Blob([textToDownload], { type: 'application/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const suffix = currentActiveTab === 'source' ? 'repomix' : 'skills';
+            a.download = `${currentRepoName}-${suffix}.xml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Download started for ${suffix}.xml!`);
+        });
+
+        // Enter key to convert
+        repoUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                convertBtn.click();
+            }
+        });
+    </script>
+
+    <script type="text/babel">
+        // --- React Skill Finder App Injection ---
+        const { useState, useCallback, useRef, useEffect } = React;
+        const SKILLS_API = "https://corsproxy.io/?url=" + encodeURIComponent("https://skills.sh/api/search");
+
+        function SkillFinderApp() {
+            const [query, setQuery] = useState("");
+            const [results, setResults] = useState(null);
+            const [searching, setSearching] = useState(false);
+            const [searchErr, setSearchErr] = useState(null);
+            const [selectedSkills, setSelectedSkills] = useState([]);
+            const [fetchingNames, setFetchingNames] = useState(new Set());
+            const abortRef = useRef(null);
+            const inputRef = useRef(null);
+
+            // Initialize the global skill cache if not yet present
+            if (!window._skillCache) window._skillCache = {};
+
+            // Sync URLs to hidden input so vanilla JS can read them
+            useEffect(() => {
+                const input = document.getElementById('customSkills');
+                if (input) {
+                    input.value = selectedSkills.map(s => s._url).join(",");
+                }
+            }, [selectedSkills]);
+
+            const doSearch = useCallback(async (q) => {
+                if (!q.trim()) return;
+                if (abortRef.current) abortRef.current.abort();
+                const ac = new AbortController();
+                abortRef.current = ac;
+                setSearching(true);
+                setSearchErr(null);
+                setResults(null);
+                try {
+                    const targetUrl = SKILLS_API + encodeURIComponent("?q=" + encodeURIComponent(q.trim()));
+                    const res = await fetch(targetUrl, { signal: ac.signal });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const data = await res.json();
+                    const list = Array.isArray(data) ? data : (data.skills || data.results || []);
+                    setResults(list);
+                } catch (e) {
+                    if (e.name !== "AbortError") { setSearchErr(e.message); setResults([]); }
+                } finally { setSearching(false); }
+            }, []);
+
+            const fetchAndCacheSkill = async (skill) => {
+                const owner = skill.owner || (skill.source || "").split("/")[0];
+                const repo = skill.repo || (skill.source || "").split("/")[1];
+                const shUrl = "https://skills.sh/" + owner + "/" + repo + "/" + skill.name;
+
+                // Already cached or selected — skip
+                if (window._skillCache[shUrl]) return { shUrl, ok: true };
+
+                try {
+                    const treeRes = await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/git/trees/main?recursive=1");
+                    if (!treeRes.ok) throw new Error("GitHub tree API " + treeRes.status);
+                    const treeData = await treeRes.json();
+                    const skillFiles = treeData.tree.filter(t => t.path.endsWith("SKILL.md"));
+
+                    const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const safeSkill = normalize(skill.name);
+
+                    let bestMatch = skillFiles.find(t => {
+                        const folder = (t.path.split('/').slice(-2)[0] || "");
+                        const safeFolder = normalize(folder);
+                        return safeSkill === safeFolder || safeSkill.endsWith(safeFolder) || safeFolder.endsWith(safeSkill);
+                    });
+                    if (!bestMatch && skillFiles.length === 1) bestMatch = skillFiles[0];
+                    if (!bestMatch) bestMatch = skillFiles.find(t =>
+                        t.path.toLowerCase().replace(/[^a-z0-9]/g, '').includes(safeSkill)
+                    ) || { path: "skills/" + skill.name + "/SKILL.md" };
+
+                    const rawUrl = "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + bestMatch.path;
+                    const rawRes = await fetch(rawUrl);
+                    if (!rawRes.ok) throw new Error("Raw fetch " + rawRes.status);
+                    const content = await rawRes.text();
+
+                    window._skillCache[shUrl] = { rawUrl, content, path: skill.name + "/SKILL.md" };
+                    return { shUrl, ok: true };
+                } catch (e) {
+                    // Cache a failure marker so we don't retry
+                    window._skillCache[shUrl] = { rawUrl: null, content: null, error: e.message };
+                    return { shUrl, ok: false, error: e.message };
+                }
+            };
+
+            const handleAdd = useCallback(async (skill) => {
+                const owner = skill.owner || (skill.source || "").split("/")[0];
+                const repo = skill.repo || (skill.source || "").split("/")[1];
+                const shUrl = "https://skills.sh/" + owner + "/" + repo + "/" + skill.name;
+
+                const alreadySelected = selectedSkills.find(s => s._url === shUrl);
+                if (alreadySelected) return;
+
+                // Immediately add to the selected list (in loading state)
+                const newEntry = { ...skill, _url: shUrl, _status: "loading" };
+                setSelectedSkills(prev => [...prev, newEntry]);
+                setFetchingNames(prev => new Set([...prev, shUrl]));
+
+                // Fetch in background
+                const { ok } = await fetchAndCacheSkill(skill);
+
+                // Update the entry status
+                setSelectedSkills(prev => prev.map(s =>
+                    s._url === shUrl ? { ...s, _status: ok ? "ok" : "warn" } : s
+                ));
+                setFetchingNames(prev => { const next = new Set(prev); next.delete(shUrl); return next; });
+            }, [selectedSkills]);
+
+            const handleRemove = (skill) => {
+                setSelectedSkills(prev => prev.filter(s => s._url !== skill._url));
+            };
+
+            // ═══ Search View & Selected View ═══
+            return (
+                <div className="skill-finder-app" style={S.root}>
+                    <div style={{ paddingBottom: 16, marginBottom: 16, borderBottom: "1px solid var(--bd)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 24 }}>⚡</span>
+                            <div>
+                                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--tx)" }}>Agent Skills Directory</h2>
+                                <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--dim)" }}>Find AI coding skills and add them to your target configuration.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={S.splitLayout}>
+                        {/* Left Pane: Search */}
+                        <div style={S.pane}>
+                            <div style={S.paneHeader}>
+                                <div style={{ display: "flex", gap: 8, width: "100%" }}>
+                                    <input ref={inputRef} type="text" value={query}
+                                        onChange={e => setQuery(e.target.value)}
+                                        onKeyDown={e => { if (e.key === "Enter") doSearch(query); }}
+                                        placeholder="Search skills (e.g. react, testing)..."
+                                        style={S.inp} />
+                                    <button style={S.sBtn} onClick={() => doSearch(query)} disabled={searching || !query.trim()}>
+                                        🔍
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={S.paneBody}>
+                                {searching && <div style={S.ctr}><div style={S.spin} /><span>Searching...</span></div>}
+                                {searchErr && <div style={S.errBox}>{searchErr}</div>}
+                                {results && !searching && results.map((sk, i) => {
+                                    const src = sk.source || (sk.owner + "/" + sk.repo);
+                                    const isAdded = selectedSkills.some(s => s.name === sk.name && (s.source || (s.owner + "/" + s.repo)) === src);
+                                    return (
+                                        <div key={sk.name + i} style={S.card}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={S.cName} title={sk.name}>{sk.name}</div>
+                                                <div style={S.cSrc} title={src}>{src}</div>
+                                            </div>
+                                            <button
+                                                style={isAdded ? S.btnAddDisabled : S.btnAdd}
+                                                onClick={() => !isAdded && handleAdd(sk)}
+                                                disabled={isAdded}>
+                                                {isAdded ? "Added" : "+ Add"}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {results === null && !searching && !searchErr && (
+                                    <div style={{ ...S.ctr, flexDirection: "column", opacity: 0.6 }}>
+                                        <span style={{ fontSize: 32 }}>🔍</span>
+                                        <span>Type keywords to discover skills</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right Pane: Selected */}
+                        <div style={{ ...S.pane, background: "rgba(59, 130, 246, 0.03)", borderColor: "rgba(59, 130, 246, 0.2)" }}>
+                            <div style={{ ...S.paneHeader, background: "rgba(59, 130, 246, 0.05)" }}>
+                                <span style={{ fontWeight: 600, color: "var(--blue)" }}>Selected Skills ({selectedSkills.length})</span>
+                            </div>
+                            <div style={S.paneBody}>
+                                {selectedSkills.length === 0 && (
+                                    <div style={{ ...S.ctr, flexDirection: "column", opacity: 0.6 }}>
+                                        <span style={{ fontSize: 32 }}>🎯</span>
+                                        <span style={{ textAlign: "center", lineHeight: 1.5 }}>No skills selected yet.<br />Add them from the left pane.</span>
+                                    </div>
+                                )}
+                                {selectedSkills.map((sk, i) => (
+                                    <div key={sk.name + "-" + i} style={{ ...S.card, borderColor: "rgba(59, 130, 246, 0.2)", background: "rgba(59, 130, 246, 0.05)" }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                <div style={{ ...S.cName, color: "var(--tx)" }} title={sk.name}>{sk.name}</div>
+                                                {sk._status === "loading" && <div style={S.spin} title="Fetching SKILL.md..." />}
+                                                {sk._status === "ok" && <span title="Cached" style={{ fontSize: 13, color: "var(--green)" }}>✅</span>}
+                                                {sk._status === "warn" && <span title="Could not pre-fetch (will retry at convert time)" style={{ fontSize: 13, color: "var(--amber)" }}>⚠️</span>}
+                                            </div>
+                                            <div style={{ ...S.cSrc, color: "var(--dim)", background: "transparent", padding: 0 }} title={sk._url}>{sk._url}</div>
+                                        </div>
+                                        <button style={S.btnRemove} onClick={() => handleRemove(sk)} title="Remove skill">
+                                            &times;
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const S = {
+            root: { padding: "0" },
+            splitLayout: { display: "flex", gap: "16px", height: "400px" },
+            pane: { flex: 1, display: "flex", flexDirection: "column", border: "1px solid var(--bd)", borderRadius: 8, background: "var(--sf)", overflow: "hidden" },
+            paneHeader: { padding: "12px 16px", borderBottom: "1px solid var(--bd)", background: "rgba(255,255,255,0.02)" },
+            paneBody: { flex: 1, overflowY: "auto", padding: "12px", display: "flex", flexDirection: "column", gap: "8px" },
+            inp: { flex: 1, padding: "8px 12px", background: "var(--bg-color)", border: "1px solid var(--bd)", borderRadius: 6, color: "var(--tx)", fontSize: 13, fontFamily: "inherit", outline: "none" },
+            sBtn: { padding: "8px 16px", background: "var(--bg-blue)", border: "1px solid var(--blue)", borderRadius: 6, color: "var(--blue)", fontSize: 13, cursor: "pointer" },
+            ctr: { display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: 40, color: "var(--dim)", fontSize: 14, flex: 1 },
+            spin: { width: 16, height: 16, border: "2px solid var(--bd)", borderTopColor: "var(--blue)", borderRadius: "50%", animation: "spin .7s linear infinite" },
+            errBox: { background: "rgba(239,68,68,.06)", border: "1px solid rgba(239,68,68,.2)", borderRadius: 6, padding: 12, color: "var(--danger)", fontSize: 13 },
+            card: { display: "flex", alignItems: "center", gap: 12, padding: "12px", background: "var(--bg-color)", border: "1px solid var(--bd)", borderRadius: 8 },
+            cName: { fontWeight: 600, fontSize: 14, color: "var(--blue)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+            cSrc: { fontSize: 11, color: "var(--mt)", background: "rgba(255,255,255,.03)", padding: "2px 6px", borderRadius: 4, display: "inline-block", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" },
+            btnAdd: { padding: "6px 12px", background: "rgba(16, 185, 129, 0.1)", color: "var(--success)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 },
+            btnAddDisabled: { padding: "6px 12px", background: "transparent", color: "var(--dim)", border: "1px solid var(--bd)", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 },
+            btnRemove: { padding: "4px 8px", background: "rgba(239, 68, 68, 0.1)", color: "var(--danger)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0 },
+        };
+
+        const rootNode = document.getElementById("skillFinderRoot");
+        if (rootNode) {
+            ReactDOM.render(React.createElement(SkillFinderApp), rootNode);
+        }
+    </script>
+</body>
+
+</html>
