@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSD Command Cheat Sheet v1.22.4</title>
+<style>
+:root{--bg:#0b1020;--panel:#121933;--panel2:#0f1530;--text:#eef2ff;--muted:#b7c0e0;--line:#2a355f;--accent:#86efac;--accent2:#fbbf24;--blue:#93c5fd;--red:#fca5a5;--shadow:0 20px 50px rgba(0,0,0,.25);--sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#f5f7ff;--panel:#fff;--panel2:#f8faff;--text:#111827;--muted:#4b5563;--line:#d9e0f2;--accent:#166534;--accent2:#b45309;--blue:#1d4ed8;--red:#dc2626;--shadow:0 20px 50px rgba(15,23,42,.08)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55}a{color:var(--blue)}.wrap{max-width:1140px;margin:0 auto;padding:24px}.hero,.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}.hero{padding:28px}.card{padding:20px;margin-top:20px}.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid3{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}h1{font-size:clamp(28px,5vw,44px);margin:8px 0 10px}h2{font-size:24px;margin:0 0 12px}h3{margin:0 0 8px;color:var(--accent)}.muted,.small{color:var(--muted)}.small{font-size:13px}code,pre{font-family:var(--mono)}code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.9em}pre{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);white-space:pre;overflow:auto;font-size:.85em;font-family:var(--mono);line-height:1.4}.table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:.92em}.table th,.table td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.table th{background:rgba(255,255,255,.04);color:var(--muted);font-size:.85em;text-transform:uppercase;letter-spacing:.5px}.table tr:last-child td{border-bottom:0}.decision{border-left:4px solid var(--blue);padding-left:12px;margin:10px 0}.kbd{border:1px solid var(--line);border-bottom-width:3px;border-radius:8px;padding:1px 7px;font-family:var(--mono);font-size:12px;white-space:nowrap}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;transition:background .15s}button:hover{background:var(--line)}.note{padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(147,197,253,.08);margin:10px 0}.warn{padding:14px;border:1px solid var(--red);border-radius:14px;background:rgba(252,165,165,.06);margin:10px 0}nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}nav .wrap{display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}.nav{padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);text-decoration:none;color:var(--text);font-size:.88em;transition:background .15s}.nav:hover{background:rgba(255,255,255,.08)}section{margin-top:24px}.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;margin-right:4px;font-weight:600}.tag-core{background:rgba(134,239,172,.15);color:var(--accent)}.tag-phase{background:rgba(147,197,253,.15);color:var(--blue)}.tag-util{background:rgba(251,191,36,.15);color:var(--accent2)}.tag-session{background:rgba(252,165,165,.15);color:var(--red)}
+@media print{nav{display:none}.hero,.card{box-shadow:none;break-inside:avoid}body{background:#fff;color:#111}}
+</style>
+<script>
+function copyText(id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(()=>{const s=document.getElementById(id+'-status');if(s){s.textContent='コピーしました';setTimeout(()=>s.textContent='',1400)}})}
+</script>
+</head>
+<body>
+
+<nav><div class="wrap">
+<a class="nav" href="#judge">判定フロー</a>
+<a class="nav" href="#commands">全コマンド</a>
+<a class="nav" href="#workflow">ワークフロー</a>
+<a class="nav" href="#examples">実例</a>
+<a class="nav" href="#config">設定</a>
+<a class="nav" href="#prompts">プロンプト</a>
+<a class="nav" href="#notes">注意点</a>
+<a class="nav" href="#sources">出典</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- Hero -->
+<section class="hero">
+<div class="small">GSD / Get Shit Done v1.22.4 • Single HTML Cheat Sheet</div>
+<h1>GSD コマンド チートシート</h1>
+<p class="muted">meta-prompting &amp; context engineering による spec-driven 開発システム。<br>既存プロダクトの保守・拡張を前提に、どのコマンドで始めるかをすぐ判断できるように全 32 コマンドを整理。</p>
+<div class="toolbar">
+<button onclick="window.print()">印刷 / PDF化</button>
+<button onclick="copyText('prompt-judge')">判定プロンプトをコピー</button>
+<button onclick="copyText('prompt-regen')">再生成プロンプトをコピー</button>
+</div>
+</section>
+
+<!-- 判定フロー -->
+<section id="judge" class="grid">
+<div class="card">
+<h2>まずはこれで判定</h2>
+<div class="decision"><strong>今すぐ実装しない</strong> → <span class="kbd">/gsd:add-todo</span></div>
+<div class="decision"><strong>今やる小変更</strong> → <span class="kbd">/gsd:quick</span></div>
+<div class="decision"><strong>小さいが先に少し仕様確認したい</strong> → <span class="kbd">/gsd:quick --discuss</span></div>
+<div class="decision"><strong>小さいが品質保証もほしい</strong> → <span class="kbd">/gsd:quick --full</span></div>
+<div class="decision"><strong>独立した新機能を末尾に追加</strong> → <span class="kbd">/gsd:add-phase</span></div>
+<div class="decision"><strong>既存計画の途中に urgent work を差し込む</strong> → <span class="kbd">/gsd:insert-phase [N]</span></div>
+<div class="decision"><strong>phase の方針が曖昧</strong> → <span class="kbd">/gsd:discuss-phase [N]</span> → <span class="kbd">/gsd:plan-phase [N]</span></div>
+<div class="decision"><strong>何かが壊れた</strong> → <span class="kbd">/gsd:debug [desc]</span></div>
+</div>
+<div class="card">
+<h2>3つの見分け方</h2>
+<ul>
+<li><strong>いま着手するか？</strong> しないなら <span class="kbd">add-todo</span>。</li>
+<li><strong>局所修正か、独立機能か？</strong> 局所修正なら <span class="kbd">quick</span>、独立機能なら <span class="kbd">add-phase</span>。</li>
+<li><strong>順番を壊す必要があるか？</strong> 途中差し込みなら <span class="kbd">insert-phase</span>。</li>
+</ul>
+<div class="note">
+<strong>quick のフラグ使い分け:</strong><br>
+• <code>--discuss</code> — 事前に軽く仕様確認してから実装<br>
+• <code>--full</code> — plan-check + verification 付き（品質重視）<br>
+• フラグなし — 最速で実装（バグ修正・設定変更向き）
+</div>
+<div class="note">
+<strong>add-phase vs insert-phase:</strong><br>
+• <code>add-phase</code> — ロードマップ末尾に整数番号で追加。今の流れを壊さない。<br>
+• <code>insert-phase</code> — 途中に小数番号（例: 3.1）で差し込み。後続を renumber しない。
+</div>
+</div>
+</section>
+
+<!-- 全コマンド一覧 -->
+<section id="commands">
+<div class="card">
+<h2>コアワークフロー</h2>
+<span class="tag tag-core">CORE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数・フラグ</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:new-project</code></td><td>プロジェクト初期化: 質問 → リサーチ → 要件 → ロードマップ</td><td><code>[--auto]</code> ドキュメントから自動生成</td></tr>
+<tr><td><code>/gsd:discuss-phase</code></td><td>実装方針・前提・好みを固定する（CONTEXT.md 作成）</td><td><code>&lt;N&gt; [--auto]</code></td></tr>
+<tr><td><code>/gsd:plan-phase</code></td><td>リサーチ + プラン作成 + 検証ループ</td><td><code>[N] [--auto] [--skip-research] [--skip-verify] [--prd &lt;file&gt;]</code></td></tr>
+<tr><td><code>/gsd:execute-phase</code></td><td>全プランをウェーブ並列実行 → atomic commit</td><td><code>&lt;N&gt; [--gaps-only]</code></td></tr>
+<tr><td><code>/gsd:verify-work</code></td><td>手動 UAT（受け入れテスト）+ 自動診断</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:audit-milestone</code></td><td>マイルストーン完了前の達成度監査</td><td><code>[version]</code></td></tr>
+<tr><td><code>/gsd:complete-milestone</code></td><td>マイルストーンをアーカイブ + タグ付け</td><td><code>&lt;version&gt;</code> 例: "1.0"</td></tr>
+<tr><td><code>/gsd:new-milestone</code></td><td>次のバージョンサイクル開始</td><td><code>[name]</code> 例: "v1.1 Notifications"</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>フェーズ管理</h2>
+<span class="tag tag-phase">PHASE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:add-phase</code></td><td>ロードマップ末尾にフェーズ追加</td><td><code>&lt;description&gt;</code></td></tr>
+<tr><td><code>/gsd:insert-phase</code></td><td>途中に urgent work を小数番号で差し込み</td><td><code>&lt;after&gt; &lt;description&gt;</code></td></tr>
+<tr><td><code>/gsd:remove-phase</code></td><td>未開始フェーズを削除 + リナンバー</td><td><code>&lt;N&gt;</code></td></tr>
+<tr><td><code>/gsd:list-phase-assumptions</code></td><td>Claude の想定アプローチを事前確認</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:research-phase</code></td><td>フェーズの単体リサーチ（通常は plan-phase に含まれる）</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:validate-phase</code></td><td>完了フェーズの Nyquist バリデーション監査</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:add-tests</code></td><td>完了フェーズのテスト生成（unit + E2E）</td><td><code>&lt;phase&gt; [instructions]</code></td></tr>
+<tr><td><code>/gsd:plan-milestone-gaps</code></td><td>監査で見つかったギャップを埋めるフェーズ作成</td><td>（引数なし — MILESTONE-AUDIT.md から読み取り）</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>セッション管理</h2>
+<span class="tag tag-session">SESSION</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:progress</code></td><td>現在位置と次のアクションを表示</td></tr>
+<tr><td><code>/gsd:resume-work</code></td><td>前回セッションからコンテキスト復元</td></tr>
+<tr><td><code>/gsd:pause-work</code></td><td>中断ハンドオフ（.continue-here.md 作成）</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>ユーティリティ</h2>
+<span class="tag tag-util">UTILITY</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:quick</code></td><td>アドホックタスクを GSD 保証付きで実行</td><td><code>[--full] [--discuss]</code></td></tr>
+<tr><td><code>/gsd:debug</code></td><td>科学的手法によるデバッグ（サブエージェント分離）</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd:map-codebase</code></td><td>既存コードベースを 4 並列エージェントで分析</td><td><code>[area]</code> 例: "api", "auth"</td></tr>
+<tr><td><code>/gsd:add-todo</code></td><td>あとでやるアイデアをキャプチャ（実装は開始しない）</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd:check-todos</code></td><td>保留中の todo を一覧表示 → 選択 → アクションへ</td><td><code>[area filter]</code></td></tr>
+<tr><td><code>/gsd:settings</code></td><td>ワークフロートグル・モデルプロファイル設定</td><td>（対話式）</td></tr>
+<tr><td><code>/gsd:set-profile</code></td><td>モデルプロファイル切替</td><td><code>&lt;quality|balanced|budget&gt;</code></td></tr>
+<tr><td><code>/gsd:health</code></td><td>.planning/ ディレクトリ整合性チェック</td><td><code>[--repair]</code></td></tr>
+<tr><td><code>/gsd:cleanup</code></td><td>完了マイルストーンのフェーズディレクトリをアーカイブ</td><td>（対話式）</td></tr>
+<tr><td><code>/gsd:update</code></td><td>GSD を最新版に更新（changelog 表示）</td><td>—</td></tr>
+<tr><td><code>/gsd:reapply-patches</code></td><td>アップデート後にローカル変更を再適用</td><td>—</td></tr>
+<tr><td><code>/gsd:help</code></td><td>コマンドリファレンス表示</td><td>—</td></tr>
+<tr><td><code>/gsd:join-discord</code></td><td>Discord コミュニティへの招待リンク</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ワークフロー -->
+<section id="workflow">
+<div class="card">
+<h2>ワークフロー全体像</h2>
+<pre>
+┌─────────────────────────────────────────────────────────────┐
+│  /gsd:map-codebase        ← 既存コードがある場合のみ          │
+│  /gsd:new-project         ← 質問 → リサーチ → 要件 → ロードマップ │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+          ┌────────────────────▼────────────────────┐
+          │          各フェーズを繰り返す              │
+          │                                          │
+          │  /gsd:discuss-phase N   ← 方針固定        │
+          │  /gsd:plan-phase N      ← 計画 + 検証     │
+          │  /gsd:execute-phase N   ← 並列実行        │
+          │  /gsd:verify-work N     ← 手動 UAT        │
+          │           ↓                               │
+          │     次のフェーズへ ────────────────────────┘
+          │           │ 全フェーズ完了
+          └───────────┼─────────────────────────────┘
+                      │
+          /gsd:audit-milestone      ← 達成度チェック
+          /gsd:complete-milestone   ← アーカイブ + タグ
+          /gsd:new-milestone        ← 次バージョンへ
+</pre>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>plan-phase のエージェント構成</h3>
+<pre>
+/gsd:plan-phase N
+  ├── Phase Researcher (×4 並列)
+  │    ├── Stack / Features
+  │    ├── Architecture / Pitfalls
+  │    └── → RESEARCH.md
+  ├── Planner
+  │    └── → PLAN.md (XML 構造)
+  └── Plan Checker (最大 3 回ループ)
+       └── PASS → 完了 / FAIL → 修正
+</pre>
+</div>
+<div class="card">
+<h3>execute-phase のウェーブ実行</h3>
+<pre>
+/gsd:execute-phase N
+  ├── 依存関係分析
+  ├── Wave 1 (独立プラン並列)
+  │    ├── Executor A → commit
+  │    └── Executor B → commit
+  ├── Wave 2 (Wave 1 に依存)
+  │    └── Executor C → commit
+  └── Verifier
+       └── PASS / FAIL → VERIFICATION.md
+</pre>
+<p class="small">各 Executor は新鮮な 200K コンテキストで実行。メインウィンドウは 30-40% に留まる。</p>
+</div>
+</div>
+</section>
+
+<!-- 実例 -->
+<section id="examples">
+<div class="card">
+<h2>CLI プロダクト向け実例</h2>
+<table class="table">
+<thead><tr><th>やりたいこと</th><th>推奨コマンド</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td>help 文言の修正</td><td><code>/gsd:quick</code></td><td>局所修正で完結</td></tr>
+<tr><td>エラーメッセージの見直し（表現方針も決めたい）</td><td><code>/gsd:quick --discuss</code></td><td>小さい変更だが事前の認識合わせが必要</td></tr>
+<tr><td>バグ修正で品質保証もほしい</td><td><code>/gsd:quick --full</code></td><td>plan-check + verification 付きで安全</td></tr>
+<tr><td>新しい <code>sync</code> サブコマンドを追加</td><td><code>/gsd:add-phase</code></td><td>独立した機能のまとまり、末尾追加が自然</td></tr>
+<tr><td>設定ファイル構造を作り直してから後続に進みたい</td><td><code>/gsd:insert-phase [N]</code></td><td>後続フェーズの前提となる urgent work</td></tr>
+<tr><td>そのうち欲しい機能アイデアをメモ</td><td><code>/gsd:add-todo</code></td><td>今すぐ実装しない</td></tr>
+<tr><td>実装後に少し変えたい箇所が見つかった</td><td><code>/gsd:quick</code> or <code>/gsd:verify-work</code></td><td>execute-phase の再実行は避ける</td></tr>
+<tr><td>原因不明のバグが発生</td><td><code>/gsd:debug</code></td><td>科学的手法 + サブエージェントで調査</td></tr>
+<tr><td>フェーズの方向性が合っているか確認したい</td><td><code>/gsd:list-phase-assumptions</code></td><td>計画前に Claude の想定を可視化</td></tr>
+<tr><td>実装後にテストを追加したい</td><td><code>/gsd:add-tests</code></td><td>完了フェーズから unit + E2E テスト生成</td></tr>
+<tr><td>既存プロジェクトで初めて GSD を使う</td><td><code>/gsd:map-codebase</code> → <code>/gsd:new-project</code></td><td>先にコードベースを分析、質問は「何を追加するか」に集中</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>典型的なセッションフロー</h2>
+<div class="grid">
+<div>
+<h3>新規プロジェクト</h3>
+<pre>claude --dangerously-skip-permissions
+/gsd:new-project
+/clear
+/gsd:discuss-phase 1
+/gsd:plan-phase 1
+/gsd:execute-phase 1
+/gsd:verify-work 1
+/clear
+/gsd:discuss-phase 2
+...</pre>
+</div>
+<div>
+<h3>既存コードベース</h3>
+<pre>/gsd:map-codebase
+/gsd:new-project
+/clear
+# 以降は通常のフェーズワークフロー</pre>
+</div>
+<div>
+<h3>セッション再開</h3>
+<pre>/gsd:progress        # 状況確認
+# または
+/gsd:resume-work     # フルコンテキスト復元</pre>
+</div>
+<div>
+<h3>ドキュメントからの自動生成</h3>
+<pre>/gsd:new-project --auto @prd.md
+/clear
+/gsd:discuss-phase 1
+...</pre>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 設定 -->
+<section id="config">
+<div class="card">
+<h2>設定リファレンス（.planning/config.json）</h2>
+<div class="grid">
+<div>
+<h3>コア設定</h3>
+<table class="table">
+<thead><tr><th>設定</th><th>選択肢</th><th>デフォルト</th></tr></thead>
+<tbody>
+<tr><td><code>mode</code></td><td>interactive / yolo</td><td>interactive</td></tr>
+<tr><td><code>granularity</code></td><td>coarse / standard / fine</td><td>standard</td></tr>
+<tr><td><code>model_profile</code></td><td>quality / balanced / budget</td><td>balanced</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>ワークフロートグル</h3>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>workflow.research</code></td><td>true</td><td>計画前のドメイン調査</td></tr>
+<tr><td><code>workflow.plan_check</code></td><td>true</td><td>プラン検証ループ（最大3回）</td></tr>
+<tr><td><code>workflow.verifier</code></td><td>true</td><td>実行後のゴール検証</td></tr>
+<tr><td><code>workflow.nyquist_validation</code></td><td>true</td><td>テストカバレッジ検証</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>モデルプロファイル詳細</h3>
+<table class="table">
+<thead><tr><th>エージェント</th><th>quality</th><th>balanced</th><th>budget</th></tr></thead>
+<tbody>
+<tr><td>Planner</td><td>Opus</td><td>Opus</td><td>Sonnet</td></tr>
+<tr><td>Roadmapper</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Executor</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Phase Researcher</td><td>Opus</td><td>Sonnet</td><td>Haiku</td></tr>
+<tr><td>Debugger</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Codebase Mapper</td><td>Sonnet</td><td>Haiku</td><td>Haiku</td></tr>
+<tr><td>Verifier / Checker</td><td>Sonnet</td><td>Sonnet</td><td>Haiku</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>速度 vs 品質プリセット</h3>
+<table class="table">
+<thead><tr><th>シナリオ</th><th>Mode</th><th>粒度</th><th>Profile</th></tr></thead>
+<tbody>
+<tr><td>プロトタイピング</td><td>yolo</td><td>coarse</td><td>budget</td></tr>
+<tr><td>通常開発</td><td>interactive</td><td>standard</td><td>balanced</td></tr>
+<tr><td>プロダクション</td><td>interactive</td><td>fine</td><td>quality</td></tr>
+</tbody>
+</table>
+<h3 style="margin-top:16px">Git ブランチ戦略</h3>
+<table class="table">
+<thead><tr><th>戦略</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>none</code></td><td>現在のブランチに直接コミット（デフォルト）</td></tr>
+<tr><td><code>phase</code></td><td>フェーズごとにブランチ作成・マージ</td></tr>
+<tr><td><code>milestone</code></td><td>マイルストーン単位で 1 ブランチ</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- プロンプト -->
+<section id="prompts" class="grid">
+<div class="card">
+<h2>判定プロンプト</h2>
+<pre id="prompt-judge">この変更に対して、GSD のどのコマンドで始めるべきか判定してください。
+候補: quick / quick --discuss / quick --full / add-phase / insert-phase / add-todo / discuss-phase / debug
+
+判断基準:
+- 局所修正か
+- 実装前に軽い仕様確認が必要か
+- 品質保証（plan-check / verification）が必要か
+- 独立した新機能か
+- 既存ロードマップの途中に差し込む必要があるか
+- 今すぐ実装するか、後で検討するだけか
+- 何かが壊れているか
+
+前提:
+- プロダクトはすでに完成または運用段階にある
+- 既存コードベースを前提に拡張・修正したい
+
+変更内容:
+[ここにやりたいことを書く]
+
+出力形式:
+- 推奨コマンド
+- 理由
+- 代替コマンドを使うならどういう場合か
+- 最初に AI へ渡すべき一文の例</pre>
+<div class="toolbar"><button onclick="copyText('prompt-judge')">コピー</button></div>
+<div id="prompt-judge-status" class="small"></div>
+</div>
+
+<div class="card">
+<h2>HTML 再生成プロンプト</h2>
+<pre id="prompt-regen">最新の GSD 公式ドキュメントと最新リリースを参照して、single HTML のチートシートを 1 ファイルで生成してください。
+
+要件:
+- 出力は self-contained な single HTML
+- 外部 CSS / JS / フォントに依存しない
+- 日本語で記述
+- ダーク / ライトの両方で読みやすい
+- 以下を必ず含める:
+  1. GSD の全コマンド早見表（コア / フェーズ管理 / セッション / ユーティリティ）
+  2. quick / quick --discuss / quick --full / add-phase / insert-phase / add-todo / discuss-phase の使い分け
+  3. add-phase と insert-phase の違い
+  4. execute-phase を再実行せず quick / verify-work を使うべき注意点
+  5. ワークフロー全体像とエージェント構成図
+  6. 設定リファレンス（config.json / モデルプロファイル / Git ブランチ戦略）
+  7. 既存プロダクト保守・CLI 拡張向けの実例
+  8. コピーボタン付きの判定プロンプト
+  9. 出典セクション
+- 表とカード UI を使って見やすくする
+- 印刷しても読めるようにする
+
+情報源の優先順位:
+1. gsd-build/get-shit-done の README
+2. docs/USER-GUIDE.md
+3. 最新 release notes
+4. commands/gsd/*.md の各コマンド定義
+
+ファクト要件:
+- コマンド用途や使い方は公式情報に合わせる
+- quick の --discuss / --full フラグを反映する
+- add-phase は roadmap 末尾への整数番号追加、insert-phase は途中への小数番号差し込みとして説明する
+- add-todo は capture only で、実装開始コマンドとして扱わない
+- 既存コードベースの文脈では map-codebase → new-project に触れる
+- validate-phase / add-tests / cleanup / reapply-patches など新コマンドも含める
+
+出力形式:
+- まず HTML 本文のみを返す
+- markdown の前置きや説明文は不要</pre>
+<div class="toolbar"><button onclick="copyText('prompt-regen')">コピー</button></div>
+<div id="prompt-regen-status" class="small"></div>
+</div>
+</section>
+
+<!-- 注意点 -->
+<section id="notes" class="card">
+<h2>注意点</h2>
+<div class="warn"><strong>execute-phase をやり直さない。</strong> 実装後に少し変えたいなら <span class="kbd">/gsd:quick</span>、体系的に問題を洗いたいなら <span class="kbd">/gsd:verify-work</span> を使う。</div>
+<ul>
+<li>計画がズレていると感じたら <span class="kbd">/gsd:discuss-phase [N]</span> を挟んでから re-plan。</li>
+<li>セッションをまたぐなら <span class="kbd">/gsd:progress</span> または <span class="kbd">/gsd:resume-work</span>。</li>
+<li>コンテキスト品質が落ちたら <code>/clear</code> してから <span class="kbd">/gsd:resume-work</span>。</li>
+<li>既存コードベースで初めて GSD を使う場合は <span class="kbd">/gsd:map-codebase</span> → <span class="kbd">/gsd:new-project</span> の流れ。</li>
+<li>プランが大きすぎると stub になる。タスクは 2-3 個が目安。</li>
+<li>コスト削減: <span class="kbd">/gsd:set-profile budget</span> + <span class="kbd">/gsd:settings</span> で research / plan_check をオフ。</li>
+<li>アップデート後にローカル変更が消えたら <span class="kbd">/gsd:reapply-patches</span>。</li>
+<li>.planning/ をバージョン管理したくない場合は <code>commit_docs: false</code> + <code>.gitignore</code> に追加。</li>
+</ul>
+
+<h3 style="margin-top:16px">リカバリー早見表</h3>
+<table class="table">
+<thead><tr><th>問題</th><th>対処</th></tr></thead>
+<tbody>
+<tr><td>新セッション / コンテキスト喪失</td><td><code>/gsd:resume-work</code> or <code>/gsd:progress</code></td></tr>
+<tr><td>フェーズの実装がおかしい</td><td><code>git revert</code> → re-plan</td></tr>
+<tr><td>スコープ変更が必要</td><td><code>/gsd:add-phase</code> / <code>insert-phase</code> / <code>remove-phase</code></td></tr>
+<tr><td>マイルストーン監査でギャップ</td><td><code>/gsd:plan-milestone-gaps</code></td></tr>
+<tr><td>何かが壊れた</td><td><code>/gsd:debug "description"</code></td></tr>
+<tr><td>素早い修正</td><td><code>/gsd:quick</code></td></tr>
+<tr><td>コストが高い</td><td><code>/gsd:set-profile budget</code> + エージェントをオフ</td></tr>
+<tr><td>アップデートでローカル変更消失</td><td><code>/gsd:reapply-patches</code></td></tr>
+<tr><td>.planning/ が壊れた</td><td><code>/gsd:health --repair</code></td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- .planning/ 構造 -->
+<section class="card">
+<h2>.planning/ ディレクトリ構造</h2>
+<pre>
+.planning/
+  PROJECT.md              # プロジェクトビジョン（常時ロード）
+  REQUIREMENTS.md         # スコープ付き v1/v2 要件（ID 付き）
+  ROADMAP.md              # フェーズ一覧 + ステータス
+  STATE.md                # 決定・ブロッカー・セッションメモリ
+  config.json             # ワークフロー設定
+  MILESTONES.md           # 完了マイルストーンのアーカイブ
+  research/               # /gsd:new-project のドメインリサーチ
+  todos/
+    pending/              # キャプチャ済みアイデア
+    done/                 # 完了した todo
+  debug/                  # アクティブなデバッグセッション
+    resolved/             # 解決済みデバッグセッション
+  codebase/               # /gsd:map-codebase の出力
+    STACK.md / ARCHITECTURE.md / CONVENTIONS.md / CONCERNS.md
+  phases/
+    XX-phase-name/
+      XX-YY-PLAN.md       # 実行用アトミックプラン（XML 構造）
+      XX-YY-SUMMARY.md    # 実行結果と決定事項
+      XX-CONTEXT.md       # 実装方針（discuss-phase の出力）
+      XX-RESEARCH.md      # エコシステムリサーチ結果
+      XX-VERIFICATION.md  # 実行後の検証結果
+      XX-VALIDATION.md    # Nyquist テストカバレッジ契約
+      XX-UAT.md           # 手動 UAT 結果
+</pre>
+</section>
+
+<!-- 出典 -->
+<section id="sources" class="card">
+<h2>出典</h2>
+<ul>
+<li><a href="https://github.com/gsd-build/get-shit-done">GSD README</a> — get-shit-done v1.22.4</li>
+<li><a href="https://github.com/gsd-build/get-shit-done/blob/main/docs/USER-GUIDE.md">GSD User Guide</a></li>
+<li><a href="https://github.com/gsd-build/get-shit-done/tree/main/commands/gsd">GSD Commands</a> — 全 32 コマンド定義</li>
+<li><a href="https://github.com/gsd-build/get-shit-done/releases">GSD Releases</a></li>
+</ul>
+<p class="small">Generated from submodule at v1.22.4 • Single HTML / offline friendly / editable</p>
+</section>
+
+</div>
+</body>
+</html>
