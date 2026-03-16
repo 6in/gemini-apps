@@ -3,1398 +3,763 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Everything Claude Code — チートシート</title>
+<title>Everything Claude Code — 完全チートシート</title>
 <style>
-  :root {
-    --bg: #0d0d0d;
-    --bg2: #141414;
-    --bg3: #1a1a1a;
-    --border: #2a2a2a;
-    --text: #e8e8e8;
-    --muted: #888;
-    --accent: #d97706;
-    --accent2: #0ea5e9;
-    --accent3: #10b981;
-    --accent4: #8b5cf6;
-    --accent5: #ef4444;
-    --tag-bg: #1e293b;
-    --radius: 8px;
-    --font: 'Segoe UI', system-ui, sans-serif;
-    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    font-size: 14px;
-    line-height: 1.6;
-  }
-
-  /* ── HEADER ── */
-  header {
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 24px 32px 20px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-  }
-
-  .header-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .logo-icon {
-    width: 32px; height: 32px;
-    background: linear-gradient(135deg, var(--accent), #f59e0b);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .logo h1 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  .logo small {
-    font-size: 12px;
-    color: var(--muted);
-    display: block;
-    font-weight: 400;
-  }
-
-  nav {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-  }
-
-  nav a {
-    color: var(--muted);
-    text-decoration: none;
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    transition: all .15s;
-    border: 1px solid transparent;
-  }
-
-  nav a:hover, nav a.active {
-    color: var(--text);
-    background: var(--bg3);
-    border-color: var(--border);
-  }
-
-  /* ── SEARCH ── */
-  .search-bar {
-    width: 240px;
-  }
-
-  .search-bar input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 7px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    outline: none;
-    font-family: inherit;
-  }
-
-  .search-bar input:focus {
-    border-color: var(--accent);
-  }
-
-  .search-bar input::placeholder { color: var(--muted); }
-
-  /* ── LAYOUT ── */
-  main {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 32px;
-  }
-
-  section {
-    margin-bottom: 56px;
-    scroll-margin-top: 100px;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .section-icon {
-    width: 28px; height: 28px;
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .section-title {
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  .section-desc {
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 2px;
-  }
-
-  /* ── GRID ── */
-  .grid {
-    display: grid;
-    gap: 12px;
-  }
-
-  .grid-2 { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
-  .grid-3 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-  .grid-1 { grid-template-columns: 1fr; }
-
-  /* ── CARD ── */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    transition: border-color .15s;
-    position: relative;
-  }
-
-  .card:hover {
-    border-color: #3a3a3a;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .cmd {
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(217, 119, 6, 0.1);
-    border: 1px solid rgba(217, 119, 6, 0.25);
-    padding: 2px 8px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .agent-name {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--accent2);
-    background: rgba(14, 165, 233, 0.1);
-    border: 1px solid rgba(14, 165, 233, 0.25);
-    padding: 2px 8px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .skill-name {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent3);
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    padding: 2px 8px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .hook-name {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent4);
-    background: rgba(139, 92, 246, 0.1);
-    border: 1px solid rgba(139, 92, 246, 0.25);
-    padding: 2px 8px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .card-title {
-    font-weight: 600;
-    font-size: 14px;
-    line-height: 1.4;
-  }
-
-  .card-body {
-    font-size: 13px;
-    color: #ccc;
-    line-height: 1.6;
-  }
-
-  .card-body p { margin-bottom: 8px; }
-  .card-body p:last-child { margin-bottom: 0; }
-
-  /* ── WHEN / WHY / RELATES ── */
-  .meta-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-  }
-
-  .meta-item {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    font-size: 12px;
-  }
-
-  .meta-label {
-    font-weight: 600;
-    min-width: 56px;
-    flex-shrink: 0;
-    padding: 1px 0;
-  }
-
-  .meta-label.when { color: #f59e0b; }
-  .meta-label.relates { color: #a78bfa; }
-  .meta-label.model { color: #34d399; }
-  .meta-label.auto { color: #f472b6; }
-
-  .meta-value {
-    color: #bbb;
-    line-height: 1.5;
-  }
-
-  /* ── TAGS ── */
-  .tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 4px;
-  }
-
-  .tag {
-    font-size: 11px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    background: var(--tag-bg);
-    color: var(--muted);
-    font-family: var(--mono);
-  }
-
-  .tag.cmd-tag { color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
-  .tag.agent-tag { color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
-  .tag.skill-tag { color: #34d399; background: rgba(52, 211, 153, 0.08); }
-  .tag.hook-tag { color: #c084fc; background: rgba(192, 132, 252, 0.08); }
-
-  /* ── WORKFLOW ── */
-  .workflow {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .workflow-header {
-    padding: 14px 20px;
-    background: var(--bg3);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .workflow-num {
-    width: 22px; height: 22px;
-    background: var(--accent);
-    color: #000;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .workflow-title {
-    font-weight: 700;
-    font-size: 15px;
-  }
-
-  .workflow-subtitle {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 1px;
-  }
-
-  .workflow-body {
-    padding: 20px;
-  }
-
-  .flow {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .flow-step {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .flow-line {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  .flow-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
-    margin-top: 6px;
-  }
-
-  .flow-connector {
-    width: 1px;
-    flex: 1;
-    min-height: 20px;
-    background: var(--border);
-    margin: 2px 0;
-  }
-
-  .flow-step:last-child .flow-connector { display: none; }
-
-  .flow-content {
-    padding-bottom: 16px;
-    flex: 1;
-  }
-
-  .flow-step:last-child .flow-content { padding-bottom: 0; }
-
-  .flow-cmd {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent);
-    font-weight: 600;
-    margin-bottom: 3px;
-  }
-
-  .flow-desc {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.5;
-  }
-
-  .flow-desc em {
-    color: var(--accent3);
-    font-style: normal;
-    font-family: var(--mono);
-    font-size: 11px;
-  }
-
-  .flow-branch {
-    margin-top: 6px;
-    padding-left: 12px;
-    border-left: 2px solid var(--border);
-  }
-
-  .flow-branch-item {
-    font-size: 12px;
-    color: var(--muted);
-    padding: 2px 0;
-  }
-
-  .flow-branch-item::before { content: "├ "; color: var(--border); }
-  .flow-branch-item:last-child::before { content: "└ "; color: var(--border); }
-
-  /* ── QUICK REF TABLE ── */
-  .table-wrap {
-    overflow-x: auto;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  th {
-    background: var(--bg3);
-    color: var(--muted);
-    font-weight: 600;
-    text-align: left;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  td {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-    line-height: 1.5;
-  }
-
-  tr:last-child td { border-bottom: none; }
-
-  tr:hover td { background: rgba(255,255,255,0.02); }
-
-  td:first-child { white-space: nowrap; }
-
-  /* ── CODE BLOCK ── */
-  pre {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: #d4d4d4;
-    overflow-x: auto;
-    line-height: 1.7;
-  }
-
-  pre .c { color: #6a9955; }
-  pre .k { color: #c586c0; }
-  pre .s { color: #ce9178; }
-  pre .v { color: #4ec9b0; }
-
-  /* ── SCENARIO BOX ── */
-  .scenario {
-    background: rgba(217, 119, 6, 0.05);
-    border: 1px solid rgba(217, 119, 6, 0.2);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    margin-bottom: 16px;
-  }
-
-  .scenario-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
-  }
-
-  .scenario-body {
-    font-size: 13px;
-    color: #ccc;
-  }
-
-  /* ── BADGE ── */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    vertical-align: middle;
-  }
-
-  .badge-opus { background: rgba(139,92,246,.15); color: #a78bfa; border: 1px solid rgba(139,92,246,.3); }
-  .badge-sonnet { background: rgba(14,165,233,.15); color: #38bdf8; border: 1px solid rgba(14,165,233,.3); }
-  .badge-auto { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
-  .badge-warn { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
-
-  /* ── HIGHLIGHT STRIPE ── */
-  .stripe-left {
-    border-left: 3px solid var(--accent);
-    padding-left: 12px;
-    margin: 12px 0;
-  }
-
-  /* ── CATEGORY LABEL ── */
-  .cat-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 700;
-    color: var(--muted);
-    margin: 20px 0 10px;
-  }
-
-  /* ── HIDDEN (search) ── */
-  .hidden { display: none !important; }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    main { padding: 16px; }
-    .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    header { padding: 16px; }
-    nav { display: none; }
-    .search-bar { width: 100%; }
-  }
+:root {
+  --bg:#0d0d0d;--bg2:#141414;--bg3:#1c1c1c;--border:#252525;
+  --text:#e2e2e2;--muted:#666;--muted2:#888;
+  --orange:#d97706;--blue:#0ea5e9;--green:#10b981;--purple:#8b5cf6;--red:#ef4444;--pink:#ec4899;--teal:#14b8a6;
+  --r:7px;--font:'Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.6}
+
+/* HEADER */
+header{background:#0a0a0a;border-bottom:1px solid var(--border);padding:18px 28px;position:sticky;top:0;z-index:200}
+.hdr{max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--orange),#f59e0b);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.logo h1{font-size:16px;font-weight:700;white-space:nowrap}
+.logo small{font-size:11px;color:var(--muted);display:block}
+nav{display:flex;gap:2px;flex-wrap:wrap;flex:1}
+nav a{color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid transparent;transition:all .12s;white-space:nowrap}
+nav a:hover,nav a.act{color:var(--text);background:var(--bg3);border-color:var(--border)}
+.srch input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:6px;font-size:12px;width:220px;outline:none;font-family:inherit}
+.srch input:focus{border-color:var(--orange)}
+.srch input::placeholder{color:var(--muted)}
+
+/* LAYOUT */
+main{max-width:1500px;margin:0 auto;padding:28px}
+section{margin-bottom:52px;scroll-margin-top:80px}
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.sec-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.sec-title{font-size:18px;font-weight:700}
+.sec-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.cat{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;color:var(--muted);margin:18px 0 10px}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+.g3{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.g4{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;transition:border-color .12s}
+.card:hover{border-color:#333}
+.card-hdr{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.card-body{font-size:12px;color:#bbb;line-height:1.6}
+
+/* CHIPS */
+.cmd{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--orange);background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.25);padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.agt{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--blue);background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.skl{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--green);background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.hk{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--purple);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.card-title{font-weight:600;font-size:13px;line-height:1.4}
+
+/* META */
+.meta{display:flex;flex-direction:column;gap:5px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.mi{display:flex;gap:7px;align-items:flex-start;font-size:11px}
+.ml{font-weight:700;min-width:50px;flex-shrink:0;padding-top:1px}
+.ml.w{color:#f59e0b}.ml.r{color:#a78bfa}.ml.a{color:#34d399}.ml.n{color:#f472b6}
+.mv{color:#aaa;line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.t{font-size:10px;padding:1px 5px;border-radius:3px;background:#1e293b;color:var(--muted2);font-family:var(--mono)}
+.t.c{color:#f59e0b;background:rgba(245,158,11,.08)}
+.t.a{color:#38bdf8;background:rgba(56,189,248,.08)}
+.t.s{color:#34d399;background:rgba(52,211,153,.08)}
+.t.h{color:#c084fc;background:rgba(192,132,252,.08)}
+
+/* BADGE */
+.b{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.4px;vertical-align:middle;margin-left:4px}
+.b-opus{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+.b-son{background:rgba(14,165,233,.15);color:#38bdf8;border:1px solid rgba(14,165,233,.3)}
+.b-hku{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.b-req{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.b-opt{background:rgba(156,163,175,.12);color:#9ca3af;border:1px solid rgba(156,163,175,.25)}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg3);color:var(--muted2);font-weight:600;text-align:left;padding:9px 14px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+
+/* CODE */
+pre{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:var(--mono);font-size:11px;color:#d4d4d4;overflow-x:auto;line-height:1.7;margin-top:8px}
+pre .c{color:#6a9955}pre .k{color:#c586c0}pre .s{color:#ce9178}pre .v{color:#4ec9b0}
+
+/* WORKFLOW */
+.wf{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.wf-hdr{padding:12px 18px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.wf-num{width:20px;height:20px;background:var(--orange);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.wf-title{font-weight:700;font-size:14px}
+.wf-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.wf-body{padding:16px 18px}
+.flow{display:flex;flex-direction:column}
+.fs{display:flex;gap:10px}
+.fl{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.fd{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:5px}
+.fc{width:1px;flex:1;min-height:16px;background:var(--border);margin:2px 0}
+.fs:last-child .fc{display:none}
+.fct{padding-bottom:13px;flex:1}
+.fs:last-child .fct{padding-bottom:0}
+.fcmd{font-family:var(--mono);font-size:12px;color:var(--orange);font-weight:700;margin-bottom:2px}
+.fdsc{font-size:11px;color:var(--muted2);line-height:1.5}
+.fdsc em{color:var(--green);font-style:normal;font-family:var(--mono);font-size:10px}
+.fbr{margin-top:5px;padding-left:10px;border-left:2px solid var(--border)}
+.fbi{font-size:11px;color:var(--muted2);padding:1px 0}
+.fbi::before{content:"├ ";color:var(--border)}
+.fbi:last-child::before{content:"└ ";color:var(--border)}
+
+/* HIDDEN */
+.hidden{display:none!important}
+
+@media(max-width:768px){main{padding:14px}.g2,.g3,.g4{grid-template-columns:1fr}nav{display:none}.srch input{width:160px}}
 </style>
 </head>
 <body>
-
 <header>
-  <div class="header-inner">
-    <div class="logo">
-      <div class="logo-icon">⚡</div>
-      <div>
-        <h1>Everything Claude Code</h1>
-        <small>実践チートシート — コマンド・エージェント・スキル・フック完全ガイド</small>
-      </div>
-    </div>
-    <nav>
-      <a href="#commands">コマンド</a>
-      <a href="#agents">エージェント</a>
-      <a href="#skills">スキル</a>
-      <a href="#hooks">フック</a>
-      <a href="#workflows">ワークフロー</a>
-      <a href="#quickref">早見表</a>
-    </nav>
-    <div class="search-bar">
-      <input type="text" id="search" placeholder="🔍  コマンドを検索..." oninput="filterCards(this.value)">
-    </div>
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div><h1>Everything Claude Code</h1><small>完全チートシート v1.8.0 — 48コマンド・18エージェント・94スキル</small></div>
   </div>
+  <nav>
+    <a href="#commands">コマンド(48)</a>
+    <a href="#agents">エージェント(18)</a>
+    <a href="#skills">スキル(94)</a>
+    <a href="#hooks">フック</a>
+    <a href="#workflows">ワークフロー</a>
+    <a href="#qref">早見表</a>
+  </nav>
+  <div class="srch"><input type="text" id="q" placeholder="🔍 検索..." oninput="filter(this.value)"></div>
+</div>
 </header>
-
 <main>
 
-<!-- ══════════════════════════════════════════════
-     COMMANDS
-══════════════════════════════════════════════ -->
+<!-- ═══════════════ COMMANDS ═══════════════ -->
 <section id="commands">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(217,119,6,.15)">💬</div>
-    <div>
-      <div class="section-title">コマンド <span style="color:var(--muted);font-size:14px;font-weight:400">(48 スラッシュコマンド)</span></div>
-      <div class="section-desc">CLAUDE.md で定義されたワークフロートリガー。状況に合わせて使い分ける。</div>
-    </div>
-  </div>
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(217,119,6,.15)">💬</div>
+  <div><div class="sec-title">コマンド <span style="color:var(--muted);font-size:13px;font-weight:400">48 スラッシュコマンド</span></div>
+  <div class="sec-sub">CLAUDE.md で定義されたワークフロートリガー。状況に合わせて使い分ける。</div></div>
+</div>
 
-  <p class="cat-label">🏗️  開発の基本サイクル</p>
-  <div class="grid grid-2">
+<div class="cat">🏗️ 開発コアサイクル</div>
+<div class="g2">
 
-    <div class="card" data-search="plan planner 計画 設計">
-      <div class="card-header">
-        <span class="cmd">/plan</span>
-        <div>
-          <div class="card-title">実装計画の作成</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>複雑な機能を段階的なフェーズに分解し、実装前に全体像を把握する。<strong>コーディング開始前に必ず実行</strong>することで手戻りを防ぐ。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・新機能の実装前<br>・リファクタリング計画<br>・要件が曖昧なとき<br>・複数コンポーネントにまたがる変更</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value">
-            <span class="tag agent-tag">planner (Opus)</span>
-          </span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">NEXT</span>
-          <span class="meta-value">計画確認後 → <span class="tag cmd-tag">/tdd</span> or <span class="tag cmd-tag">/orchestrate</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="plan planner 計画 設計">
+<div class="card-hdr"><span class="cmd">/plan</span><div><div class="card-title">実装計画の作成</div></div></div>
+<div class="card-body">複雑な機能要件をフェーズに分解。コーディング開始前に必ず実行。計画をユーザーが確認するまでコードを一切触らない。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">新機能実装前 / リファクタリング計画 / 要件が曖昧なとき / 複数コンポーネントにまたがる変更</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">planner (Opus)</span></span></div>
+<div class="mi"><span class="ml r">NEXT</span><span class="mv">計画確認後 → <span class="t c">/tdd</span> or <span class="t c">/orchestrate</span></span></div>
+</div></div>
 
-    <div class="card" data-search="tdd test テスト tdd-guide">
-      <div class="card-header">
-        <span class="cmd">/tdd</span>
-        <div>
-          <div class="card-title">テスト駆動開発 (TDD)</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>テスト先行でコードを書く。RED → GREEN → REFACTOR のサイクルを強制。カバレッジ80%以上を目標とする。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・新機能実装時（常に）<br>・バグ修正時（再現テストを先に書く）<br>・リファクタリング前（既存テスト確認）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">tdd-guide (Sonnet)</span></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">NEXT</span>
-          <span class="meta-value">実装完了後 → <span class="tag cmd-tag">/code-review</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="tdd テスト test tdd-guide カバレッジ">
+<div class="card-hdr"><span class="cmd">/tdd</span><div><div class="card-title">テスト駆動開発 (TDD)</div></div></div>
+<div class="card-body">RED→GREEN→REFACTORサイクルを強制。カバレッジ80%以上。バグ修正でも再現テストを先に書く。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">新機能実装時（常に） / バグ修正時 / リファクタリング前</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">tdd-guide (Sonnet)</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">tdd-workflow</span> <span class="t s">coding-standards</span></span></div>
+<div class="mi"><span class="ml r">NEXT</span><span class="mv">実装完了後 → <span class="t c">/code-review</span></span></div>
+</div></div>
 
-    <div class="card" data-search="code-review レビュー セキュリティ quality">
-      <div class="card-header">
-        <span class="cmd">/code-review</span>
-        <div>
-          <div class="card-title">コード品質・セキュリティレビュー</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>OWASP Top 10 を含むセキュリティ検査 + コード品質チェック。コミット前の最終確認として使う。CRITICAL/HIGH の問題があればマージ不可。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・コード変更後、コミット前（常に）<br>・認証・決済・API エンドポイント変更時は必須<br>・PR 作成前</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">code-reviewer</span> + <span class="tag agent-tag">security-reviewer</span></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">NEXT</span>
-          <span class="meta-value">問題なし → <span class="tag cmd-tag">/verify</span> → git commit</span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="code-review レビュー セキュリティ owasp">
+<div class="card-hdr"><span class="cmd">/code-review</span><div><div class="card-title">コード品質・セキュリティレビュー</div></div></div>
+<div class="card-body">OWASP Top 10 を含むセキュリティ検査 + 品質チェック。CRITICAL/HIGH はマージ不可。コミット前の必須ステップ。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">コード変更後・コミット前（<strong>常に</strong>） / 認証・決済・API変更時は特に必須</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">code-reviewer</span> <span class="t a">security-reviewer</span></span></div>
+<div class="mi"><span class="ml r">NEXT</span><span class="mv">問題なし → <span class="t c">/verify pre-pr</span> → git commit</span></div>
+</div></div>
 
-    <div class="card" data-search="verify 検証 ビルド build lint">
-      <div class="card-header">
-        <span class="cmd">/verify</span>
-        <div>
-          <div class="card-title">総合品質ゲート検証</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>ビルド・型チェック・lint・テスト・カバレッジ・シークレット検出を一括実行。PR 前の最終チェックポイント。</p>
-        <pre>サブコマンド:
-/verify quick   ← ビルド + 型チェックのみ（高速）
-/verify pre-pr  ← 全項目（PR前）
-/verify full    ← セキュリティスキャン含む全項目</pre>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・PR 作成前（必須）<br>・大きな変更後<br>・ビルドエラー確認後</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">SKILL</span>
-          <span class="meta-value"><span class="tag skill-tag">verification-loop</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="verify 検証 ビルド lint テスト 品質ゲート">
+<div class="card-hdr"><span class="cmd">/verify</span><div><div class="card-title">総合品質ゲート検証</div></div></div>
+<div class="card-body">ビルド・型・lint・テスト・カバレッジ・シークレット検出を一括実行。サブコマンドで粒度調整可。</div>
+<pre><span class="c">/verify quick   # ビルド+型のみ（高速）</span>
+/verify pre-pr  <span class="c"># PR前の全項目チェック</span>
+/verify full    <span class="c"># セキュリティスキャン含む全項目</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">PR作成前（必須） / 大きな変更後 / ビルドエラー確認後</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">verification-loop</span></span></div>
+</div></div>
 
-    <div class="card" data-search="e2e playwright テスト エンドツーエンド">
-      <div class="card-header">
-        <span class="cmd">/e2e</span>
-        <div>
-          <div class="card-title">E2E テスト生成・実行</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>Playwright を使って重要なユーザーフローのE2Eテストを自動生成・実行する。失敗時はスクリーンショットと HTML レポートを保存。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・ログイン・決済などクリティカルフロー<br>・リリース前の回帰テスト<br>・マルチステップのUXテスト</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">e2e-runner</span></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">SKILL</span>
-          <span class="meta-value"><span class="tag skill-tag">e2e-testing</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="e2e playwright エンドツーエンド テスト">
+<div class="card-hdr"><span class="cmd">/e2e</span><div><div class="card-title">E2E テスト生成・実行</div></div></div>
+<div class="card-body">Playwrightで重要ユーザーフローのE2Eテストを自動生成・実行。失敗時スクリーンショット・ビデオ・HTMLレポートを保存。Chromium/Firefox/Safari/Mobile対応。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">ログイン・決済などクリティカルフロー / リリース前回帰テスト / マルチステップUXテスト</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">e2e-runner (Sonnet)</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">e2e-testing</span></span></div>
+</div></div>
 
-    <div class="card" data-search="build-fix ビルドエラー コンパイル">
-      <div class="card-header">
-        <span class="cmd">/build-fix</span>
-        <div>
-          <div class="card-title">ビルド・型エラーの段階的修正</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>コンパイルエラーや型エラーをひとつずつ順番に修正する。エラーが多数あっても焦らず確実に直す。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・ビルドが失敗したとき（即座に）<br>・型エラーが大量発生したとき<br>・リファクタリング後の型整合性修正</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">build-error-resolver</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="build-fix ビルドエラー コンパイル 型エラー">
+<div class="card-hdr"><span class="cmd">/build-fix</span><div><div class="card-title">ビルド・型エラーの段階的修正</div></div></div>
+<div class="card-body">npm/TS/Cargo/Maven/Gradle/Go/Python を自動検出し、エラーを1件ずつ確実に修正。最小限の変更のみ行う。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">ビルド失敗時（即座に） / 型エラー大量発生時 / リファクタリング後の型整合性修正</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">build-error-resolver (Sonnet)</span></span></div>
+</div></div>
 
-  </div>
+<div class="card" data-s="test-coverage カバレッジ テスト 80">
+<div class="card-hdr"><span class="cmd">/test-coverage</span><div><div class="card-title">テストカバレッジ分析・補完</div></div></div>
+<div class="card-body">カバレッジを分析し、不足部分を特定して80%以上に引き上げるテストを自動生成。Jest/Vitest/pytest/Cargo/JaCoCo/Go対応。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">カバレッジが目標未満のとき / 未テスト関数の洗い出し</span></div>
+</div></div>
 
-  <p class="cat-label">🎭  オーケストレーション</p>
-  <div class="grid grid-2">
+<div class="card" data-s="refactor-clean デッドコード リファクタリング 削除">
+<div class="card-hdr"><span class="cmd">/refactor-clean</span><div><div class="card-title">デッドコードの安全な削除</div></div></div>
+<div class="card-body">未使用コード・依存を1件ずつ削除→テスト確認のサイクル。SAFE/CAUTION/DANGERの3段階リスク分類。失敗時は自動リバート。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">コードが肥大化してきたとき / リファクタリング後の整理 / 依存クリーンアップ</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">refactor-cleaner (Sonnet)</span></span></div>
+</div></div>
 
-    <div class="card" data-search="orchestrate 自動 複数エージェント">
-      <div class="card-header">
-        <span class="cmd">/orchestrate</span>
-        <div>
-          <div class="card-title">マルチエージェント順次実行</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>planner → tdd-guide → code-reviewer → security-reviewer の順でエージェントを連鎖させる。1コマンドでフル開発サイクルを実行。</p>
-        <pre>例:
-/orchestrate feature "ユーザー認証機能"
-/orchestrate bugfix "決済処理のNullエラー"
-/orchestrate refactor "Serviceクラスを分離"</pre>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・中〜大規模の機能実装<br>・複数の視点が必要な変更<br>・セキュリティクリティカルな実装</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">planner</span> <span class="tag agent-tag">tdd-guide</span> <span class="tag agent-tag">code-reviewer</span> <span class="tag agent-tag">security-reviewer</span></span>
-        </div>
-      </div>
-    </div>
+</div>
 
-    <div class="card" data-search="multi-plan multi-execute 並列 マルチモデル">
-      <div class="card-header">
-        <span class="cmd">/multi-plan</span>
-        <div>
-          <div class="card-title">マルチモデル協調計画</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>Claude + Codex + Gemini が並列に同じ問題を分析し、最良の計画に統合。複数AIの視点を合成する。</p>
-        <pre>フロー:
-/multi-plan "決済モジュール追加"
-  → 各モデルが並列に分析
-  → 結果を合成
-  → /multi-execute で並列実装</pre>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・フルスタック機能（BE+FE同時）<br>・アーキテクチャ決定が重要な場面<br>・複数の実装方針を比較したいとき</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">NEXT</span>
-          <span class="meta-value">計画確認後 → <span class="tag cmd-tag">/multi-execute</span></span>
-        </div>
-      </div>
-    </div>
+<div class="cat">🎭 オーケストレーション（複数エージェント連鎖）</div>
+<div class="g2">
 
-  </div>
+<div class="card" data-s="orchestrate 自動 複数エージェント 連鎖">
+<div class="card-hdr"><span class="cmd">/orchestrate</span><div><div class="card-title">マルチエージェント順次実行</div></div></div>
+<div class="card-body">planner → tdd-guide → code-reviewer → security-reviewer を連鎖させる。1コマンドでフル開発サイクルを実行。</div>
+<pre>/orchestrate feature <span class="s">"ユーザー認証機能"</span>
+/orchestrate bugfix  <span class="s">"決済処理のNullエラー"</span>
+/orchestrate refactor <span class="s">"Serviceクラス分離"</span>
+/orchestrate security <span class="s">"APIエンドポイント検査"</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">中〜大規模機能実装 / 複数の視点が必要な変更 / セキュリティクリティカルな実装</span></div>
+<div class="mi"><span class="ml r">AGENTS</span><span class="mv"><span class="t a">planner</span> <span class="t a">tdd-guide</span> <span class="t a">code-reviewer</span> <span class="t a">security-reviewer</span> <span class="t a">architect</span></span></div>
+</div></div>
 
-  <p class="cat-label">🔄  自律ループ</p>
-  <div class="grid grid-2">
+<div class="card" data-s="multi-plan multi-execute multi-workflow マルチモデル 並列">
+<div class="card-hdr"><span class="cmd">/multi-plan</span><div><div class="card-title">マルチモデル協調計画</div></div></div>
+<div class="card-body">Claude + Codex + Gemini が並列に同じ問題を分析し、最良の計画に統合。ace-tool MCP でコンテキスト拡充。</div>
+<pre>/multi-plan     <span class="c"># 計画作成（Claude+Codex+Gemini）</span>
+/multi-execute  <span class="c"># 並列実装（tmux worktree）</span>
+/multi-backend  <span class="c"># バックエンド特化（Codex主導）</span>
+/multi-frontend <span class="c"># フロントエンド特化（Gemini主導）</span>
+/multi-workflow <span class="c"># フル6フェーズワークフロー</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">フルスタック機能（BE+FE同時） / アーキテクチャ決定が重要な場面 / 実装方針を複数比較したいとき</span></div>
+<div class="mi"><span class="ml r">NEXT</span><span class="mv">計画確認後 → <span class="t c">/multi-execute</span></span></div>
+</div></div>
 
-    <div class="card" data-search="loop-start 自律 autonomous ループ">
-      <div class="card-header">
-        <span class="cmd">/loop-start</span>
-        <div>
-          <div class="card-title">自律開発ループの開始</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>バックログからタスクを自動処理し、テスト・品質ゲート通過後に自動コミット・PR作成を繰り返す。<strong>危険度：中</strong>（品質ゲートで自動停止するが監視必須）。</p>
-        <pre>モード:
---mode safe          ← 推奨。品質ゲート厳格
---mode continuous-pr ← 自動PRを継続生成
---mode rfc-dag       ← RFC形式で依存管理
---mode infinite      ← 無限ループ（上級者向け）</pre>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・明確なバックログがあるとき<br>・単純なタスクが大量にあるとき<br>・深夜の自動処理（朝確認）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">MONITOR</span>
-          <span class="meta-value"><span class="tag cmd-tag">/loop-status</span> で状況確認</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">loop-operator</span></span>
-        </div>
-      </div>
-    </div>
+</div>
 
-    <div class="card" data-search="quality-gate 品質 ゲート">
-      <div class="card-header">
-        <span class="cmd">/quality-gate</span>
-        <div>
-          <div class="card-title">品質ゲートの手動実行</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>ビルド成功・テストカバレッジ80%以上・lint通過・シークレット未検出を一括確認。ループ内でも手動でも使う。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・自律ループのチェックポイント<br>・コミット前の最終確認<br>・CI/CD 前のローカル検証</span>
-        </div>
-      </div>
-    </div>
+<div class="cat">🔄 自律ループ・品質管理</div>
+<div class="g2">
 
-  </div>
+<div class="card" data-s="loop-start 自律 autonomous ループ">
+<div class="card-hdr"><span class="cmd">/loop-start</span><div><div class="card-title">自律開発ループの開始</div></div></div>
+<div class="card-body">バックログを自動処理し、テスト・品質ゲート通過後に自動コミット・PR作成を繰り返す。品質ゲートで自動停止するが<strong>監視必須</strong>。</div>
+<pre>--mode safe          <span class="c"># 推奨。品質ゲート厳格</span>
+--mode continuous-pr <span class="c"># 自動PR継続生成</span>
+--mode rfc-dag       <span class="c"># RFC形式・依存管理</span>
+--mode infinite      <span class="c"># 無限ループ（上級者向け）</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">明確なバックログがあるとき / 定型タスクが大量にあるとき / 夜間自動処理</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">loop-operator (Sonnet)</span></span></div>
+<div class="mi"><span class="ml r">MONITOR</span><span class="mv"><span class="t c">/loop-status</span> で状況確認必須</span></div>
+</div></div>
 
-  <p class="cat-label">🧠  学習・知識管理</p>
-  <div class="grid grid-2">
+<div class="card" data-s="loop-status quality-gate checkpoint 品質 ゲート">
+<div class="card-hdr"><span class="cmd">/loop-status</span><div><div class="card-title">ループ監視 / 品質ゲート / チェックポイント</div></div></div>
+<div class="card-body">実行中ループの状態・進捗・失敗シグナルを確認。</div>
+<pre>/loop-status          <span class="c"># ループ状態確認</span>
+/loop-status --watch  <span class="c"># 定期リフレッシュ</span>
+/quality-gate         <span class="c"># 品質ゲートを手動実行</span>
+/quality-gate --fix   <span class="c"># 自動修正も実行</span>
+/checkpoint create NAME  <span class="c"># チェックポイント作成</span>
+/checkpoint verify NAME  <span class="c"># 状態検証</span>
+/checkpoint list         <span class="c"># 一覧表示</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">ループ実行中の定期確認 / コミット前の最終確認 / マイルストーン記録</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">continuous-agent-loop</span></span></div>
+</div></div>
 
-    <div class="card" data-search="learn 学習 パターン 抽出">
-      <div class="card-header">
-        <span class="cmd">/learn</span>
-        <div>
-          <div class="card-title">セッションからパターン抽出</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>難しい問題を解決した後、そのアプローチをスキルとして保存する。次のセッションで自動的に使える。チームの暗黙知を形式知に変える。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・難しいバグを直したとき<br>・新しい回避策を発見したとき<br>・プロジェクト固有の規約を学んだとき</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">SKILL</span>
-          <span class="meta-value"><span class="tag skill-tag">continuous-learning</span> <span class="tag skill-tag">continuous-learning-v2</span></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">RELATED</span>
-          <span class="meta-value"><span class="tag cmd-tag">/instinct-status</span> <span class="tag cmd-tag">/skill-create</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="eval 評価 eval-driven EDD">
+<div class="card-hdr"><span class="cmd">/eval</span><div><div class="card-title">評価駆動開発 (EDD)</div></div></div>
+<div class="card-body">機能に対してevalを定義・実行・レポートする。AI生成コードの品質を定量的に測定する eval-driven development の実践。</div>
+<pre>/eval define <span class="c"># eval定義</span>
+/eval check  <span class="c"># eval実行・チェック</span>
+/eval report <span class="c"># レポート出力</span>
+/eval list   <span class="c"># eval一覧</span>
+/eval clean  <span class="c"># eval削除</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">AI生成コードの品質定量化 / 機能の合否判定基準を定義 / pass@1・pass@3メトリクス計測</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">eval-harness</span> <span class="t s">agentic-engineering</span></span></div>
+</div></div>
 
-    <div class="card" data-search="refactor-clean リファクタリング デッドコード 削除">
-      <div class="card-header">
-        <span class="cmd">/refactor-clean</span>
-        <div>
-          <div class="card-title">デッドコードの安全な削除</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p>未使用コード・依存を検出し、1件ずつ削除してテスト確認するサイクルを繰り返す。誤削除時は自動リバート。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">WHEN</span>
-          <span class="meta-value">・コードが肥大化してきたとき<br>・リファクタリング後の整理<br>・依存関係のクリーンアップ</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">refactor-cleaner</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="model-route モデル選択 コスト haiku sonnet opus">
+<div class="card-hdr"><span class="cmd">/model-route</span><div><div class="card-title">タスクに最適なモデルを推薦</div></div></div>
+<div class="card-body">タスクの複雑度とコスト予算から最適なモデルティア（Haiku/Sonnet/Opus）を提案する。</div>
+<pre>/model-route --budget low  <span class="c"># 低コスト優先</span>
+/model-route --budget high <span class="c"># 品質優先</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">大量のLLM呼び出しがあるとき / コスト削減が必要なとき / タスクの複雑度を判定したいとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">cost-aware-llm-pipeline</span> <span class="t s">prompt-optimizer</span></span></div>
+</div></div>
 
-  </div>
+</div>
 
-  <p class="cat-label">🌐  言語別コマンド</p>
-  <div class="grid grid-3">
-    <div class="card" data-search="go golang go-review go-build go-test">
-      <div class="card-header">
-        <span class="cmd">/go-review</span>
-        <div><div class="card-title">Go コードレビュー</div></div>
-      </div>
-      <div class="card-body"><p>Go 固有のパターン・慣用句・セキュリティをチェック。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label relates">FAMILY</span>
-          <span class="meta-value"><span class="tag cmd-tag">/go-build</span> <span class="tag cmd-tag">/go-test</span></span></div>
-        <div class="meta-item"><span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">go-reviewer</span> <span class="tag agent-tag">go-build-resolver</span></span></div>
-      </div>
-    </div>
-    <div class="card" data-search="python python-review">
-      <div class="card-header">
-        <span class="cmd">/python-review</span>
-        <div><div class="card-title">Python コードレビュー</div></div>
-      </div>
-      <div class="card-body"><p>Pythonic なパターン・型ヒント・セキュリティをチェック。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">python-reviewer</span></span></div>
-        <div class="meta-item"><span class="meta-label relates">SKILL</span>
-          <span class="meta-value"><span class="tag skill-tag">django-patterns</span> <span class="tag skill-tag">django-security</span></span></div>
-      </div>
-    </div>
-    <div class="card" data-search="kotlin kotlin-review kotlin-build kotlin-test android">
-      <div class="card-header">
-        <span class="cmd">/kotlin-review</span>
-        <div><div class="card-title">Kotlin / Android レビュー</div></div>
-      </div>
-      <div class="card-body"><p>Kotlin / JVM パターン・Gradle ビルドの問題を検出。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label relates">FAMILY</span>
-          <span class="meta-value"><span class="tag cmd-tag">/kotlin-build</span> <span class="tag cmd-tag">/kotlin-test</span></span></div>
-        <div class="meta-item"><span class="meta-label relates">AGENT</span>
-          <span class="meta-value"><span class="tag agent-tag">kotlin-reviewer</span></span></div>
-      </div>
-    </div>
-  </div>
+<div class="cat">🧠 学習・知識管理・Instinct システム</div>
+<div class="g2">
 
+<div class="card" data-s="learn learn-eval 学習 パターン 抽出">
+<div class="card-hdr"><span class="cmd">/learn</span><div><div class="card-title">セッションからパターン抽出</div></div></div>
+<div class="card-body">難しい問題解決後にアプローチをスキルとして保存。<code>/learn-eval</code>は品質評価付きで「保存/改善/統合/破棄」の4択判定を行う。</div>
+<pre>/learn       <span class="c"># 即時パターン保存</span>
+/learn-eval  <span class="c"># 品質評価後に保存（推奨）</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">難しいバグを直したとき / 新しい回避策を発見したとき / プロジェクト固有規約を学んだとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">continuous-learning</span> <span class="t s">continuous-learning-v2</span></span></div>
+</div></div>
+
+<div class="card" data-s="instinct-status instinct-import instinct-export evolve skill-create instinct">
+<div class="card-hdr"><span class="cmd">/instinct-*</span><div><div class="card-title">Instinctシステム管理</div></div></div>
+<div class="card-body">学習済みInstinct（原子的なパターン）の確認・共有・進化を管理する。チームの暗黙知を形式知化。</div>
+<pre>/instinct-status    <span class="c"># 学習済み一覧と信頼度確認</span>
+/instinct-import    <span class="c"># チームのinstinctをインポート</span>
+/instinct-export    <span class="c"># instinctをファイルにエクスポート</span>
+/evolve             <span class="c"># instinctをCommand/Skill/Agentに昇格</span>
+/skill-create       <span class="c"># git履歴からスキル自動生成</span>
+/promote            <span class="c"># プロジェクト→グローバルに昇格</span>
+/projects           <span class="c"># プロジェクト一覧とinstinct統計</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">チームでInstinctを共有したいとき / instinctをスキルに昇格させたいとき / git履歴からパターンを抽出したいとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">continuous-learning-v2</span></span></div>
+</div></div>
+
+</div>
+
+<div class="cat">💾 セッション管理・コンテキスト</div>
+<div class="g3">
+
+<div class="card" data-s="save-session resume-session sessions セッション">
+<div class="card-hdr"><span class="cmd">/save-session</span><div><div class="card-title">セッション保存・復元</div></div></div>
+<div class="card-body">作業状態を~/.claude/sessions/に保存し、次回セッションで完全に復元する。</div>
+<pre>/save-session    <span class="c"># 現在状態を保存</span>
+/resume-session  <span class="c"># 前回から再開</span>
+/sessions list   <span class="c"># 履歴一覧</span>
+/sessions alias  <span class="c"># エイリアス設定</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">作業終了時 / コンテキスト上限前 / 複雑な問題解決後</span></div>
+</div></div>
+
+<div class="card" data-s="aside 割り込み 質問 コンテキスト維持">
+<div class="card-hdr"><span class="cmd">/aside</span><div><div class="card-title">作業を中断せず質問する</div></div></div>
+<div class="card-body">現在の作業コンテキストを保持したまま、横道の質問に即答してもらい自動的に作業に戻る。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">作業中に疑問が浮かんだとき / 編集中のコードの説明を聞きたいとき / 流れを切らずに確認したいとき</span></div>
+</div></div>
+
+<div class="card" data-s="prompt-optimize プロンプト最適化 トークン">
+<div class="card-hdr"><span class="cmd">/prompt-optimize</span><div><div class="card-title">プロンプト最適化（分析のみ）</div></div></div>
+<div class="card-body">ドラフトプロンプトを6フェーズで分析し、ECC最適化バージョンを出力する。タスク自体は実行しない。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">大きなプロンプトを書く前 / コスト削減 / ECC機能を最大活用したいとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">prompt-optimizer</span></span></div>
+</div></div>
+
+</div>
+
+<div class="cat">📝 ドキュメント・コードマップ</div>
+<div class="g3">
+
+<div class="card" data-s="update-docs update-codemaps ドキュメント コードマップ">
+<div class="card-hdr"><span class="cmd">/update-docs</span><div><div class="card-title">ドキュメント・コードマップ更新</div></div></div>
+<div class="card-body">コードベースとドキュメントを同期。コードマップはトークン効率の高いアーキテクチャ文書を生成。</div>
+<pre>/update-docs      <span class="c"># README・ガイド・env変数を同期</span>
+/update-codemaps  <span class="c"># アーキテクチャ文書を再生成</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">大きな機能追加後 / リファクタリング後 / PRレビュー前</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">doc-updater (Haiku)</span></span></div>
+</div></div>
+
+<div class="card" data-s="harness-audit ハーネス 監査 最適化">
+<div class="card-hdr"><span class="cmd">/harness-audit</span><div><div class="card-title">ハーネス設定監査</div></div></div>
+<div class="card-body">リポジトリのAgent設定（hooks/skills/commands/agents）を評価し、優先度付きスコアカードを出力。</div>
+<pre>/harness-audit          <span class="c"># 全項目監査</span>
+/harness-audit hooks    <span class="c"># フックのみ</span>
+/harness-audit --format json</pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">ECC設定の品質確認 / コスト最適化 / 新メンバーのオンボーディング前</span></div>
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">harness-optimizer (Sonnet)</span></span></div>
+</div></div>
+
+<div class="card" data-s="claw nanoclaw REPL セッション">
+<div class="card-hdr"><span class="cmd">/claw</span><div><div class="card-title">NanoClaw v2 — 永続REPLセッション</div></div></div>
+<div class="card-body">モデルルーティング・スキルホットロード・ブランチ・圧縮・エクスポート・メトリクスを持つ永続Markdownセッション。</div>
+<pre><span class="c">REPLコマンド:</span>
+/model, /load, /branch, /search
+/compact, /export, /metrics, /history</pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">複雑なマルチターン調査 / 永続コンテキストが必要な作業 / コスト追跡が必要なとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">nanoclaw-repl</span></span></div>
+</div></div>
+
+</div>
+
+<div class="cat">🌐 言語別コマンド</div>
+<div class="g3">
+
+<div class="card" data-s="go golang go-review go-build go-test">
+<div class="card-hdr"><span class="cmd">/go-review</span><span class="cmd">/go-build</span><span class="cmd">/go-test</span></div>
+<div class="card-body">Go固有パターン・慣用句・セキュリティ・並行性のチェック。ビルドエラー修正・TDDワークフロー。</div>
+<div class="meta">
+<div class="mi"><span class="ml r">AGENTS</span><span class="mv"><span class="t a">go-reviewer</span> <span class="t a">go-build-resolver</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">golang-patterns</span> <span class="t s">golang-testing</span></span></div>
+</div></div>
+
+<div class="card" data-s="kotlin android kotlin-review kotlin-build kotlin-test gradle-build">
+<div class="card-hdr"><span class="cmd">/kotlin-review</span><span class="cmd">/kotlin-build</span><span class="cmd">/kotlin-test</span><span class="cmd">/gradle-build</span></div>
+<div class="card-body">Kotlin/JVMパターン・null安全・コルーチン・Gradle/Androidビルドエラー修正・TDDワークフロー。</div>
+<div class="meta">
+<div class="mi"><span class="ml r">AGENTS</span><span class="mv"><span class="t a">kotlin-reviewer</span> <span class="t a">kotlin-build-resolver</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">kotlin-patterns</span> <span class="t s">kotlin-testing</span> <span class="t s">kotlin-coroutines-flows</span></span></div>
+</div></div>
+
+<div class="card" data-s="python python-review django fastapi">
+<div class="card-hdr"><span class="cmd">/python-review</span></div>
+<div class="card-body">PEP8・型ヒント・Pythonicイディオム・セキュリティチェック。Django/FastAPI/Flask対応。ruff/mypy/black/banditを実行。</div>
+<div class="meta">
+<div class="mi"><span class="ml r">AGENT</span><span class="mv"><span class="t a">python-reviewer (Sonnet)</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">python-patterns</span> <span class="t s">django-patterns</span> <span class="t s">django-security</span></span></div>
+</div></div>
+
+</div>
+
+<div class="cat">⚙️ DevOps・設定</div>
+<div class="g3">
+
+<div class="card" data-s="pm2 プロセス 管理 サービス">
+<div class="card-hdr"><span class="cmd">/pm2</span><div><div class="card-title">PM2 プロセス管理</div></div></div>
+<div class="card-body">プロジェクトを自動解析してPM2サービスコマンドを生成。Vite/Next.js/Nuxt/Express/FastAPI/Flask/Go対応。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">複数サービスを本番環境で管理したいとき / プロセス監視が必要なとき</span></div>
+</div></div>
+
+<div class="card" data-s="setup-pm パッケージマネージャー npm yarn pnpm bun">
+<div class="card-hdr"><span class="cmd">/setup-pm</span><div><div class="card-title">パッケージマネージャー設定</div></div></div>
+<div class="card-body">npm/pnpm/yarn/bunを検出・設定。プロジェクト/グローバルスコープで設定可能。</div>
+<div class="meta">
+<div class="mi"><span class="ml a">AUTO</span><span class="mv">session-startフックで自動検出</span></div>
+</div></div>
+
+<div class="card" data-s="promote 昇格 グローバル instinct">
+<div class="card-hdr"><span class="cmd">/promote</span><div><div class="card-title">Instinctをグローバルに昇格</div></div></div>
+<div class="card-body">プロジェクトスコープのInstinctを複数プロジェクトで使えるグローバルスコープに昇格させる。</div>
+<pre>/promote --dry-run  <span class="c"># 昇格候補を確認</span>
+/promote --force    <span class="c"># 自動昇格</span></pre>
+<div class="meta">
+<div class="mi"><span class="ml w">WHEN</span><span class="mv">あるプロジェクトで学んだパターンを他でも使いたいとき</span></div>
+</div></div>
+
+</div>
 </section>
-
-<!-- ══════════════════════════════════════════════
-     AGENTS
-══════════════════════════════════════════════ -->
+<!-- ═══════════════ AGENTS ═══════════════ -->
 <section id="agents">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(14,165,233,.15)">🤖</div>
-    <div>
-      <div class="section-title">エージェント <span style="color:var(--muted);font-size:14px;font-weight:400">(18 専門エージェント)</span></div>
-      <div class="section-desc">コマンドから委譲される専門家。直接呼ぶより /orchestrate 経由が基本。</div>
-    </div>
-  </div>
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(14,165,233,.15)">🤖</div>
+  <div><div class="sec-title">エージェント <span style="color:var(--muted);font-size:13px;font-weight:400">18 専門エージェント</span></div>
+  <div class="sec-sub">コマンドから委譲される専門家。直接指示より /orchestrate 経由が基本。</div></div>
+</div>
 
-  <p class="cat-label">🏛️  コアエージェント（常に有効）</p>
-  <div class="grid grid-2">
+<div class="cat">🏛️ コア開発エージェント</div>
+<div class="g2">
 
-    <div class="card" data-search="planner 計画 設計 opus">
-      <div class="card-header">
-        <span class="agent-name">planner</span>
-        <span class="badge badge-opus">Opus</span>
-        <div><div class="card-title">実装計画の専門家</div></div>
-      </div>
-      <div class="card-body">
-        <p>複雑な機能要件を実装可能なフェーズに分解する。コードは書かず、計画だけを作る。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">複雑な機能リクエストが来たら<strong>コーディング前に必ず</strong></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/plan</span> <span class="tag cmd-tag">/orchestrate</span> <span class="tag cmd-tag">/multi-plan</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="planner 計画 opus 設計">
+<div class="card-hdr"><span class="agt">planner</span><span class="b b-opus">Opus</span><div class="card-title" style="margin-left:4px">実装計画の専門家</div></div>
+<div class="card-body">複雑な機能要件を実装可能なフェーズに分解。コードは書かず計画だけを作る。依存関係・リスク・実装順序を考慮した詳細計画を出力。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">複雑な機能リクエストが来たら<strong>コーディング前に必ず</strong></span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/plan</span> <span class="t c">/orchestrate</span> <span class="t c">/multi-plan</span></span></div>
+</div></div>
 
-    <div class="card" data-search="architect アーキテクト 設計 システム">
-      <div class="card-header">
-        <span class="agent-name">architect</span>
-        <span class="badge badge-opus">Opus</span>
-        <div><div class="card-title">システム設計の専門家</div></div>
-      </div>
-      <div class="card-body">
-        <p>スケーラビリティ・拡張性を考慮したシステム設計を行う。planner が「何を作るか」なら、architect は「どう構造化するか」。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">マイクロサービス化・DB設計・API設計などアーキテクチャ決定が必要なとき</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/orchestrate</span> refactor 系</span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="architect アーキテクト 設計 opus システム">
+<div class="card-hdr"><span class="agt">architect</span><span class="b b-opus">Opus</span><div class="card-title" style="margin-left:4px">システム設計の専門家</div></div>
+<div class="card-body">スケーラビリティ・拡張性・一貫性を考慮したシステム設計。技術トレードオフを評価し、将来の成長を見据えたパターンを推薦。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">マイクロサービス化・DB設計・API設計などアーキテクチャ決定が必要なとき</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/orchestrate</span> refactor系 / 大規模リファクタリング</span></div>
+</div></div>
 
-    <div class="card" data-search="tdd-guide テスト TDD カバレッジ">
-      <div class="card-header">
-        <span class="agent-name">tdd-guide</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">TDD 実践エージェント</div></div>
-      </div>
-      <div class="card-body">
-        <p>テストを先に書いてから実装する RED→GREEN→REFACTOR サイクルを強制する。カバレッジ 80% 以上を保証。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">新機能・バグ修正・リファクタリングの<strong>全ての実装作業</strong></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/tdd</span> <span class="tag cmd-tag">/orchestrate</span></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">SKILL</span>
-          <span class="meta-value"><span class="tag skill-tag">tdd-workflow</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="tdd-guide テスト TDD カバレッジ sonnet">
+<div class="card-hdr"><span class="agt">tdd-guide</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">TDD 実践エージェント</div></div>
+<div class="card-body">テスト先行RED→GREEN→REFACTORサイクルを強制。カバレッジ80%以上を保証。eval-driven TDDでpass@1/pass@3メトリクスも計測。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">新機能・バグ修正・リファクタリングの<strong>全ての実装作業</strong></span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/tdd</span> <span class="t c">/orchestrate</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">tdd-workflow</span></span></div>
+</div></div>
 
-    <div class="card" data-search="code-reviewer セキュリティ 品質 owasp">
-      <div class="card-header">
-        <span class="agent-name">code-reviewer</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">コード品質レビュー</div></div>
-      </div>
-      <div class="card-body">
-        <p>コードの品質・保守性・スタイルをレビュー。セキュリティ観点も含む。CRITICAL/HIGH は必ずブロック。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">コード変更後・コミット前（<strong>常に</strong>）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/code-review</span> <span class="tag cmd-tag">/orchestrate</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="code-reviewer セキュリティ 品質 owasp sonnet">
+<div class="card-hdr"><span class="agt">code-reviewer</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">コード品質レビュー</div></div>
+<div class="card-body">セキュリティ(CRITICAL)・品質(HIGH)・React/Next.jsパターン・パフォーマンス(MEDIUM)・ベストプラクティス(LOW)を4段階で評価。信頼度フィルタでノイズを除去。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">コード変更後・コミット前（<strong>常に</strong>）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/code-review</span> <span class="t c">/orchestrate</span></span></div>
+</div></div>
 
-    <div class="card" data-search="security-reviewer セキュリティ 脆弱性 owasp">
-      <div class="card-header">
-        <span class="agent-name">security-reviewer</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">セキュリティ脆弱性検出</div></div>
-      </div>
-      <div class="card-body">
-        <p>OWASP Top 10 に基づく脆弱性スキャン。SQLインジェクション・XSS・認証バイパスなどを検出。入力検証・ハードコードシークレットも確認。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">認証・決済・API エンドポイント・ユーザー入力処理のコード変更時は<strong>必須</strong></span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/code-review</span> <span class="tag cmd-tag">/verify full</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="security-reviewer セキュリティ 脆弱性 owasp sonnet">
+<div class="card-hdr"><span class="agt">security-reviewer</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">セキュリティ脆弱性検出</div></div>
+<div class="card-body">OWASP Top 10・SQLインジェクション・XSS・CSRF・SSRF・認証バイパス・レートリミット・ハードコードシークレット・CVEスキャン。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">認証・決済・API・ユーザー入力処理の変更時は<strong>必須</strong></span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/code-review</span> <span class="t c">/verify full</span></span></div>
+</div></div>
 
-    <div class="card" data-search="build-error-resolver ビルドエラー コンパイル 型">
-      <div class="card-header">
-        <span class="agent-name">build-error-resolver</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">ビルドエラー段階的修正</div></div>
-      </div>
-      <div class="card-body">
-        <p>コンパイルエラー・型エラーを1件ずつ確実に修正する。一度に全部直そうとせず、段階的アプローチで確実性を高める。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">ビルドが失敗したとき（<strong>即座に</strong>）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/build-fix</span> <span class="tag cmd-tag">/go-build</span> <span class="tag cmd-tag">/kotlin-build</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="build-error-resolver ビルドエラー コンパイル 型 sonnet">
+<div class="card-hdr"><span class="agt">build-error-resolver</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">ビルドエラー段階的修正</div></div>
+<div class="card-body">TypeScript・Cargo・Maven・Gradle・Go・Pythonのコンパイルエラーを1件ずつ確実に修正。一度に全部直そうとせず最小限の変更で対処。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">ビルドが失敗したとき（<strong>即座に</strong>）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/build-fix</span></span></div>
+</div></div>
 
-    <div class="card" data-search="e2e-runner playwright e2e エンドツーエンド">
-      <div class="card-header">
-        <span class="agent-name">e2e-runner</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">E2E テスト自動生成・実行</div></div>
-      </div>
-      <div class="card-body">
-        <p>Playwright でユーザーフローのE2Eテストを生成・実行。Page Object Model を使い、フレイキーテストを自動検出。失敗時にスクリーンショット保存。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">リリース前・クリティカルなUXフロー変更後</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/e2e</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="e2e-runner playwright e2e エンドツーエンド sonnet">
+<div class="card-hdr"><span class="agt">e2e-runner</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">E2E テスト自動生成・実行</div></div>
+<div class="card-body">Vercel Agent Browser（Playwrightフォールバック）でE2Eテストを生成・実行・保守。Page Object Modelを使用し、フレイキーテストを自動検出。失敗時スクリーンショット・ビデオ・トレースを保存。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">リリース前・クリティカルなUXフロー変更後</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/e2e</span></span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">e2e-testing</span></span></div>
+</div></div>
 
-    <div class="card" data-search="loop-operator 自律 ループ 監視">
-      <div class="card-header">
-        <span class="agent-name">loop-operator</span>
-        <span class="badge badge-sonnet">Sonnet</span>
-        <div><div class="card-title">自律ループ監視・制御</div></div>
-      </div>
-      <div class="card-body">
-        <p>自律開発ループが止まった・品質ゲートに引っかかった・予期しない状態になったときに介入する。ループの番人。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label when">委譲タイミング</span>
-          <span class="meta-value">/loop-start 実行中（自動的に監視）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">TRIGGER</span>
-          <span class="meta-value"><span class="tag cmd-tag">/loop-start</span> <span class="tag cmd-tag">/loop-status</span></span>
-        </div>
-      </div>
-    </div>
+<div class="card" data-s="refactor-cleaner デッドコード リファクタリング sonnet">
+<div class="card-hdr"><span class="agt">refactor-cleaner</span><span class="b b-son">Sonnet</span><div class="card-title" style="margin-left:4px">デッドコード安全削除</div></div>
+<div class="card-body">knip/depcheck/ts-pruneで未使用コード・依存・重複を検出。SAFE/CAREFUL/RISKYの3段階リスク分類で1件ずつ削除→テスト確認のサイクル。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">コードが肥大化してきたとき / リファクタリング後の整理</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/refactor-clean</span></span></div>
+</div></div>
 
-  </div>
+</div>
 
+<div class="cat">🌐 言語専門エージェント</div>
+<div class="g3">
+
+<div class="card" data-s="go-reviewer golang go sonnet">
+<div class="card-hdr"><span class="agt">go-reviewer</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">慣用的なGoパターン・goroutine/channel安全性・エラーハンドリング・パフォーマンス。go vet/staticcheckを実行。SQL/コマンドインジェクション・レース条件を検出。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">Go コードを書いた後（<strong>Go プロジェクト必須</strong>）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/go-review</span></span></div>
+</div></div>
+
+<div class="card" data-s="go-build-resolver golang go build sonnet">
+<div class="card-hdr"><span class="agt">go-build-resolver</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">Goのコンパイルエラー・go vet問題・linter警告・モジュール依存問題を段階的に修正。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">go build ./... が失敗したとき</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/go-build</span></span></div>
+</div></div>
+
+<div class="card" data-s="kotlin-reviewer kotlin android sonnet">
+<div class="card-hdr"><span class="agt">kotlin-reviewer</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">Kotlinイディオム・null安全・コルーチン/Flow安全性・Composeベストプラクティス・Android固有パターン・セキュリティ。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">Kotlin コードを書いた後（<strong>Android/KMP 必須</strong>）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/kotlin-review</span></span></div>
+</div></div>
+
+<div class="card" data-s="kotlin-build-resolver kotlin gradle android sonnet">
+<div class="card-hdr"><span class="agt">kotlin-build-resolver</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">Kotlin/Gradleのコンパイルエラー・依存解決・detekt/ktlint違反を段階的に修正。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">./gradlew build が失敗したとき</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/kotlin-build</span> <span class="t c">/gradle-build</span></span></div>
+</div></div>
+
+<div class="card" data-s="python-reviewer python django fastapi sonnet">
+<div class="card-hdr"><span class="agt">python-reviewer</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">PEP8・型ヒント・Pythonicパターン・セキュリティ（eval/exec/SQL injection）・Django/FastAPI/Flask対応。ruff/mypy/black/banditを実行。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">Python コードを書いた後（<strong>Python プロジェクト必須</strong>）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/python-review</span></span></div>
+</div></div>
+
+<div class="card" data-s="database-reviewer postgresql supabase sql sonnet">
+<div class="card-hdr"><span class="agt">database-reviewer</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">PostgreSQL/Supabaseのクエリ最適化・スキーマ設計・RLSセキュリティ・インデックス設計・N+1防止・コネクション管理。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">SQL記述・マイグレーション作成・スキーマ設計・DBパフォーマンス問題のとき</span></div>
+<div class="mi"><span class="ml r">SKILL</span><span class="mv"><span class="t s">postgres-patterns</span></span></div>
+</div></div>
+
+</div>
+
+<div class="cat">⚙️ 運用・管理エージェント</div>
+<div class="g3">
+
+<div class="card" data-s="loop-operator 自律 ループ 監視 sonnet">
+<div class="card-hdr"><span class="agt">loop-operator</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">自律ループの進捗追跡・スタック検出・リトライストーム防止・失敗時スコープ縮小・再開。コスト逸脱・マージコンフリクト・繰り返し失敗で自動エスカレート。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">/loop-start 実行中（自動的に監視）</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/loop-start</span> <span class="t c">/loop-status</span></span></div>
+</div></div>
+
+<div class="card" data-s="doc-updater ドキュメント コードマップ haiku">
+<div class="card-hdr"><span class="agt">doc-updater</span><span class="b b-hku">Haiku</span></div>
+<div class="card-body">コードマップ生成・README/ガイド更新・AST解析・依存マッピング。ドキュメントと実装の乖離を防ぐ。低コストなHaikuモデルで高速実行。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">機能追加・リファクタリング後のドキュメント同期</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/update-docs</span> <span class="t c">/update-codemaps</span></span></div>
+</div></div>
+
+<div class="card" data-s="harness-optimizer 最適化 設定 コスト sonnet">
+<div class="card-hdr"><span class="agt">harness-optimizer</span><span class="b b-son">Sonnet</span></div>
+<div class="card-body">ハーネス設定（hooks/evals/routing/context/safety）を改善提案。最小限の可逆的変更のみ提案し、before/afterデルタをレポート。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">ECC設定の最適化・コスト削減・信頼性改善</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv"><span class="t c">/harness-audit</span></span></div>
+</div></div>
+
+<div class="card" data-s="chief-of-staff メール slack コミュニケーション opus">
+<div class="card-hdr"><span class="agt">chief-of-staff</span><span class="b b-opus">Opus</span></div>
+<div class="card-body">メール・Slack・LINE・Messengerを4段階分類（skip/info_only/meeting_info/action_required）でトリアージ。返信ドラフト・スケジューリング・フォローアップ管理。</div>
+<div class="meta">
+<div class="mi"><span class="ml w">委譲</span><span class="mv">マルチチャンネルコミュニケーション管理が必要なとき</span></div>
+<div class="mi"><span class="ml r">TRIGGER</span><span class="mv">/mail /slack /today /schedule-reply</span></div>
+</div></div>
+
+</div>
 </section>
-
-<!-- ══════════════════════════════════════════════
-     SKILLS
-══════════════════════════════════════════════ -->
+<!-- ═══════════════ SKILLS ═══════════════ -->
 <section id="skills">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(16,185,129,.15)">🛠️</div>
-    <div>
-      <div class="section-title">スキル <span style="color:var(--muted);font-size:14px;font-weight:400">(94 モジュール)</span></div>
-      <div class="section-desc">コマンドやエージェントが内部で参照する再利用可能なワークフロー定義。直接呼ぶより自動的に使われることが多い。</div>
-    </div>
-  </div>
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(16,185,129,.15)">🛠️</div>
+  <div><div class="sec-title">スキル <span style="color:var(--muted);font-size:13px;font-weight:400">94 モジュール（全件）</span></div>
+  <div class="sec-sub">コマンド・エージェントが内部参照する再利用可能なワークフロー定義。直接呼ぶより自動的に使われることが多い。</div></div>
+</div>
 
-  <p class="cat-label">🔑  最重要スキル（必ず把握すべき）</p>
-  <div class="grid grid-2">
+<div class="cat">🔑 最重要スキル（仕組みを理解すべき）</div>
+<div class="g2">
+<div class="card" data-s="tdd-workflow テスト TDD"><div class="card-hdr"><span class="skl">tdd-workflow</span><div class="card-title" style="margin-left:6px">TDD強制ワークフロー定義</div></div><div class="card-body">RED→GREEN→REFACTORサイクルの具体的プロセス定義。カバレッジ80%強制。/tddコマンドとtdd-guideエージェントの基盤。</div><div class="meta"><div class="mi"><span class="ml r">使用先</span><span class="mv"><span class="t c">/tdd</span> → <span class="t a">tdd-guide</span></span></div></div></div>
+<div class="card" data-s="verification-loop 検証 品質 ビルド"><div class="card-hdr"><span class="skl">verification-loop</span><div class="card-title" style="margin-left:6px">包括的検証ループ</div></div><div class="card-body">ビルド→型→lint→テスト→セキュリティを順番に検証し全て通過するまでループ。/verifyコマンドの実体。</div><div class="meta"><div class="mi"><span class="ml r">使用先</span><span class="mv"><span class="t c">/verify</span> <span class="t c">/quality-gate</span></span></div></div></div>
+<div class="card" data-s="continuous-learning 学習 パターン 自動"><div class="card-hdr"><span class="skl">continuous-learning</span><div class="card-title" style="margin-left:6px">セッション自動学習</div></div><div class="card-body">Stopフックが自動起動し解決パターンを評価・抽出・保存。次回から自動適用されチームの生産性が複利で向上。</div><div class="meta"><div class="mi"><span class="ml a">AUTO</span><span class="mv">Stopフックで自動実行 / 手動: <span class="t c">/learn</span></span></div></div></div>
+<div class="card" data-s="continuous-learning-v2 instinct 信頼度"><div class="card-hdr"><span class="skl">continuous-learning-v2</span><div class="card-title" style="margin-left:6px">Instinct ベース学習システム</div></div><div class="card-body">セッションを観察し原子的なInstinctを信頼度スコアとともに生成・進化。/learn /evolve /instinct-* コマンドの基盤。</div><div class="meta"><div class="mi"><span class="ml r">使用先</span><span class="mv"><span class="t c">/learn</span> <span class="t c">/evolve</span> <span class="t c">/instinct-*</span> <span class="t c">/skill-create</span></span></div></div></div>
+<div class="card" data-s="continuous-agent-loop 自律 ループ 安全"><div class="card-hdr"><span class="skl">continuous-agent-loop</span><div class="card-title" style="margin-left:6px">自律ループ安全パターン</div></div><div class="card-body">自律ループの安全な実行パターン定義。スタック検出・品質ゲート・手動介入ポイントを含む。/loop-startの基盤。</div><div class="meta"><div class="mi"><span class="ml r">使用先</span><span class="mv"><span class="t c">/loop-start</span> → <span class="t a">loop-operator</span></span></div></div></div>
+<div class="card" data-s="coding-standards コーディング規約 typescript react"><div class="card-hdr"><span class="skl">coding-standards</span><div class="card-title" style="margin-left:6px">TypeScript/JS/React/Node コーディング標準</div></div><div class="card-body">統一コーディング規約。code-reviewer・tdd-guideエージェントが参照する品質基準。</div><div class="meta"><div class="mi"><span class="ml r">使用先</span><span class="mv"><span class="t a">code-reviewer</span> <span class="t a">tdd-guide</span></span></div></div></div>
+</div>
 
-    <div class="card" data-search="tdd-workflow テスト test">
-      <div class="card-header">
-        <span class="skill-name">tdd-workflow</span>
-        <div><div class="card-title">TDD 強制ワークフロー</div></div>
-      </div>
-      <div class="card-body">
-        <p>テスト先行実装のプロセス定義。/tdd コマンドと tdd-guide エージェントの基盤。カバレッジ80%以上を強制。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label relates">使用先</span>
-          <span class="meta-value"><span class="tag cmd-tag">/tdd</span> → <span class="tag agent-tag">tdd-guide</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" data-search="verification-loop 検証 品質">
-      <div class="card-header">
-        <span class="skill-name">verification-loop</span>
-        <div><div class="card-title">包括的検証ループ</div></div>
-      </div>
-      <div class="card-body">
-        <p>ビルド・型・lint・テスト・セキュリティを順番に検証し、全て通過するまでループする。/verify の実体。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label relates">使用先</span>
-          <span class="meta-value"><span class="tag cmd-tag">/verify</span> <span class="tag cmd-tag">/quality-gate</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" data-search="continuous-learning 学習 パターン">
-      <div class="card-header">
-        <span class="skill-name">continuous-learning</span>
-        <div><div class="card-title">セッション自動学習</div></div>
-      </div>
-      <div class="card-body">
-        <p>セッション終了時にフックが自動起動し、解決した問題・発見したパターンを評価・抽出して ~/.claude/skills/ に保存。次回から使えるようになる。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label auto">AUTO</span>
-          <span class="meta-value">Stop フックで自動実行（手動では /learn で起動）</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label relates">RELATED</span>
-          <span class="meta-value"><span class="tag cmd-tag">/learn</span> <span class="tag skill-tag">continuous-learning-v2</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" data-search="coding-standards コーディング規約 スタイル">
-      <div class="card-header">
-        <span class="skill-name">coding-standards</span>
-        <div><div class="card-title">コーディング標準</div></div>
-      </div>
-      <div class="card-body">
-        <p>TypeScript/JS/React/Node.js の統一コーディング規約。コードレビュー・TDD エージェントが参照する基準。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label relates">使用先</span>
-          <span class="meta-value"><span class="tag agent-tag">code-reviewer</span> <span class="tag agent-tag">tdd-guide</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" data-search="continuous-agent-loop 自律 autonomous">
-      <div class="card-header">
-        <span class="skill-name">continuous-agent-loop</span>
-        <div><div class="card-title">自律ループの安全パターン</div></div>
-      </div>
-      <div class="card-body">
-        <p>自律ループの安全な実行パターン定義。スタック検出・品質ゲート・手動介入ポイントを含む。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label relates">使用先</span>
-          <span class="meta-value"><span class="tag cmd-tag">/loop-start</span> → <span class="tag agent-tag">loop-operator</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" data-search="agentic-engineering エージェント 設計">
-      <div class="card-header">
-        <span class="skill-name">agentic-engineering</span>
-        <div><div class="card-title">マルチエージェント設計パターン</div></div>
-      </div>
-      <div class="card-body">
-        <p>エージェントシステムの設計・実装パターン。エージェント間の連携・委譲・コンテキスト管理を定義。</p>
-      </div>
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label relates">使用先</span>
-          <span class="meta-value"><span class="tag cmd-tag">/orchestrate</span> <span class="tag cmd-tag">/multi-plan</span></span>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <p class="cat-label">⚡  実用スキル早見表</p>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>スキル名</th>
-          <th>用途</th>
-          <th>使うシチュエーション</th>
-          <th>関連コマンド</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="skill-name">e2e-testing</span></td>
-          <td>Playwright E2E パターン</td>
-          <td>クリティカルなユーザーフローのテスト</td>
-          <td><span class="tag cmd-tag">/e2e</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">backend-patterns</span></td>
-          <td>API・リポジトリパターン</td>
-          <td>バックエンド設計・REST/GraphQL実装</td>
-          <td><span class="tag cmd-tag">/plan</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">django-patterns</span></td>
-          <td>Django フレームワーク</td>
-          <td>Django プロジェクト全般</td>
-          <td><span class="tag cmd-tag">/python-review</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">django-security</span></td>
-          <td>Django セキュリティ</td>
-          <td>Django 認証・CSRF・XSS 対策</td>
-          <td><span class="tag cmd-tag">/code-review</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">springboot-patterns</span></td>
-          <td>Spring Boot ベストプラクティス</td>
-          <td>Java/Kotlin Spring プロジェクト</td>
-          <td><span class="tag cmd-tag">/kotlin-review</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">kotlin-coroutines-flows</span></td>
-          <td>Kotlin 非同期パターン</td>
-          <td>Kotlin コルーチン・Flow 実装</td>
-          <td><span class="tag cmd-tag">/kotlin-review</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">database-migrations</span></td>
-          <td>DBスキーマ変更の安全手順</td>
-          <td>マイグレーション作成・実行前</td>
-          <td><span class="tag cmd-tag">/plan</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">deep-research</span></td>
-          <td>マルチターン調査</td>
-          <td>複雑な技術調査・選定</td>
-          <td><span class="tag cmd-tag">/claw</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">prompt-optimizer</span></td>
-          <td>トークン効率化</td>
-          <td>コスト削減・大規模プロンプト最適化</td>
-          <td><span class="tag cmd-tag">/prompt-optimize</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">cost-aware-llm-pipeline</span></td>
-          <td>コスト最適モデル選択</td>
-          <td>大量LLM呼び出しのコスト管理</td>
-          <td><span class="tag cmd-tag">/model-route</span></td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">article-writing</span></td>
-          <td>技術記事の作成</td>
-          <td>ドキュメント・ブログ・SEO記事</td>
-          <td>直接呼び出し</td>
-        </tr>
-        <tr>
-          <td><span class="skill-name">claude-api</span></td>
-          <td>Claude API 統合パターン</td>
-          <td>Anthropic API を使う機能実装</td>
-          <td>直接呼び出し</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<div class="cat">📋 全スキル一覧（カテゴリ別）</div>
+<div class="tw">
+<table>
+<thead><tr><th>スキル名</th><th>カテゴリ</th><th>用途・説明</th><th>使うシチュエーション</th><th>関連コマンド/エージェント</th></tr></thead>
+<tbody>
+<tr><td><span class="skl">agent-harness-construction</span></td><td>AI/Agent</td><td>AI エージェントのアクション空間・ツール定義・観察フォーマット最適化</td><td>エージェントの計画・ツール呼び出し・収束性を改善したいとき</td><td><span class="t c">/harness-audit</span></td></tr>
+<tr><td><span class="skl">agentic-engineering</span></td><td>AI/Agent</td><td>eval-first実行・タスク分解・コスト最適モデルルーティングによるエンジニアリング</td><td>AIエージェントが実装の大部分を担うワークフロー設計</td><td><span class="t c">/eval</span> <span class="t c">/orchestrate</span></td></tr>
+<tr><td><span class="skl">ai-first-engineering</span></td><td>AI/Agent</td><td>AIが実装の大部分を生成するチームのプロセス・レビュー・アーキテクチャ設計</td><td>AI-first開発チームの運用設計</td><td>—</td></tr>
+<tr><td><span class="skl">android-clean-architecture</span></td><td>Architecture/Kotlin</td><td>Android/KMPのClean Architectureモジュール構造・UseCase・Repository</td><td>Android/KMPプロジェクト構造設計・UseCase実装</td><td><span class="t c">/kotlin-review</span></td></tr>
+<tr><td><span class="skl">api-design</span></td><td>Architecture</td><td>REST APIリソース命名・ステータスコード・ページネーション・バージョニング</td><td>新APIエンドポイント設計・APIレビュー・バージョニング計画</td><td><span class="t c">/plan</span></td></tr>
+<tr><td><span class="skl">article-writing</span></td><td>Content</td><td>ブランドガイダンスに基づいた長文コンテンツ作成</td><td>ブログ・ガイド・ニュースレター・メモを記事に変換</td><td>直接呼び出し</td></tr>
+<tr><td><span class="skl">autonomous-loops</span></td><td>AI/Agent</td><td>自律Claudeループのパターン（continuous-agent-loopに移行済み）</td><td>自律ワークフロー設定（旧バージョン）</td><td><span class="t c">/loop-start</span></td></tr>
+<tr><td><span class="skl">backend-patterns</span></td><td>Architecture</td><td>Node.js/Express/Next.jsのバックエンドアーキテクチャ・API設計・DB最適化</td><td>REST/GraphQLエンドポイント設計・リポジトリ/サービス層実装</td><td><span class="t c">/plan</span></td></tr>
+<tr><td><span class="skl">blueprint</span></td><td>Architecture/Workflow</td><td>1行の目的をマルチセッション工学プロジェクトの段階的構築計画に変換</td><td>複数PRにまたがる大機能・リファクタリングの計画</td><td><span class="t c">/plan</span></td></tr>
+<tr><td><span class="skl">carrier-relationship-management</span></td><td>Domain</td><td>キャリアポートフォリオ管理・レート交渉・パフォーマンス追跡・フレイト戦略</td><td>物流キャリア管理</td><td>—</td></tr>
+<tr><td><span class="skl">claude-api</span></td><td>API</td><td>Python/TypeScript向けAnthropic Claude APIパターン・ツール使用・ストリーミング・ビジョン</td><td>Claude APIを使うアプリケーション構築</td><td>直接呼び出し</td></tr>
+<tr><td><span class="skl">clickhouse-io</span></td><td>Database</td><td>ClickHouseの分析クエリ・スキーマ設計・パフォーマンス最適化</td><td>ClickHouseを使う分析系システム</td><td>—</td></tr>
+<tr><td><span class="skl">compose-multiplatform-patterns</span></td><td>Kotlin/KMP</td><td>Compose Multiplatform/Jetpack ComposeのUI・状態管理・ナビゲーション</td><td>Compose UIの構築・パフォーマンス最適化</td><td><span class="t c">/kotlin-review</span></td></tr>
+<tr><td><span class="skl">configure-ecc</span></td><td>DevOps/Workflow</td><td>Everything Claude Codeのインタラクティブインストーラー</td><td>"configure ecc" / "install ecc" / "setup everything claude code"</td><td>—</td></tr>
+<tr><td><span class="skl">content-engine</span></td><td>Content</td><td>X/LinkedIn/TikTok/YouTube/ニュースレター向けプラットフォームネイティブコンテンツ生成</td><td>SNS投稿・スレッド・スクリプト・クロスプラットフォーム展開</td><td><span class="t s">crosspost</span></td></tr>
+<tr><td><span class="skl">content-hash-cache-pattern</span></td><td>Architecture</td><td>SHA-256コンテンツハッシュを使ったファイル処理キャッシュ</td><td>ファイル処理パイプライン構築・高コスト処理のキャッシュ</td><td>—</td></tr>
+<tr><td><span class="skl">cost-aware-llm-pipeline</span></td><td>Cost/AI</td><td>LLM APIコスト最適化・モデルルーティング・予算追跡</td><td>大量LLM呼び出し・コスト管理・予算内運用</td><td><span class="t c">/model-route</span></td></tr>
+<tr><td><span class="skl">cpp-coding-standards</span></td><td>C++</td><td>C++ Core Guidelinesに基づく標準・安全なモダンC++実践</td><td>C++コード記述・レビュー・安全プラクティス適用</td><td>—</td></tr>
+<tr><td><span class="skl">cpp-testing</span></td><td>Testing/C++</td><td>GoogleTest/CTestを使ったC++テストワークフロー</td><td>C++テスト記述・テスト設定・失敗調査</td><td>—</td></tr>
+<tr><td><span class="skl">crosspost</span></td><td>Content/Social</td><td>X/LinkedIn/Threads/Blueskyへのマルチプラットフォームコンテンツ配信</td><td>複数プラットフォームへのネイティブ適応投稿</td><td><span class="t s">content-engine</span></td></tr>
+<tr><td><span class="skl">customs-trade-compliance</span></td><td>Domain</td><td>通関書類・関税分類・関税最適化・制限当事者スクリーニング</td><td>通関処理・関税分類・貿易コンプライアンス</td><td>—</td></tr>
+<tr><td><span class="skl">database-migrations</span></td><td>Database/DevOps</td><td>DBスキーマ変更・ゼロダウンタイムデプロイ・マイグレーションツール</td><td>テーブル作成/変更・ゼロダウンタイム計画・マイグレーション設計</td><td><span class="t c">/plan</span> <span class="t a">database-reviewer</span></td></tr>
+<tr><td><span class="skl">deep-research</span></td><td>Research</td><td>firecrawl/exa MCPを使ったマルチソース詳細調査・引用付きレポート</td><td>任意トピックの包括的調査・エビデンス収集</td><td><span class="t c">/claw</span></td></tr>
+<tr><td><span class="skl">deployment-patterns</span></td><td>DevOps</td><td>デプロイワークフロー・CI/CDパイプライン・Docker・ヘルスチェック・ロールバック</td><td>CI/CD設定・Dockerコンテナ化・デプロイ戦略</td><td><span class="t c">/promote</span></td></tr>
+<tr><td><span class="skl">django-patterns</span></td><td>Python/Django</td><td>Djangoアーキテクチャ・DRF REST API・ORM・キャッシング・シグナル・ミドルウェア</td><td>DjangoアプリREST API設計・ORM活用</td><td><span class="t c">/python-review</span></td></tr>
+<tr><td><span class="skl">django-security</span></td><td>Security/Django</td><td>Django認証・CSRF・SQLインジェクション・XSS防止</td><td>Django認証設定・権限実装・セキュリティレビュー</td><td><span class="t c">/code-review</span></td></tr>
+<tr><td><span class="skl">django-tdd</span></td><td>Testing/Django</td><td>pytest-django/factory_boy/モッキング/カバレッジを使ったDjango TDD</td><td>Djangoテスト記述・TDD実践・カバレッジ設定</td><td><span class="t c">/tdd</span></td></tr>
+<tr><td><span class="skl">django-verification</span></td><td>Testing/Django</td><td>Djangoの検証ループ：マイグレーション・lint・テスト・セキュリティスキャン</td><td>Djangoプロジェクトのデプロイ前検証ゲート</td><td><span class="t c">/verify</span></td></tr>
+<tr><td><span class="skl">dmux-workflows</span></td><td>AI/Agent</td><td>dmuxを使ったマルチエージェント並列オーケストレーション</td><td>複数エージェントを並列セッションで実行したいとき</td><td><span class="t c">/multi-execute</span></td></tr>
+<tr><td><span class="skl">docker-patterns</span></td><td>DevOps</td><td>Dockerベストプラクティス・マルチステージビルド・セキュリティ・最適化</td><td>アプリコンテナ化・Dockerワークフロー設定</td><td>—</td></tr>
+<tr><td><span class="skl">e2e-testing</span></td><td>Testing</td><td>Playwright/CypressによるE2Eテストパターン・自動化</td><td>E2Eテストスイート構築・テスト自動化設定</td><td><span class="t c">/e2e</span></td></tr>
+<tr><td><span class="skl">energy-procurement</span></td><td>Domain</td><td>エネルギー調達戦略・サプライヤー調達・契約交渉</td><td>エネルギー調達管理</td><td>—</td></tr>
+<tr><td><span class="skl">enterprise-agent-ops</span></td><td>AI/DevOps</td><td>エンタープライズスケールでのClaude Codeエージェント運用・監視・ガバナンス</td><td>本番環境でエージェントを大規模運用するとき</td><td>—</td></tr>
+<tr><td><span class="skl">eval-harness</span></td><td>Testing/AI</td><td>eval-driven development (EDD)のための正式な評価フレームワーク</td><td>AI生成コードの評価フレームワーク構築</td><td><span class="t c">/eval</span></td></tr>
+<tr><td><span class="skl">exa-search</span></td><td>Research</td><td>Exa MCPを使ったウェブ・コード・企業・人物のニューラル検索</td><td>神経検索によるトピック調査</td><td>—</td></tr>
+<tr><td><span class="skl">fal-ai-media</span></td><td>Media/AI</td><td>fal.ai MCPによる統合AIメディア生成（画像・動画・音声）</td><td>AIによる画像・動画・音声生成</td><td>—</td></tr>
+<tr><td><span class="skl">foundation-models-on-device</span></td><td>AI/DevOps</td><td>デバイス上でのオンプレミス基盤モデル実行</td><td>API呼び出しなしでLLMをローカル実行したいとき</td><td>—</td></tr>
+<tr><td><span class="skl">frontend-patterns</span></td><td>TypeScript/React</td><td>React/Next.js・状態管理・パフォーマンス・UIパターン</td><td>React/Next.jsアプリ構築</td><td><span class="t c">/plan</span></td></tr>
+<tr><td><span class="skl">frontend-slides</span></td><td>Content/Frontend</td><td>ゼロ依存HTMLプレゼンテーション・スタイルプレビュー・PPTX変換</td><td>プレゼンテーション作成・PPTXのWeb変換</td><td>—</td></tr>
+<tr><td><span class="skl">golang-patterns</span></td><td>Go</td><td>慣用的なGoパターン・堅牢なアプリケーションの慣習</td><td>Goコードのベストプラクティス適用</td><td><span class="t c">/go-review</span></td></tr>
+<tr><td><span class="skl">golang-testing</span></td><td>Testing/Go</td><td>テーブル駆動テスト・サブテスト・ベンチマーク・ファジング</td><td>GoテストのTDD実践</td><td><span class="t c">/go-test</span></td></tr>
+<tr><td><span class="skl">inventory-demand-planning</span></td><td>Domain</td><td>在庫予測・需要計画・最適化</td><td>在庫・需要計画管理</td><td>—</td></tr>
+<tr><td><span class="skl">investor-materials</span></td><td>Content</td><td>ピッチデッキ・ワンページャー・投資家メモ・財務モデル</td><td>資金調達資料の作成</td><td>—</td></tr>
+<tr><td><span class="skl">investor-outreach</span></td><td>Content</td><td>投資家へのパーソナライズされたコールドメール・ウォームイントロ・フォローアップ</td><td>投資家へのリーチアウト</td><td>—</td></tr>
+<tr><td><span class="skl">iterative-retrieval</span></td><td>AI/Agent</td><td>サブエージェントのコンテキスト問題に対する段階的コンテキスト精緻化</td><td>マルチエージェントワークフローでのコンテキスト絞り込み</td><td>—</td></tr>
+<tr><td><span class="skl">java-coding-standards</span></td><td>Java</td><td>Spring Bootアプリ向けJavaコーディング標準</td><td>Javaコードのベストプラクティス適用</td><td>—</td></tr>
+<tr><td><span class="skl">jpa-patterns</span></td><td>Database/Java</td><td>JPA/Hibernateエンティティ設計・リレーション・クエリ最適化</td><td>JPAエンティティ設計・Hibernate活用</td><td>—</td></tr>
+<tr><td><span class="skl">kotlin-coroutines-flows</span></td><td>Kotlin</td><td>Kotlinコルーチン・Flowによる非同期プログラミングパターン</td><td>Kotlinの非同期コード記述</td><td><span class="t c">/kotlin-review</span></td></tr>
+<tr><td><span class="skl">kotlin-exposed-patterns</span></td><td>Database/Kotlin</td><td>Kotlin Exposed ORMパターン</td><td>ExposedでのDBアクセス実装（Kotlin）</td><td>—</td></tr>
+<tr><td><span class="skl">kotlin-ktor-patterns</span></td><td>Kotlin</td><td>Kotlin Ktorウェブフレームワークパターン</td><td>Ktorアプリケーション構築</td><td>—</td></tr>
+<tr><td><span class="skl">kotlin-patterns</span></td><td>Kotlin</td><td>Kotlinイディオム・ベストプラクティス</td><td>慣用的なKotlinコード記述</td><td><span class="t c">/kotlin-review</span></td></tr>
+<tr><td><span class="skl">kotlin-testing</span></td><td>Testing/Kotlin</td><td>Kotest・mockkを使ったKotlinテスト</td><td>Kotlinテスト記述・TDD実践</td><td><span class="t c">/kotlin-test</span></td></tr>
+<tr><td><span class="skl">liquid-glass-design</span></td><td>Design/Frontend</td><td>リキッドグラスデザインシステムのデザインパターン・UIプリンシプル</td><td>モダンUIコンポーネント設計</td><td>—</td></tr>
+<tr><td><span class="skl">logistics-exception-management</span></td><td>Domain</td><td>物流例外管理・サプライチェーンの例外処理</td><td>サプライチェーン例外の処理</td><td>—</td></tr>
+<tr><td><span class="skl">market-research</span></td><td>Research/Content</td><td>ソース付き市場・競合・ファンド・技術調査</td><td>市場・競合・投資家のリサーチ</td><td>—</td></tr>
+<tr><td><span class="skl">nanoclaw-repl</span></td><td>AI/Workflow</td><td>自律ループのためのECC組み込み永続セッションREPL</td><td>永続インタラクティブセッションの実行</td><td><span class="t c">/claw</span></td></tr>
+<tr><td><span class="skl">nutrient-document-processing</span></td><td>Domain</td><td>ドキュメントからの栄養データ処理・抽出</td><td>栄養情報の書類処理</td><td>—</td></tr>
+<tr><td><span class="skl">perl-patterns</span></td><td>Perl</td><td>Perlイディオム・ベストプラクティス・正規表現・ファイル処理</td><td>Perlコードのベストプラクティス適用</td><td>—</td></tr>
+<tr><td><span class="skl">perl-security</span></td><td>Security/Perl</td><td>Perlセキュリティベストプラクティス</td><td>セキュアなPerlコード記述</td><td>—</td></tr>
+<tr><td><span class="skl">perl-testing</span></td><td>Testing/Perl</td><td>Perlテストパターン</td><td>Perlテスト記述</td><td>—</td></tr>
+<tr><td><span class="skl">plankton-code-quality</span></td><td>Testing/QA</td><td>コード品質・lint・フォーマットチェック</td><td>コード品質標準の適用</td><td>—</td></tr>
+<tr><td><span class="skl">postgres-patterns</span></td><td>Database</td><td>PostgreSQLクエリ最適化・スキーマ設計・インデックス・セキュリティ</td><td>PostgreSQLスキーマ設計・クエリ最適化</td><td><span class="t a">database-reviewer</span></td></tr>
+<tr><td><span class="skl">production-scheduling</span></td><td>Domain</td><td>生産スケジューリング・作業指示管理・キャパシティ計画</td><td>生産スケジューリング・キャパシティ管理</td><td>—</td></tr>
+<tr><td><span class="skl">project-guidelines-example</span></td><td>Workflow/Template</td><td>プロジェクト固有スキル作成のテンプレート</td><td>プロジェクトレベルのガイダンス文書作成</td><td><span class="t c">/skill-create</span></td></tr>
+<tr><td><span class="skl">prompt-optimizer</span></td><td>AI/Optimization</td><td>AIモデル向けプロンプトを品質向上・コスト削減のために最適化</td><td>プロンプトの洗練・コスト削減</td><td><span class="t c">/prompt-optimize</span></td></tr>
+<tr><td><span class="skl">python-patterns</span></td><td>Python</td><td>Pythonicイディオム・PEP8・型ヒント・ベストプラクティス</td><td>慣用的なPythonコード記述</td><td><span class="t c">/python-review</span></td></tr>
+<tr><td><span class="skl">python-testing</span></td><td>Testing/Python</td><td>pytest・TDD・フィクスチャ・モッキングを使ったPythonテスト</td><td>Pythonテスト記述・TDD実践</td><td><span class="t c">/tdd</span></td></tr>
+<tr><td><span class="skl">quality-nonconformance</span></td><td>Domain/QA</td><td>品質管理・不適合追跡・是正措置</td><td>品質問題の管理</td><td>—</td></tr>
+<tr><td><span class="skl">ralphinho-rfc-pipeline</span></td><td>AI/Architecture</td><td>RFC駆動・マルチエージェント並列パイプライン・依存管理・段階的品質ゲート</td><td>大機能・マルチユニット並列作業・マージキュー管理</td><td><span class="t c">/loop-start</span> --mode rfc-dag</td></tr>
+<tr><td><span class="skl">regex-vs-llm-structured-text</span></td><td>Architecture/AI</td><td>構造化テキスト抽出にregexとLLMのどちらを使うか判断</td><td>テキスト解析のアルゴリズム選定</td><td>—</td></tr>
+<tr><td><span class="skl">returns-reverse-logistics</span></td><td>Domain</td><td>リバースロジスティクス・返品管理・再入庫</td><td>製品返品・リバースロジスティクス管理</td><td>—</td></tr>
+<tr><td><span class="skl">search-first</span></td><td>Architecture/AI</td><td>検索ファーストアーキテクチャ・RAG（検索拡張生成）</td><td>検索ファーストシステム・RAGシステム構築</td><td>—</td></tr>
+<tr><td><span class="skl">security-review</span></td><td>Security</td><td>認証・入力・シークレット・API・決済機能のセキュリティチェックリスト</td><td>アプリケーションのセキュリティ問題レビュー</td><td><span class="t c">/code-review</span></td></tr>
+<tr><td><span class="skl">security-scan</span></td><td>Security/DevOps</td><td>自動セキュリティスキャン・脆弱性検出</td><td>セキュリティ脆弱性の自動スキャン</td><td><span class="t c">/verify full</span></td></tr>
+<tr><td><span class="skl">skill-stocktake</span></td><td>Workflow</td><td>インストール済みスキルとその目的の棚卸し</td><td>利用可能スキルの監査</td><td><span class="t c">/instinct-status</span></td></tr>
+<tr><td><span class="skl">springboot-patterns</span></td><td>Java/Spring</td><td>Spring Bootアーキテクチャ・REST API・レイヤードサービス・キャッシュ・非同期</td><td>Spring Bootアプリケーション構築</td><td>—</td></tr>
+<tr><td><span class="skl">springboot-security</span></td><td>Security/Spring</td><td>Spring Security認証/認可・バリデーション・CSRF・シークレット・レートリミット</td><td>Spring Bootのセキュリティ実装</td><td><span class="t c">/code-review</span></td></tr>
+<tr><td><span class="skl">springboot-tdd</span></td><td>Testing/Spring</td><td>JUnit5・Mockito・MockMvc・TestcontainersによるSpring Boot TDD</td><td>Spring BootのTDD実践</td><td><span class="t c">/tdd</span></td></tr>
+<tr><td><span class="skl">springboot-verification</span></td><td>Testing/Spring</td><td>Spring Bootの検証：ビルド・静的解析・テスト・セキュリティスキャン</td><td>Spring Bootプロジェクトの検証ゲート</td><td><span class="t c">/verify</span></td></tr>
+<tr><td><span class="skl">strategic-compact</span></td><td>Workflow/Optimization</td><td>論理的な間隔で手動コンテキスト圧縮を提案</td><td>長いセッションでのコンテキスト管理</td><td><span class="t h">suggest-compact hook</span></td></tr>
+<tr><td><span class="skl">swift-actor-persistence</span></td><td>Swift</td><td>SwiftのActorモデル・永続化パターン</td><td>並行Swiftアプリの構築と永続化</td><td>—</td></tr>
+<tr><td><span class="skl">swift-concurrency-6-2</span></td><td>Swift</td><td>Swift 6.2の構造化並行性パターン</td><td>並行Swiftアプリケーション構築</td><td>—</td></tr>
+<tr><td><span class="skl">swift-protocol-di-testing</span></td><td>Testing/Swift</td><td>Swiftのプロトコルベース依存性注入・テスト</td><td>テスト可能なSwiftアプリ設計</td><td>—</td></tr>
+<tr><td><span class="skl">swiftui-patterns</span></td><td>Swift</td><td>SwiftUIパターン・状態管理・パフォーマンス</td><td>SwiftUIアプリケーション構築</td><td>—</td></tr>
+<tr><td><span class="skl">tdd-workflow</span></td><td>Testing/Workflow</td><td>カバレッジ80%以上のTDD：ユニット・統合・E2E</td><td>テスト駆動開発ワークフロー全般</td><td><span class="t c">/tdd</span> <span class="t a">tdd-guide</span></td></tr>
+<tr><td><span class="skl">verification-loop</span></td><td>Testing/Verification</td><td>検証・品質ループパターン</td><td>検証ゲートの実装</td><td><span class="t c">/verify</span> <span class="t c">/quality-gate</span></td></tr>
+<tr><td><span class="skl">video-editing</span></td><td>Media/Content</td><td>AIアシスト動画編集：カット・構成・映像拡張</td><td>AIによる動画コンテンツ編集</td><td>—</td></tr>
+<tr><td><span class="skl">videodb</span></td><td>Database/Media</td><td>動画データベース・検索・検索パターン</td><td>動画検索・検索システム構築</td><td>—</td></tr>
+<tr><td><span class="skl">visa-doc-translate</span></td><td>Domain</td><td>ビザ書類の翻訳・処理</td><td>ビザ申請書類の処理</td><td>—</td></tr>
+<tr><td><span class="skl">x-api</span></td><td>API/Social</td><td>X/Twitter APIの投稿・スレッド・検索・分析統合</td><td>X/Twitter APIをアプリに統合したいとき</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
 </section>
-
-<!-- ══════════════════════════════════════════════
-     HOOKS
-══════════════════════════════════════════════ -->
+<!-- ═══════════════ HOOKS ═══════════════ -->
 <section id="hooks">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(139,92,246,.15)">🪝</div>
-    <div>
-      <div class="section-title">フック <span style="color:var(--muted);font-size:14px;font-weight:400">(自動イベント駆動)</span></div>
-      <div class="section-desc">明示的に呼ばなくても自動的に実行される。hooks.json で定義。</div>
-    </div>
-  </div>
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(139,92,246,.15)">🪝</div>
+  <div><div class="sec-title">フック <span style="color:var(--muted);font-size:13px;font-weight:400">自動イベント駆動</span></div>
+  <div class="sec-sub">明示的に呼ばなくても自動実行される。hooks.json で定義。環境変数で制御可能。</div></div>
+</div>
 
-  <div class="grid grid-2" style="margin-bottom:20px">
-    <div class="scenario">
-      <div class="scenario-title">⚙️  フック制御</div>
-      <div class="scenario-body">
-<pre>
-<span class="c"># 厳格度を変更</span>
+<div class="g2" style="margin-bottom:16px">
+<div class="card">
+<div class="card-title" style="margin-bottom:10px">⚙️ フック制御</div>
+<pre><span class="c"># 厳格度変更</span>
 <span class="k">export</span> <span class="v">ECC_HOOK_PROFILE</span>=minimal   <span class="c"># 最小限</span>
 <span class="k">export</span> <span class="v">ECC_HOOK_PROFILE</span>=standard  <span class="c"># 標準（デフォルト）</span>
 <span class="k">export</span> <span class="v">ECC_HOOK_PROFILE</span>=strict    <span class="c"># 厳格</span>
@@ -1403,709 +768,206 @@
 <span class="k">export</span> <span class="v">ECC_DISABLED_HOOKS</span>=<span class="s">"doc-file-warning,tmux-reminder"</span>
 
 <span class="c"># セキュリティ監視を有効化（オプション）</span>
-<span class="k">export</span> <span class="v">ECC_ENABLE_INSAITS</span>=1
-</pre>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:10px">フックの種類</div>
-      <div class="card-body">
-        <div class="stripe-left">
-          <p><strong style="color:#f59e0b">PreToolUse</strong> — ツール実行前に介入。中断も可能。</p>
-        </div>
-        <div class="stripe-left" style="border-color:#38bdf8">
-          <p><strong style="color:#38bdf8">PostToolUse</strong> — ツール実行後に処理。整形・ログ・分析。</p>
-        </div>
-        <div class="stripe-left" style="border-color:#34d399">
-          <p><strong style="color:#34d399">SessionStart</strong> — セッション開始時に前回コンテキストを復元。</p>
-        </div>
-        <div class="stripe-left" style="border-color:#c084fc">
-          <p><strong style="color:#c084fc">PreCompact</strong> — コンテキスト圧縮前にセッション状態を保存。</p>
-        </div>
-        <div class="stripe-left" style="border-color:#fb923c">
-          <p><strong style="color:#fb923c">Stop</strong> — セッション終了時にパターン抽出・コスト集計。</p>
-        </div>
-      </div>
-    </div>
-  </div>
+<span class="k">export</span> <span class="v">ECC_ENABLE_INSAITS</span>=1</pre>
+</div>
+<div class="card">
+<div class="card-title" style="margin-bottom:10px">フックの種類</div>
+<div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+<div style="border-left:3px solid var(--orange);padding-left:10px"><strong style="color:var(--orange)">PreToolUse</strong> — ツール実行前に介入。中断も可能。</div>
+<div style="border-left:3px solid var(--blue);padding-left:10px"><strong style="color:var(--blue)">PostToolUse</strong> — ツール実行後に処理。整形・ログ・分析。</div>
+<div style="border-left:3px solid var(--green);padding-left:10px"><strong style="color:var(--green)">SessionStart</strong> — セッション開始時に前回コンテキストを復元。</div>
+<div style="border-left:3px solid var(--purple);padding-left:10px"><strong style="color:var(--purple)">PreCompact</strong> — コンテキスト圧縮前にセッション状態を保存。</div>
+<div style="border-left:3px solid var(--pink);padding-left:10px"><strong style="color:var(--pink)">Stop</strong> — セッション終了時にパターン抽出・コスト集計。</div>
+</div>
+</div>
+</div>
 
-  <div class="grid grid-3">
-
-    <div class="card" data-search="auto-tmux tmux 開発サーバー">
-      <div class="card-header">
-        <span class="hook-name">auto-tmux-dev</span>
-        <div><div class="card-title">開発サーバー自動 tmux</div></div>
-      </div>
-      <div class="card-body"><p>Bash コマンド実行前に、開発サーバーが必要なら tmux セッションで起動する提案をする。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PreToolUse (Bash)</span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="git-push push コミット 確認">
-      <div class="card-header">
-        <span class="hook-name">git-push-reminder</span>
-        <div><div class="card-title">プッシュ前の変更レビュー</div></div>
-      </div>
-      <div class="card-body"><p>git push 前に変更内容を確認するよう促す。意図しないコードのプッシュを防ぐ。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PreToolUse (Bash: git push)</span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="post-edit-format フォーマット prettier biome">
-      <div class="card-header">
-        <span class="hook-name">post-edit-format</span>
-        <div><div class="card-title">ファイル編集後の自動フォーマット</div></div>
-      </div>
-      <div class="card-body"><p>JS/TS ファイル編集後に Biome または Prettier で自動フォーマット。手動実行不要。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PostToolUse (Edit: *.ts/*.tsx/*.js)</span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="quality-gate ビルド テスト 品質">
-      <div class="card-header">
-        <span class="hook-name">quality-gate (hook)</span>
-        <div><div class="card-title">編集後の自動品質チェック</div></div>
-      </div>
-      <div class="card-body"><p>ファイル編集後に非同期で品質ゲートを実行。ビルド・テスト・カバレッジを自動確認。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PostToolUse (Edit/Write) — 非同期</span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="pre-compact コンパクト 圧縮 コンテキスト">
-      <div class="card-header">
-        <span class="hook-name">pre-compact</span>
-        <div><div class="card-title">コンテキスト圧縮前の状態保存</div></div>
-      </div>
-      <div class="card-body"><p>コンテキストウィンドウが圧縮される前に、現在の作業状態・TODO・重要情報を .claude/memory/ に保存。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PreCompact</span></div>
-        <div class="meta-item"><span class="meta-label relates">RELATED</span>
-          <span class="meta-value"><span class="tag cmd-tag">/save-session</span></span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="session-start セッション開始 コンテキスト">
-      <div class="card-header">
-        <span class="hook-name">session-start</span>
-        <div><div class="card-title">セッション開始時の復元</div></div>
-      </div>
-      <div class="card-body"><p>新セッション開始時に前回の作業コンテキストを読み込み、パッケージマネージャーを自動検出する。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">SessionStart</span></div>
-        <div class="meta-item"><span class="meta-label relates">RELATED</span>
-          <span class="meta-value"><span class="tag cmd-tag">/resume-session</span></span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="continuous-learning-observe 学習 パターン 観察">
-      <div class="card-header">
-        <span class="hook-name">continuous-learning-observe</span>
-        <div><div class="card-title">ツール使用パターンの記録</div></div>
-      </div>
-      <div class="card-body"><p>全てのツール使用を非同期で記録・分析。セッション終了時のパターン抽出の基礎データになる。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PreToolUse (全ツール) — 非同期</span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="insaits セキュリティ 監視 オプション">
-      <div class="card-header">
-        <span class="hook-name">insaits-security</span>
-        <div><div class="card-title">AI セキュリティモニター（オプション）</div></div>
-      </div>
-      <div class="card-body"><p>ファイル編集・Bash実行前にセキュリティを AI が確認。有効化には <code>ECC_ENABLE_INSAITS=1</code> が必要。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PreToolUse (Bash/Edit/Write) — オプトイン</span></div>
-        <div class="meta-item"><span class="meta-label relates">ENABLE</span>
-          <span class="meta-value"><code>export ECC_ENABLE_INSAITS=1</code></span></div>
-      </div>
-    </div>
-
-    <div class="card" data-search="pr-created プルリクエスト ログ">
-      <div class="card-header">
-        <span class="hook-name">pr-created</span>
-        <div><div class="card-title">PR 作成後の自動ログ</div></div>
-      </div>
-      <div class="card-body"><p>gh pr create 成功後に PR URL をログに記録し、レビューコマンドを提案する。</p></div>
-      <div class="meta-row">
-        <div class="meta-item"><span class="meta-label auto">AUTO</span>
-          <span class="meta-value">PostToolUse (Bash: gh pr create)</span></div>
-      </div>
-    </div>
-
-  </div>
+<div class="tw">
+<table>
+<thead><tr><th>フック名</th><th>種類</th><th>トリガー条件</th><th>何を自動で行うか</th><th>制御</th></tr></thead>
+<tbody>
+<tr><td><span class="hk">auto-tmux-dev</span></td><td>PreToolUse</td><td>Bash コマンド実行前</td><td>開発サーバーが必要なら tmux セッションで起動を提案</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">tmux-reminder</span></td><td>PreToolUse</td><td>長時間実行の Bash 前</td><td>tmux での実行を促す</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">git-push-reminder</span></td><td>PreToolUse</td><td>git push コマンド前</td><td>変更内容を確認するよう促す。意図しないプッシュを防ぐ</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">doc-file-warning</span></td><td>PreToolUse</td><td>ドキュメントファイルの Write 前</td><td>非標準のdocファイル作成を警告</td><td>strict / 無効化可</td></tr>
+<tr><td><span class="hk">suggest-compact</span></td><td>PreToolUse</td><td>一定間隔で Edit/Write 前</td><td>コンテキスト圧縮を戦略的に提案</td><td><span class="t s">strategic-compact</span></td></tr>
+<tr><td><span class="hk">continuous-learning-observe</span></td><td>PreToolUse</td><td>全ツール使用時（非同期）</td><td>ツール使用パターンを記録・分析。セッション終了時のパターン抽出の基礎データ</td><td>常時（非同期）</td></tr>
+<tr><td><span class="hk">insaits-security</span></td><td>PreToolUse</td><td>Bash/Edit/Write 前</td><td>オプションのAIセキュリティモニター。有害操作を検出</td><td>ECC_ENABLE_INSAITS=1</td></tr>
+<tr><td><span class="hk">pre-compact</span></td><td>PreCompact</td><td>コンテキスト圧縮前</td><td>現在の作業状態・TODO・重要情報を .claude/memory/ に保存</td><td>常時</td></tr>
+<tr><td><span class="hk">session-start</span></td><td>SessionStart</td><td>新セッション開始時</td><td>前回の作業コンテキストを読み込み、パッケージマネージャーを自動検出</td><td>常時</td></tr>
+<tr><td><span class="hk">post-edit-format</span></td><td>PostToolUse</td><td>JS/TS ファイルの Edit 後</td><td>Biome または Prettier で自動フォーマット。手動実行不要</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">quality-gate (hook)</span></td><td>PostToolUse</td><td>Edit/Write 後（非同期）</td><td>ビルド・テスト・カバレッジを非同期でチェック</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">build-complete</span></td><td>PostToolUse</td><td>ビルドコマンドの Bash 後</td><td>ビルド結果を非同期で分析・レポート</td><td>standard/strict</td></tr>
+<tr><td><span class="hk">pr-created</span></td><td>PostToolUse</td><td>gh pr create 成功後</td><td>PR URLをログに記録し、レビューコマンドを提案</td><td>常時</td></tr>
+<tr><td><span class="hk">stop (continuous-learning)</span></td><td>Stop</td><td>セッション終了時</td><td>解決パターンを評価・抽出し ~/.claude/skills/learned/ に保存。コスト集計</td><td>常時</td></tr>
+</tbody>
+</table>
+</div>
 </section>
 
-<!-- ══════════════════════════════════════════════
-     WORKFLOWS
-══════════════════════════════════════════════ -->
+<!-- ═══════════════ WORKFLOWS ═══════════════ -->
 <section id="workflows">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(245,158,11,.15)">🗺️</div>
-    <div>
-      <div class="section-title">実践ワークフロー</div>
-      <div class="section-desc">シチュエーション別のコマンド・エージェント・フックの組み合わせ方。</div>
-    </div>
-  </div>
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(245,158,11,.15)">🗺️</div>
+  <div><div class="sec-title">実践ワークフロー</div>
+  <div class="sec-sub">シチュエーション別のコマンド・エージェント・フックの組み合わせ方。</div></div>
+</div>
 
-  <div class="grid grid-2">
+<div class="g2">
 
-    <!-- WF1 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">1</div>
-        <div>
-          <div class="workflow-title">標準機能開発（TDD）</div>
-          <div class="workflow-subtitle">新機能追加のゴールデンパス。全ての機能開発はここから始める。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/plan "機能の説明"</div>
-              <div class="flow-desc">→ <em>planner (Opus)</em> が実装フェーズを設計<br>→ 計画を確認・承認してから次へ</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/tdd "計画に基づいて実装"</div>
-              <div class="flow-desc">→ <em>tdd-guide (Sonnet)</em> が RED→GREEN→REFACTOR<br>→ <em>post-edit-format</em> フックが自動フォーマット<br>→ カバレッジ 80% 達成まで継続</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/code-review</div>
-              <div class="flow-desc">→ <em>code-reviewer + security-reviewer</em><br>→ CRITICAL/HIGH があれば修正して再実行</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/verify pre-pr</div>
-              <div class="flow-desc">→ ビルド・型・lint・テスト・シークレット検査</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">git add / commit / push</div>
-              <div class="flow-desc">→ <em>git-push-reminder</em> フックが変更内容を確認<br>→ <em>pr-created</em> フックが PR URL をログ</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">1</div><div><div class="wf-title">標準機能開発（TDD）</div><div class="wf-sub">全機能開発のゴールデンパス。必ずここから始める。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/plan "機能の説明"</div><div class="fdsc">→ <em>planner(Opus)</em> が実装フェーズを設計<br>→ 計画を確認・承認してから次へ（コードは触らない）</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/tdd "計画に基づいて実装"</div><div class="fdsc">→ <em>tdd-guide(Sonnet)</em> が RED→GREEN→REFACTOR<br>→ <em>post-edit-format</em> フックが自動フォーマット<br>→ カバレッジ 80% 達成まで継続</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/code-review</div><div class="fdsc">→ <em>code-reviewer + security-reviewer</em><br>→ CRITICAL/HIGH があれば修正して再実行</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/verify pre-pr</div><div class="fdsc">→ ビルド・型・lint・テスト・シークレット検査</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">git add / commit / push</div><div class="fdsc">→ <em>git-push-reminder</em> フックが変更内容を確認<br>→ <em>pr-created</em> フックがPR URLをログ</div></div></div>
+</div></div></div>
 
-    <!-- WF2 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">2</div>
-        <div>
-          <div class="workflow-title">バグ修正（高速サイクル）</div>
-          <div class="workflow-subtitle">再現テスト → 修正 → 確認。最短で完了させる。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/orchestrate bugfix "バグの説明"</div>
-              <div class="flow-desc">一括で以下を実行:
-                <div class="flow-branch">
-                  <div class="flow-branch-item"><em>planner</em>: 原因分析・修正計画</div>
-                  <div class="flow-branch-item"><em>tdd-guide</em>: 再現テスト作成 → 修正 → 通過確認</div>
-                  <div class="flow-branch-item"><em>code-reviewer</em>: 修正コードのレビュー</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/verify quick</div>
-              <div class="flow-desc">→ ビルド + 型チェックのみ（高速）</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">git commit / push</div>
-              <div class="flow-desc">→ /learn で解決パターンを保存（任意）</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">2</div><div><div class="wf-title">バグ修正（高速サイクル）</div><div class="wf-sub">再現テスト先行 → 修正 → 確認。最短で完了。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/orchestrate bugfix "バグの説明"</div><div class="fdsc">一括で以下を実行:<div class="fbr"><div class="fbi"><em>planner</em>: 原因分析・修正計画</div><div class="fbi"><em>tdd-guide</em>: 再現テスト → 修正 → 通過確認</div><div class="fbi"><em>code-reviewer</em>: 修正コードのレビュー</div></div></div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/verify quick</div><div class="fdsc">→ ビルド + 型チェックのみ（高速）</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">git commit / push</div><div class="fdsc">→ <span style="color:var(--green)">/learn</span> で解決パターンを保存（推奨）</div></div></div>
+</div></div></div>
 
-    <!-- WF3 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">3</div>
-        <div>
-          <div class="workflow-title">セキュリティクリティカルな実装</div>
-          <div class="workflow-subtitle">認証・決済・API など。セキュリティを最優先にするフロー。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/plan "セキュリティ要件を含む機能"</div>
-              <div class="flow-desc">→ セキュリティ考慮事項を計画に含める</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/tdd （セキュリティテスト先行）</div>
-              <div class="flow-desc">→ 認証バイパス・入力検証・SQLインジェクションのテストを先に書く</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/code-review （セキュリティフォーカス）</div>
-              <div class="flow-desc">→ <em>security-reviewer</em> が OWASP Top 10 スキャン<br>→ CRITICAL が1つでもあれば即座に修正・再レビュー</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/verify full</div>
-              <div class="flow-desc">→ セキュリティスキャン含む全項目チェック</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">3</div><div><div class="wf-title">セキュリティクリティカルな実装</div><div class="wf-sub">認証・決済・API。セキュリティ最優先フロー。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/plan "セキュリティ要件含む機能"</div><div class="fdsc">→ セキュリティ考慮事項を計画に含める</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/tdd （セキュリティテスト先行）</div><div class="fdsc">→ 認証バイパス・入力検証・SQLインジェクションのテストを先に書く</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/code-review</div><div class="fdsc">→ <em>security-reviewer</em> が OWASP Top 10 スキャン<br>→ CRITICAL が1つでもあれば即修正・再レビュー</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">/verify full</div><div class="fdsc">→ セキュリティスキャン含む全項目チェック</div></div></div>
+</div></div></div>
 
-    <!-- WF4 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">4</div>
-        <div>
-          <div class="workflow-title">大規模リファクタリング</div>
-          <div class="workflow-subtitle">安全に・段階的に・テストを壊さずリファクタリングする。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/plan "リファクタリングの目的と範囲"</div>
-              <div class="flow-desc">→ 変更範囲・影響箇所を明確にしてから着手</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/orchestrate refactor "リファクタリング"</div>
-              <div class="flow-desc">→ <em>architect</em>: 新構造を設計<br>→ <em>tdd-guide</em>: 既存テストが全て通ることを確認<br>→ <em>code-reviewer</em>: リファクタリング品質チェック</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/refactor-clean （オプション）</div>
-              <div class="flow-desc">→ <em>refactor-cleaner</em>: デッドコードを1件ずつ安全に削除<br>→ 削除後テスト → 失敗したら自動リバート</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/verify full</div>
-              <div class="flow-desc">→ 全項目確認後にコミット</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">4</div><div><div class="wf-title">大規模リファクタリング</div><div class="wf-sub">安全・段階的・テストを壊さない。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/plan "リファクタリングの目的と範囲"</div><div class="fdsc">→ 変更範囲・影響箇所を明確にしてから着手</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/orchestrate refactor "内容"</div><div class="fdsc"><div class="fbr"><div class="fbi"><em>architect</em>: 新構造を設計</div><div class="fbi"><em>tdd-guide</em>: 既存テストが全て通ることを確認</div><div class="fbi"><em>code-reviewer</em>: リファクタリング品質チェック</div></div></div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/refactor-clean （オプション）</div><div class="fdsc">→ デッドコードを1件ずつ安全に削除 → 失敗時自動リバート</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">/verify full → git commit</div><div class="fdsc"></div></div></div>
+</div></div></div>
 
-    <!-- WF5 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">5</div>
-        <div>
-          <div class="workflow-title">自律開発ループ</div>
-          <div class="workflow-subtitle">バックログを自動消化。夜間処理・定型タスクの自動化。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/loop-start continuous-pr --mode safe</div>
-              <div class="flow-desc">→ ベースラインテストを確認<br>→ バックログからタスクを自動選択</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">【自動ループ内】</div>
-              <div class="flow-desc">
-                <div class="flow-branch">
-                  <div class="flow-branch-item">/plan → /orchestrate → /quality-gate</div>
-                  <div class="flow-branch-item">通過: 自動コミット → 自動PR作成</div>
-                  <div class="flow-branch-item">失敗: <em>loop-operator</em> が介入・停止</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/loop-status</div>
-              <div class="flow-desc">→ 定期的に確認。品質ゲート失敗で自動停止。<br>→ <span class="badge badge-warn">監視必須</span> 完全放置は非推奨</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">5</div><div><div class="wf-title">自律開発ループ</div><div class="wf-sub">バックログを自動消化。夜間処理・定型タスク自動化。監視必須。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/loop-start continuous-pr --mode safe</div><div class="fdsc">→ ベースラインテストを確認 → バックログからタスクを自動選択</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">【自動ループ内】</div><div class="fdsc"><div class="fbr"><div class="fbi">/plan → /orchestrate → /quality-gate</div><div class="fbi">通過: 自動コミット → 自動PR作成</div><div class="fbi">失敗: <em>loop-operator</em> が介入・停止</div></div></div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">/loop-status で定期確認</div><div class="fdsc">→ 品質ゲート失敗で自動停止。<strong>完全放置は非推奨。</strong></div></div></div>
+</div></div></div>
 
-    <!-- WF6 -->
-    <div class="workflow">
-      <div class="workflow-header">
-        <div class="workflow-num">6</div>
-        <div>
-          <div class="workflow-title">知識の蓄積と継続改善</div>
-          <div class="workflow-subtitle">解決した問題を再利用可能な知識に変える。チーム全体の生産性を上げる。</div>
-        </div>
-      </div>
-      <div class="workflow-body">
-        <div class="flow">
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">難しい問題を解決する</div>
-              <div class="flow-desc">→ <em>continuous-learning-observe</em> フックが自動記録</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/learn （即時）または セッション終了を待つ</div>
-              <div class="flow-desc">→ Stop フックが自動的にパターン抽出・評価<br>→ ~/.claude/skills/learned/ に保存</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/instinct-status で確認</div>
-              <div class="flow-desc">→ 学習済みスキルの一覧・信頼度を確認</div>
-            </div>
-          </div>
-          <div class="flow-step">
-            <div class="flow-line"><div class="flow-dot"></div></div>
-            <div class="flow-content">
-              <div class="flow-cmd">/skill-create （高度）</div>
-              <div class="flow-desc">→ git 履歴からチーム固有のパターンを自動抽出<br>→ 新スキルとして登録 → 次回から自動適用</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="wf">
+<div class="wf-hdr"><div class="wf-num">6</div><div><div class="wf-title">知識の蓄積と継続改善</div><div class="wf-sub">解決した問題を再利用可能な知識に変える。</div></div></div>
+<div class="wf-body"><div class="flow">
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">難しい問題を解決する</div><div class="fdsc">→ <em>continuous-learning-observe</em> フックが自動記録</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/learn-eval （推奨）または /learn</div><div class="fdsc">→ Stopフックがセッション終了時に自動抽出<br>→ ~/.claude/skills/learned/ に保存</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div><div class="fc"></div></div><div class="fct"><div class="fcmd">/instinct-status で確認</div><div class="fdsc">→ 学習済みInstinctの一覧・信頼度を確認</div></div></div>
+<div class="fs"><div class="fl"><div class="fd"></div></div><div class="fct"><div class="fcmd">/evolve または /skill-create</div><div class="fdsc">→ Instinctをスキル/コマンド/エージェントに昇格<br>→ /promote でグローバルスコープに昇格</div></div></div>
+</div></div></div>
 
-  </div>
+</div>
 </section>
 
-<!-- ══════════════════════════════════════════════
-     QUICK REFERENCE
-══════════════════════════════════════════════ -->
-<section id="quickref">
-  <div class="section-header">
-    <div class="section-icon" style="background:rgba(16,185,129,.15)">⚡</div>
-    <div>
-      <div class="section-title">早見表</div>
-      <div class="section-desc">「今どうすればいいか」を素早く判断するための対応表。</div>
-    </div>
-  </div>
+<!-- ═══════════════ QUICK REF ═══════════════ -->
+<section id="qref">
+<div class="sec-hdr">
+  <div class="sec-icon" style="background:rgba(16,185,129,.15)">⚡</div>
+  <div><div class="sec-title">早見表</div>
+  <div class="sec-sub">「今どうすればいいか」を素早く判断するための対応表。</div></div>
+</div>
 
-  <p class="cat-label">📌  状況 → コマンド 対応表</p>
-  <div class="table-wrap" style="margin-bottom:24px">
-    <table>
-      <thead>
-        <tr>
-          <th>この状況のとき</th>
-          <th>使うコマンド</th>
-          <th>使用エージェント</th>
-          <th>重要度</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>新機能の実装を始める前</td>
-          <td><span class="tag cmd-tag">/plan</span></td>
-          <td><span class="tag agent-tag">planner</span></td>
-          <td><span class="badge badge-warn">必須</span></td>
-        </tr>
-        <tr>
-          <td>コードを書き始める（常に）</td>
-          <td><span class="tag cmd-tag">/tdd</span></td>
-          <td><span class="tag agent-tag">tdd-guide</span></td>
-          <td><span class="badge badge-warn">必須</span></td>
-        </tr>
-        <tr>
-          <td>コードを書き終わった</td>
-          <td><span class="tag cmd-tag">/code-review</span></td>
-          <td><span class="tag agent-tag">code-reviewer</span></td>
-          <td><span class="badge badge-warn">必須</span></td>
-        </tr>
-        <tr>
-          <td>PR を作る前</td>
-          <td><span class="tag cmd-tag">/verify pre-pr</span></td>
-          <td>—</td>
-          <td><span class="badge badge-warn">必須</span></td>
-        </tr>
-        <tr>
-          <td>認証・決済・API の変更</td>
-          <td><span class="tag cmd-tag">/code-review</span> + <span class="tag cmd-tag">/verify full</span></td>
-          <td><span class="tag agent-tag">security-reviewer</span></td>
-          <td><span class="badge badge-warn">必須</span></td>
-        </tr>
-        <tr>
-          <td>ビルドが失敗した</td>
-          <td><span class="tag cmd-tag">/build-fix</span></td>
-          <td><span class="tag agent-tag">build-error-resolver</span></td>
-          <td><span class="badge badge-sonnet">即座に</span></td>
-        </tr>
-        <tr>
-          <td>複雑な機能を一括で実装したい</td>
-          <td><span class="tag cmd-tag">/orchestrate feature "..."</span></td>
-          <td>複数エージェント連鎖</td>
-          <td><span class="badge badge-sonnet">推奨</span></td>
-        </tr>
-        <tr>
-          <td>クリティカルなユーザーフローのテスト</td>
-          <td><span class="tag cmd-tag">/e2e</span></td>
-          <td><span class="tag agent-tag">e2e-runner</span></td>
-          <td><span class="badge badge-sonnet">推奨</span></td>
-        </tr>
-        <tr>
-          <td>難しいバグを直した後</td>
-          <td><span class="tag cmd-tag">/learn</span></td>
-          <td>—</td>
-          <td><span class="badge badge-auto">推奨</span></td>
-        </tr>
-        <tr>
-          <td>コードが大きくなってきた</td>
-          <td><span class="tag cmd-tag">/refactor-clean</span></td>
-          <td><span class="tag agent-tag">refactor-cleaner</span></td>
-          <td>任意</td>
-        </tr>
-        <tr>
-          <td>定型タスクを自動化したい</td>
-          <td><span class="tag cmd-tag">/loop-start --mode safe</span></td>
-          <td><span class="tag agent-tag">loop-operator</span></td>
-          <td>上級者向け</td>
-        </tr>
-        <tr>
-          <td>フルスタック機能を複数AIで計画</td>
-          <td><span class="tag cmd-tag">/multi-plan</span> → <span class="tag cmd-tag">/multi-execute</span></td>
-          <td>Claude+Codex+Gemini</td>
-          <td>上級者向け</td>
-        </tr>
-        <tr>
-          <td>アーキテクチャの大きな決定</td>
-          <td><span class="tag cmd-tag">/orchestrate</span> (architect 含む)</td>
-          <td><span class="tag agent-tag">architect</span></td>
-          <td>任意</td>
-        </tr>
-        <tr>
-          <td>Go プロジェクトのレビュー</td>
-          <td><span class="tag cmd-tag">/go-review</span></td>
-          <td><span class="tag agent-tag">go-reviewer</span></td>
-          <td>Go限定</td>
-        </tr>
-        <tr>
-          <td>Go のビルドエラー</td>
-          <td><span class="tag cmd-tag">/go-build</span></td>
-          <td><span class="tag agent-tag">go-build-resolver</span></td>
-          <td>Go限定</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<div class="cat">📌 状況 → コマンド 対応表</div>
+<div class="tw" style="margin-bottom:24px">
+<table>
+<thead><tr><th>この状況のとき</th><th>使うコマンド</th><th>使用エージェント</th><th>重要度</th></tr></thead>
+<tbody>
+<tr><td>新機能の実装を始める前</td><td><span class="t c">/plan</span></td><td><span class="t a">planner</span></td><td><span class="b b-req">必須</span></td></tr>
+<tr><td>コードを書き始める（常に）</td><td><span class="t c">/tdd</span></td><td><span class="t a">tdd-guide</span></td><td><span class="b b-req">必須</span></td></tr>
+<tr><td>コードを書き終わった</td><td><span class="t c">/code-review</span></td><td><span class="t a">code-reviewer</span> <span class="t a">security-reviewer</span></td><td><span class="b b-req">必須</span></td></tr>
+<tr><td>PR を作る前</td><td><span class="t c">/verify pre-pr</span></td><td>—</td><td><span class="b b-req">必須</span></td></tr>
+<tr><td>認証・決済・APIの変更</td><td><span class="t c">/code-review</span> + <span class="t c">/verify full</span></td><td><span class="t a">security-reviewer</span></td><td><span class="b b-req">必須</span></td></tr>
+<tr><td>ビルドが失敗した</td><td><span class="t c">/build-fix</span></td><td><span class="t a">build-error-resolver</span></td><td><span class="b b-son">即座に</span></td></tr>
+<tr><td>複雑な機能を一括実装したい</td><td><span class="t c">/orchestrate feature "..."</span></td><td>複数エージェント連鎖</td><td><span class="b b-son">推奨</span></td></tr>
+<tr><td>クリティカルなUXフローのテスト</td><td><span class="t c">/e2e</span></td><td><span class="t a">e2e-runner</span></td><td><span class="b b-son">推奨</span></td></tr>
+<tr><td>カバレッジが80%未満</td><td><span class="t c">/test-coverage</span></td><td>—</td><td><span class="b b-son">推奨</span></td></tr>
+<tr><td>SQL/マイグレーション変更</td><td><span class="t c">/code-review</span></td><td><span class="t a">database-reviewer</span></td><td><span class="b b-son">推奨</span></td></tr>
+<tr><td>難しいバグを直した後</td><td><span class="t c">/learn-eval</span></td><td>—</td><td><span class="b b-hku">推奨</span></td></tr>
+<tr><td>コードが大きくなってきた</td><td><span class="t c">/refactor-clean</span></td><td><span class="t a">refactor-cleaner</span></td><td><span class="b b-opt">任意</span></td></tr>
+<tr><td>定型タスクを自動化したい</td><td><span class="t c">/loop-start --mode safe</span></td><td><span class="t a">loop-operator</span></td><td><span class="b b-opt">上級者</span></td></tr>
+<tr><td>フルスタック機能を複数AIで計画</td><td><span class="t c">/multi-plan</span> → <span class="t c">/multi-execute</span></td><td>Claude+Codex+Gemini</td><td><span class="b b-opt">上級者</span></td></tr>
+<tr><td>Go プロジェクトのコードを書いた</td><td><span class="t c">/go-review</span></td><td><span class="t a">go-reviewer</span></td><td><span class="b b-req">Go必須</span></td></tr>
+<tr><td>Go ビルドエラー</td><td><span class="t c">/go-build</span></td><td><span class="t a">go-build-resolver</span></td><td><span class="b b-req">Go必須</span></td></tr>
+<tr><td>Kotlin/Android コードを書いた</td><td><span class="t c">/kotlin-review</span></td><td><span class="t a">kotlin-reviewer</span></td><td><span class="b b-req">Kotlin必須</span></td></tr>
+<tr><td>Gradle/Kotlin ビルドエラー</td><td><span class="t c">/kotlin-build</span> / <span class="t c">/gradle-build</span></td><td><span class="t a">kotlin-build-resolver</span></td><td><span class="b b-req">Kotlin必須</span></td></tr>
+<tr><td>Python コードを書いた</td><td><span class="t c">/python-review</span></td><td><span class="t a">python-reviewer</span></td><td><span class="b b-req">Python必須</span></td></tr>
+<tr><td>ドキュメントが古くなった</td><td><span class="t c">/update-docs</span> / <span class="t c">/update-codemaps</span></td><td><span class="t a">doc-updater</span></td><td><span class="b b-hku">定期的に</span></td></tr>
+<tr><td>ECC設定の品質確認</td><td><span class="t c">/harness-audit</span></td><td><span class="t a">harness-optimizer</span></td><td><span class="b b-opt">任意</span></td></tr>
+<tr><td>プロンプトを最適化したい</td><td><span class="t c">/prompt-optimize</span></td><td>—</td><td><span class="b b-opt">任意</span></td></tr>
+<tr><td>作業中に質問したい（文脈維持）</td><td><span class="t c">/aside "質問"</span></td><td>—</td><td><span class="b b-opt">任意</span></td></tr>
+</tbody>
+</table>
+</div>
 
-  <p class="cat-label">🔗  コマンド → エージェント → スキル 関連図</p>
-  <div class="table-wrap" style="margin-bottom:24px">
-    <table>
-      <thead>
-        <tr>
-          <th>コマンド</th>
-          <th>エージェント</th>
-          <th>スキル</th>
-          <th>フック（自動）</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="tag cmd-tag">/plan</span></td>
-          <td><span class="tag agent-tag">planner</span></td>
-          <td>—</td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/tdd</span></td>
-          <td><span class="tag agent-tag">tdd-guide</span></td>
-          <td><span class="tag skill-tag">tdd-workflow</span> <span class="tag skill-tag">coding-standards</span></td>
-          <td><span class="tag hook-tag">post-edit-format</span> <span class="tag hook-tag">quality-gate</span></td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/code-review</span></td>
-          <td><span class="tag agent-tag">code-reviewer</span> <span class="tag agent-tag">security-reviewer</span></td>
-          <td><span class="tag skill-tag">coding-standards</span></td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/verify</span></td>
-          <td>—</td>
-          <td><span class="tag skill-tag">verification-loop</span></td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/e2e</span></td>
-          <td><span class="tag agent-tag">e2e-runner</span></td>
-          <td><span class="tag skill-tag">e2e-testing</span></td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/orchestrate</span></td>
-          <td><span class="tag agent-tag">planner</span> <span class="tag agent-tag">tdd-guide</span> <span class="tag agent-tag">code-reviewer</span> <span class="tag agent-tag">security-reviewer</span></td>
-          <td>各エージェントのスキルを自動選択</td>
-          <td><span class="tag hook-tag">post-edit-format</span> <span class="tag hook-tag">quality-gate</span></td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/build-fix</span></td>
-          <td><span class="tag agent-tag">build-error-resolver</span></td>
-          <td><span class="tag skill-tag">backend-patterns</span></td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/refactor-clean</span></td>
-          <td><span class="tag agent-tag">refactor-cleaner</span></td>
-          <td><span class="tag skill-tag">coding-standards</span></td>
-          <td>—</td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/loop-start</span></td>
-          <td><span class="tag agent-tag">loop-operator</span></td>
-          <td><span class="tag skill-tag">continuous-agent-loop</span> <span class="tag skill-tag">autonomous-loops</span></td>
-          <td><span class="tag hook-tag">quality-gate</span></td>
-        </tr>
-        <tr>
-          <td><span class="tag cmd-tag">/learn</span></td>
-          <td>—</td>
-          <td><span class="tag skill-tag">continuous-learning</span> <span class="tag skill-tag">continuous-learning-v2</span></td>
-          <td><span class="tag hook-tag">continuous-learning-observe</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<div class="cat">🔗 コマンド → エージェント → スキル → フック 関連図</div>
+<div class="tw" style="margin-bottom:24px">
+<table>
+<thead><tr><th>コマンド</th><th>エージェント</th><th>スキル</th><th>自動フック</th></tr></thead>
+<tbody>
+<tr><td><span class="t c">/plan</span></td><td><span class="t a">planner</span></td><td>—</td><td>—</td></tr>
+<tr><td><span class="t c">/tdd</span></td><td><span class="t a">tdd-guide</span></td><td><span class="t s">tdd-workflow</span> <span class="t s">coding-standards</span></td><td><span class="t h">post-edit-format</span> <span class="t h">quality-gate</span></td></tr>
+<tr><td><span class="t c">/code-review</span></td><td><span class="t a">code-reviewer</span> <span class="t a">security-reviewer</span></td><td><span class="t s">coding-standards</span> <span class="t s">security-review</span></td><td>—</td></tr>
+<tr><td><span class="t c">/verify</span></td><td>—</td><td><span class="t s">verification-loop</span></td><td>—</td></tr>
+<tr><td><span class="t c">/e2e</span></td><td><span class="t a">e2e-runner</span></td><td><span class="t s">e2e-testing</span></td><td>—</td></tr>
+<tr><td><span class="t c">/orchestrate</span></td><td><span class="t a">planner</span> <span class="t a">tdd-guide</span> <span class="t a">code-reviewer</span> <span class="t a">security-reviewer</span> <span class="t a">architect</span></td><td>各エージェントのスキルを自動選択</td><td><span class="t h">post-edit-format</span> <span class="t h">quality-gate</span></td></tr>
+<tr><td><span class="t c">/build-fix</span></td><td><span class="t a">build-error-resolver</span></td><td><span class="t s">backend-patterns</span></td><td>—</td></tr>
+<tr><td><span class="t c">/refactor-clean</span></td><td><span class="t a">refactor-cleaner</span></td><td><span class="t s">coding-standards</span></td><td>—</td></tr>
+<tr><td><span class="t c">/loop-start</span></td><td><span class="t a">loop-operator</span></td><td><span class="t s">continuous-agent-loop</span> <span class="t s">autonomous-loops</span></td><td><span class="t h">quality-gate</span></td></tr>
+<tr><td><span class="t c">/learn</span> / <span class="t c">/learn-eval</span></td><td>—</td><td><span class="t s">continuous-learning</span> <span class="t s">continuous-learning-v2</span></td><td><span class="t h">continuous-learning-observe</span> <span class="t h">stop</span></td></tr>
+<tr><td><span class="t c">/eval</span></td><td>—</td><td><span class="t s">eval-harness</span> <span class="t s">agentic-engineering</span></td><td>—</td></tr>
+<tr><td><span class="t c">/update-docs</span> / <span class="t c">/update-codemaps</span></td><td><span class="t a">doc-updater</span></td><td>—</td><td>—</td></tr>
+<tr><td><span class="t c">/harness-audit</span></td><td><span class="t a">harness-optimizer</span></td><td><span class="t s">agent-harness-construction</span></td><td>—</td></tr>
+<tr><td><span class="t c">/prompt-optimize</span></td><td>—</td><td><span class="t s">prompt-optimizer</span></td><td>—</td></tr>
+<tr><td><span class="t c">/claw</span></td><td>—</td><td><span class="t s">nanoclaw-repl</span> <span class="t s">deep-research</span></td><td>—</td></tr>
+<tr><td><span class="t c">/go-review</span></td><td><span class="t a">go-reviewer</span></td><td><span class="t s">golang-patterns</span></td><td>—</td></tr>
+<tr><td><span class="t c">/go-build</span></td><td><span class="t a">go-build-resolver</span></td><td><span class="t s">golang-patterns</span></td><td>—</td></tr>
+<tr><td><span class="t c">/go-test</span></td><td>—</td><td><span class="t s">golang-testing</span> <span class="t s">tdd-workflow</span></td><td>—</td></tr>
+<tr><td><span class="t c">/kotlin-review</span></td><td><span class="t a">kotlin-reviewer</span></td><td><span class="t s">kotlin-patterns</span> <span class="t s">kotlin-coroutines-flows</span></td><td>—</td></tr>
+<tr><td><span class="t c">/kotlin-build</span> / <span class="t c">/gradle-build</span></td><td><span class="t a">kotlin-build-resolver</span></td><td><span class="t s">kotlin-patterns</span></td><td>—</td></tr>
+<tr><td><span class="t c">/python-review</span></td><td><span class="t a">python-reviewer</span></td><td><span class="t s">python-patterns</span> <span class="t s">django-patterns</span></td><td>—</td></tr>
+</tbody>
+</table>
+</div>
 
-  <p class="cat-label">🏆  成功のための 7 原則</p>
-  <div class="grid grid-3">
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">1️⃣</div>
-        <div class="card-title">複雑な機能は必ず /plan から</div>
-      </div>
-      <div class="card-body">手戻りを防ぐ最大の武器。計画なしにコーディングを始めない。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">2️⃣</div>
-        <div class="card-title">常にテストを先に書く</div>
-      </div>
-      <div class="card-body">TDD はオプションではなくデフォルト。バグ修正でも再現テストを先に。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">3️⃣</div>
-        <div class="card-title">コミット前に必ず /code-review</div>
-      </div>
-      <div class="card-body">セキュリティ問題は後から直すほど高コスト。早期発見が命。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">4️⃣</div>
-        <div class="card-title">PR前に /verify pre-pr</div>
-      </div>
-      <div class="card-body">CI が落ちてから直すより、ローカルで先に確認する方が速い。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">5️⃣</div>
-        <div class="card-title">専門エージェントに委譲する</div>
-      </div>
-      <div class="card-body">汎用的な指示より、/orchestrate や専門コマンドの方が品質が高い。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">6️⃣</div>
-        <div class="card-title">/loop-status で自律ループを監視</div>
-      </div>
-      <div class="card-body">完全放置は危険。品質ゲートは自動停止するが定期確認を怠らない。</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div style="font-size:20px">7️⃣</div>
-        <div class="card-title">/learn でチームの知識を蓄積</div>
-      </div>
-      <div class="card-body">解決したパターンを保存するだけで、未来の自分とチームが助かる。</div>
-    </div>
-  </div>
+<div class="cat">🏆 成功のための 7 原則</div>
+<div class="g4">
+<div class="card"><div style="font-size:18px;margin-bottom:6px">1️⃣</div><div class="card-title" style="margin-bottom:6px">複雑な機能は必ず /plan から</div><div class="card-body">手戻りを防ぐ最大の武器。計画なしにコーディングを始めない。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">2️⃣</div><div class="card-title" style="margin-bottom:6px">常にテストを先に書く</div><div class="card-body">TDDはオプションではなくデフォルト。バグ修正でも再現テストを先に。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">3️⃣</div><div class="card-title" style="margin-bottom:6px">コミット前に必ず /code-review</div><div class="card-body">セキュリティ問題は後から直すほど高コスト。早期発見が命。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">4️⃣</div><div class="card-title" style="margin-bottom:6px">PR前に /verify pre-pr</div><div class="card-body">CIが落ちてから直すより、ローカルで先に確認する方が速い。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">5️⃣</div><div class="card-title" style="margin-bottom:6px">専門エージェントに委譲する</div><div class="card-body">汎用的な指示より /orchestrate や専門コマンドの方が品質が高い。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">6️⃣</div><div class="card-title" style="margin-bottom:6px">/loop-status で自律ループを監視</div><div class="card-body">品質ゲートは自動停止するが定期確認を怠らない。</div></div>
+<div class="card"><div style="font-size:18px;margin-bottom:6px">7️⃣</div><div class="card-title" style="margin-bottom:6px">/learn-eval でチームの知識を蓄積</div><div class="card-body">解決パターンを保存するだけで未来の自分とチームが助かる。</div></div>
+</div>
 
 </section>
 
 </main>
 
 <script>
-function filterCards(q) {
-  const term = q.toLowerCase().trim();
-  document.querySelectorAll('.card, .workflow').forEach(el => {
-    if (!term) {
-      el.classList.remove('hidden');
-      return;
-    }
-    const text = (el.dataset.search || '') + ' ' + el.innerText;
-    el.classList.toggle('hidden', !text.toLowerCase().includes(term));
+function filter(q){
+  const t=q.toLowerCase().trim();
+  document.querySelectorAll('.card,.wf').forEach(el=>{
+    if(!t){el.classList.remove('hidden');return;}
+    const s=(el.dataset.s||'')+' '+el.innerText;
+    el.classList.toggle('hidden',!s.toLowerCase().includes(t));
   });
 }
-
-// Active nav on scroll
-const sections = document.querySelectorAll('section[id]');
-const navLinks = document.querySelectorAll('nav a');
-
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
-    }
-  });
-}, { threshold: 0.3 });
-
-sections.forEach(s => observer.observe(s));
+const secs=document.querySelectorAll('section[id]');
+const links=document.querySelectorAll('nav a');
+new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle('act',a.getAttribute('href')==='#'+e.target.id));});},{threshold:.2}).observe&&secs.forEach(s=>new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle('act',a.getAttribute('href')==='#'+e.target.id));});},{threshold:.2}).observe(s));
 </script>
-
 </body>
 </html>
