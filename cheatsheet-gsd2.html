@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSD v2 コマンド チートシート</title>
+<style>
+:root{--bg:#0b1020;--panel:#121933;--panel2:#0f1530;--text:#eef2ff;--muted:#b7c0e0;--line:#2a355f;--accent:#86efac;--accent2:#fbbf24;--blue:#93c5fd;--red:#fca5a5;--shadow:0 20px 50px rgba(0,0,0,.25);--sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#f5f7ff;--panel:#fff;--panel2:#f8faff;--text:#111827;--muted:#4b5563;--line:#d9e0f2;--accent:#166534;--accent2:#b45309;--blue:#1d4ed8;--red:#dc2626;--shadow:0 20px 50px rgba(15,23,42,.08)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55}a{color:var(--blue)}.wrap{max-width:1140px;margin:0 auto;padding:24px}.hero,.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}.hero{padding:28px}.card{padding:20px;margin-top:20px}.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid3{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}h1{font-size:clamp(28px,5vw,44px);margin:8px 0 10px}h2{font-size:24px;margin:0 0 12px}h3{margin:0 0 8px;color:var(--accent)}.muted,.small{color:var(--muted)}.small{font-size:13px}code,pre{font-family:var(--mono)}code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.9em}pre{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);white-space:pre;overflow:auto;font-size:.85em;font-family:var(--mono);line-height:1.4}.table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:.92em}.table th,.table td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.table th{background:rgba(255,255,255,.04);color:var(--muted);font-size:.85em;text-transform:uppercase;letter-spacing:.5px}.table tr:last-child td{border-bottom:0}.decision{border-left:4px solid var(--blue);padding-left:12px;margin:10px 0}.kbd{border:1px solid var(--line);border-bottom-width:3px;border-radius:8px;padding:1px 7px;font-family:var(--mono);font-size:12px;white-space:nowrap}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;transition:background .15s}button:hover{background:var(--line)}.note{padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(147,197,253,.08);margin:10px 0}.warn{padding:14px;border:1px solid var(--red);border-radius:14px;background:rgba(252,165,165,.06);margin:10px 0}nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}nav .wrap{display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}.nav{padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);text-decoration:none;color:var(--text);font-size:.88em;transition:background .15s}.nav:hover{background:rgba(255,255,255,.08)}section{margin-top:24px}.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;margin-right:4px;font-weight:600}.tag-core{background:rgba(134,239,172,.15);color:var(--accent)}.tag-auto{background:rgba(147,197,253,.15);color:var(--blue)}.tag-util{background:rgba(251,191,36,.15);color:var(--accent2)}.tag-session{background:rgba(252,165,165,.15);color:var(--red)}.tag-setup{background:rgba(167,139,250,.15);color:#c4b5fd}
+@media print{nav{display:none}.hero,.card{box-shadow:none;break-inside:avoid}body{background:#fff;color:#111}}
+</style>
+<script>
+function copyText(id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(()=>{const s=document.getElementById(id+'-status');if(s){s.textContent='コピーしました';setTimeout(()=>s.textContent='',1400)}})}
+</script>
+</head>
+<body>
+
+<nav><div class="wrap">
+<a class="nav" href="#judge">判定フロー</a>
+<a class="nav" href="#launch">起動方法</a>
+<a class="nav" href="#workflow-cmd">ワークフロー実行</a>
+<a class="nav" href="#visibility">進捗確認</a>
+<a class="nav" href="#correction">軌道修正</a>
+<a class="nav" href="#setup">設定・管理</a>
+<a class="nav" href="#maintenance">メンテナンス</a>
+<a class="nav" href="#advanced">上級</a>
+<a class="nav" href="#overview">全体像</a>
+<a class="nav" href="#dir">ディレクトリ</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- Hero -->
+<section class="hero">
+<div class="small">GSD / Get Shit Done v2 • Single HTML Cheat Sheet</div>
+<h1>GSD v2 コマンド チートシート</h1>
+<p class="muted">スタンドアロン CLI によるエージェント駆動の開発システム。<br>Milestone → Slice → Task の階層でタスクを管理し、<code>/gsd auto</code> で完全自律実行できる。</p>
+<div class="note">
+<strong>v1 との主な違い:</strong>
+コマンドが <code>/gsd:command</code> → <code>/gsd command</code>（スペース区切り）に変更。
+Phase 概念が Milestone / Slice / Task の3階層に。
+設定は <code>.planning/config.json</code> → <code>.gsd/preferences.json</code> に。
+Claude Code 拡張ではなくスタンドアロン CLI になった。
+</div>
+<div class="toolbar">
+<button onclick="window.print()">印刷 / PDF化</button>
+</div>
+</section>
+
+<!-- 判定フロー -->
+<section id="judge">
+<div class="grid">
+<div class="card">
+<h2>まずはこれで判定</h2>
+<div class="decision"><strong>今すぐ次のタスクを1つ進める</strong> → <span class="kbd">/gsd next</span></div>
+<div class="decision"><strong>完全に自動で進めてほしい</strong> → <span class="kbd">/gsd auto</span></div>
+<div class="decision"><strong>フル自動・確認なしで進める</strong> → <span class="kbd">/gsd auto --yolo &lt;file&gt;</span></div>
+<div class="decision"><strong>特定フェーズだけ実行したい</strong> → <span class="kbd">/gsd dispatch &lt;phase&gt;</span></div>
+<div class="decision"><strong>計画なしで素早く1タスクこなす</strong> → <span class="kbd">/gsd quick</span></div>
+<div class="decision"><strong>自律モードをいったん止めたい</strong> → <span class="kbd">/gsd pause</span>（状態保持） / <span class="kbd">/gsd stop</span>（安全終了）</div>
+<div class="decision"><strong>作業方針を上書きしたい</strong> → <span class="kbd">/gsd steer &lt;説明&gt;</span></div>
+<div class="decision"><strong>最後の作業を取り消したい</strong> → <span class="kbd">/gsd undo</span></div>
+<div class="decision"><strong>アイデアを後でメモしたい</strong> → <span class="kbd">/gsd capture &lt;テキスト&gt;</span></div>
+<div class="decision"><strong>何かが壊れた / 状態がおかしい</strong> → <span class="kbd">/gsd doctor</span></div>
+</div>
+<div class="card">
+<h2>next vs auto vs quick</h2>
+<div class="note">
+<strong>/gsd next</strong> — 次の1タスクだけ実行してから停止。確認しながら進めたいとき。
+</div>
+<div class="note">
+<strong>/gsd auto</strong> — キュー内のタスクを連続自動実行。手を離したいとき。<br>
+<code>--yolo &lt;file&gt;</code> を付けると確認ダイアログをスキップ。
+</div>
+<div class="note">
+<strong>/gsd quick</strong> — ロードマップ外のアドホックな1タスクをすぐ実行。
+</div>
+<div class="note">
+<strong>dispatch のフェーズ:</strong><br>
+<code>research</code> / <code>plan</code> / <code>execute</code> / <code>complete</code> / <code>reassess</code> / <code>uat</code> / <code>replan</code>
+</div>
+<h3 style="margin-top:16px">ユニット指定フォーマット</h3>
+<pre>Milestone → M001
+Slice     → M001/S01
+Task      → M001/S01/T01</pre>
+</div>
+</div>
+</section>
+
+<!-- 起動方法 -->
+<section id="launch">
+<div class="card">
+<h2>起動方法</h2>
+<span class="tag tag-core">CLI</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>gsd</code></td><td>TUI インタラクティブモードで起動</td></tr>
+<tr><td><code>gsd --continue</code> / <code>-c</code></td><td>直近のセッションを再開</td></tr>
+<tr><td><code>gsd --print "メッセージ"</code> / <code>-p</code></td><td>ワンショット実行（TUI なし）</td></tr>
+<tr><td><code>gsd --mode text "..."</code></td><td>テキスト出力モード</td></tr>
+<tr><td><code>gsd --mode json "..."</code></td><td>JSON 出力モード</td></tr>
+<tr><td><code>gsd --mode rpc</code></td><td>JSON-RPC（stdin/stdout）モード</td></tr>
+<tr><td><code>gsd --mode mcp</code></td><td>MCP サーバーモード</td></tr>
+<tr><td><code>gsd --web [path]</code></td><td>ブラウザ Web UI で起動</td></tr>
+<tr><td><code>gsd headless [cmd]</code></td><td>TUI なし実行</td></tr>
+<tr><td><code>gsd --worktree [name]</code> / <code>-w</code></td><td>独立した git worktree で起動</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:16px">グローバルフラグ</h3>
+<table class="table">
+<thead><tr><th>フラグ</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>--model &lt;id&gt;</code></td><td>使用モデルを上書き</td></tr>
+<tr><td><code>--extension &lt;path&gt;</code></td><td>カスタム拡張を読み込み</td></tr>
+<tr><td><code>--tools &lt;a,b,c&gt;</code></td><td>利用ツールを制限</td></tr>
+<tr><td><code>--no-session</code></td><td>セッションを永続化しない</td></tr>
+<tr><td><code>--append-system-prompt &lt;path&gt;</code></td><td>システムプロンプトに追記（ファイルパス指定）</td></tr>
+<tr><td><code>--list-models [search]</code></td><td>利用可能モデル一覧</td></tr>
+<tr><td><code>--version</code> / <code>-v</code></td><td>バージョン表示</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:16px">トップレベルサブコマンド（TUI 外）</h3>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>gsd config</code></td><td>API 認証情報セットアップウィザード</td></tr>
+<tr><td><code>gsd update</code></td><td>GSD を最新版に更新</td></tr>
+<tr><td><code>gsd sessions</code></td><td>セッション選択 UI</td></tr>
+<tr><td><code>gsd web [start] [path]</code></td><td>Web サーバー起動</td></tr>
+<tr><td><code>gsd web stop [path|all]</code></td><td>Web サーバー停止</td></tr>
+<tr><td><code>gsd worktree list</code> / <code>wt list</code></td><td>worktree 一覧</td></tr>
+<tr><td><code>gsd worktree merge [name]</code></td><td>worktree をスカッシュマージ</td></tr>
+<tr><td><code>gsd worktree clean</code></td><td>マージ済み・空の worktree を削除</td></tr>
+<tr><td><code>gsd worktree remove &lt;name&gt;</code></td><td>worktree を削除</td></tr>
+<tr><td><code>gsd install &lt;source&gt; [-l|--local]</code></td><td>拡張パッケージをインストール</td></tr>
+<tr><td><code>gsd remove &lt;source&gt; [-l|--local]</code></td><td>拡張パッケージを削除</td></tr>
+<tr><td><code>gsd list</code></td><td>インストール済みパッケージ一覧</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:16px">headless サブコマンド</h3>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>gsd headless auto</code></td><td>ヘッドレスで自律モード実行</td></tr>
+<tr><td><code>gsd headless next</code></td><td>ヘッドレスで次のタスク実行</td></tr>
+<tr><td><code>gsd headless status</code></td><td>ヘッドレスで状態確認</td></tr>
+<tr><td><code>gsd headless new-milestone</code></td><td>ヘッドレスでマイルストーン作成</td></tr>
+<tr><td><code>gsd headless query</code></td><td>ヘッドレスでクエリ実行</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ワークフロー実行 -->
+<section id="workflow-cmd">
+<div class="card">
+<h2>ワークフロー実行</h2>
+<span class="tag tag-auto">AUTO</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd</code> または <code>/gsd next</code></td><td>次のタスクを1つ実行（ステップ実行）</td></tr>
+<tr><td><code>/gsd next --verbose</code></td><td>詳細ログ付きで実行</td></tr>
+<tr><td><code>/gsd next --dry-run</code></td><td>実行内容をプレビュー（実際には変更しない）</td></tr>
+<tr><td><code>/gsd auto</code></td><td>自律モードで連続実行</td></tr>
+<tr><td><code>/gsd auto --yolo &lt;file&gt;</code></td><td>確認なし（yolo モード）で自律実行</td></tr>
+<tr><td><code>/gsd stop</code></td><td>自律モードを安全に停止</td></tr>
+<tr><td><code>/gsd pause</code></td><td>自律モードを一時停止（状態保持）</td></tr>
+<tr><td><code>/gsd quick</code></td><td>フル計画なしでアドホックタスクを実行</td></tr>
+<tr><td><code>/gsd dispatch &lt;phase&gt;</code></td><td>指定フェーズを直接ディスパッチ</td></tr>
+</tbody>
+</table>
+<div class="note" style="margin-top:12px"><strong>dispatch の phase:</strong> <code>research</code> / <code>plan</code> / <code>execute</code> / <code>complete</code> / <code>reassess</code> / <code>uat</code> / <code>replan</code></div>
+</div>
+
+<div class="card">
+<h2>ワークフロー開始</h2>
+<span class="tag tag-auto">WORKFLOW</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd start &lt;template&gt;</code></td><td>テンプレートからワークフロー開始</td></tr>
+<tr><td><code>/gsd start --list</code></td><td>テンプレート一覧を表示</td></tr>
+<tr><td><code>/gsd start --dry-run</code></td><td>開始内容のプレビュー</td></tr>
+<tr><td><code>/gsd templates</code></td><td>テンプレート一覧</td></tr>
+<tr><td><code>/gsd templates info &lt;name&gt;</code></td><td>テンプレート詳細</td></tr>
+<tr><td><code>/gsd discuss</code></td><td>マイルストーン/スライスのガイド付き対話</td></tr>
+<tr><td><code>/gsd new-milestone</code></td><td>ヘッドレスコンテキストからマイルストーン作成</td></tr>
+<tr><td><code>/gsd queue</code></td><td>キュー済み・ディスパッチ済みユニットと実行順を表示</td></tr>
+</tbody>
+</table>
+<div class="note" style="margin-top:12px">
+<strong>start テンプレート:</strong><br>
+<code>bugfix</code> / <code>small-feature</code> / <code>spike</code> / <code>hotfix</code> / <code>refactor</code> / <code>security-audit</code> / <code>dep-upgrade</code> / <code>full-project</code> / <code>resume</code>
+</div>
+</div>
+</section>
+
+<!-- 進捗確認 -->
+<section id="visibility">
+<div class="card">
+<h2>進捗確認</h2>
+<span class="tag tag-session">VISIBILITY</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd status</code></td><td>進捗ダッシュボード（<code>Ctrl+Alt+G</code> でも起動）</td></tr>
+<tr><td><code>/gsd visualize</code></td><td>インタラクティブ TUI（10 タブ: 進捗 / タイムライン / 依存関係 / メトリクス / ヘルス / エージェント / 変更 / 知識 / キャプチャ / エクスポート）</td></tr>
+<tr><td><code>/gsd queue</code></td><td>キュー・ディスパッチ済みユニットの実行順</td></tr>
+<tr><td><code>/gsd history [N]</code></td><td>実行履歴（N 件）</td></tr>
+<tr><td><code>/gsd history --cost</code></td><td>コスト付き履歴</td></tr>
+<tr><td><code>/gsd history --phase</code></td><td>フェーズ付き履歴</td></tr>
+<tr><td><code>/gsd history --model</code></td><td>使用モデル付き履歴</td></tr>
+<tr><td><code>/gsd changelog [version]</code></td><td>リリースノート</td></tr>
+<tr><td><code>/gsd widget [full|small|min|off]</code></td><td>ウィジェット表示モード切り替え</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- 軌道修正 -->
+<section id="correction">
+<div class="card">
+<h2>軌道修正・課題管理</h2>
+<span class="tag tag-util">CORRECTION</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd steer &lt;説明&gt;</code></td><td>実行中の作業にユーザー指示を上書き</td></tr>
+<tr><td><code>/gsd capture [テキスト]</code></td><td>アイデアを CAPTURES.md にクイックキャプチャ</td></tr>
+<tr><td><code>/gsd triage</code></td><td>保留中のキャプチャを分類・ルーティング</td></tr>
+<tr><td><code>/gsd skip &lt;unit&gt;</code></td><td>自律モードのディスパッチから除外（例: M001/S01/T01）</td></tr>
+<tr><td><code>/gsd undo</code></td><td>最後に完了したユニットを元に戻す</td></tr>
+<tr><td><code>/gsd undo --force</code></td><td>強制的に元に戻す</td></tr>
+<tr><td><code>/gsd undo-task &lt;unit&gt;</code></td><td>特定タスクの完了状態をリセット</td></tr>
+<tr><td><code>/gsd reset-slice &lt;unit&gt;</code></td><td>スライスと全タスクをリセット</td></tr>
+<tr><td><code>/gsd recover</code></td><td>破損した状態からリカバリー</td></tr>
+<tr><td><code>/gsd rethink</code></td><td>対話形式でプロジェクトを再編成</td></tr>
+<tr><td><code>/gsd rate over|ok|under</code></td><td>最後のユニットのモデルティアを評価</td></tr>
+<tr><td><code>/gsd park [id] [reason]</code></td><td>マイルストーンを一時停止（削除せずスキップ）</td></tr>
+<tr><td><code>/gsd unpark [id]</code></td><td>停止したマイルストーンを再開</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>プロジェクト知識</h2>
+<span class="tag tag-util">KNOWLEDGE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd knowledge rule &lt;テキスト&gt;</code></td><td>プロジェクトルールを追加</td></tr>
+<tr><td><code>/gsd knowledge pattern &lt;テキスト&gt;</code></td><td>コードパターンを追加</td></tr>
+<tr><td><code>/gsd knowledge lesson &lt;テキスト&gt;</code></td><td>教訓・学びを追加</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- セットアップ・設定 -->
+<section id="setup">
+<div class="card">
+<h2>セットアップ・設定</h2>
+<span class="tag tag-setup">SETUP</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd init</code></td><td>プロジェクト初期化ウィザード（.gsd/ を生成）</td></tr>
+<tr><td><code>/gsd setup [scope]</code></td><td>グローバルセットアップ状態（scope: <code>llm</code> / <code>search</code> / <code>remote</code> / <code>keys</code> / <code>prefs</code>）</td></tr>
+<tr><td><code>/gsd mode [global|project]</code></td><td>ワークフローモード設定（solo / team）</td></tr>
+<tr><td><code>/gsd prefs [action]</code></td><td>設定管理（<code>global</code> / <code>project</code> / <code>status</code> / <code>wizard</code> / <code>setup</code> / <code>import-claude</code>）</td></tr>
+<tr><td><code>/gsd config</code></td><td>外部ツールの API キー設定</td></tr>
+<tr><td><code>/gsd keys list</code></td><td>API キー一覧</td></tr>
+<tr><td><code>/gsd keys add</code></td><td>API キー追加</td></tr>
+<tr><td><code>/gsd keys remove</code></td><td>API キー削除</td></tr>
+<tr><td><code>/gsd keys test</code></td><td>API キーテスト</td></tr>
+<tr><td><code>/gsd keys rotate</code></td><td>API キーローテーション</td></tr>
+<tr><td><code>/gsd keys doctor</code></td><td>API キー診断</td></tr>
+<tr><td><code>/gsd hooks</code></td><td>post-unit / pre-dispatch フック表示</td></tr>
+<tr><td><code>/gsd run-hook &lt;name&gt; &lt;unit-type&gt; &lt;unit-id&gt;</code></td><td>フックを手動実行</td></tr>
+<tr><td><code>/gsd extensions list</code></td><td>拡張一覧</td></tr>
+<tr><td><code>/gsd extensions enable/disable/info</code></td><td>拡張管理</td></tr>
+<tr><td><code>/gsd fast [on|off|flex|status]</code></td><td>OpenAI サービスティア切り替え</td></tr>
+<tr><td><code>/gsd mcp status</code></td><td>MCP サーバー状態</td></tr>
+<tr><td><code>/gsd mcp check &lt;server&gt;</code></td><td>MCP サーバー確認</td></tr>
+<tr><td><code>/gsd cmux [action]</code></td><td>cmux 統合管理（<code>status</code> / <code>on</code> / <code>off</code> / <code>notifications</code> / <code>sidebar</code> / <code>splits</code> / <code>browser</code>）</td></tr>
+<tr><td><code>/gsd migrate</code></td><td>v1 (.planning/) → v2 (.gsd/) 移行</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- メンテナンス -->
+<section id="maintenance">
+<div class="card">
+<h2>メンテナンス</h2>
+<span class="tag tag-util">MAINTENANCE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd doctor</code></td><td>.gsd/ の診断と修復</td></tr>
+<tr><td><code>/gsd doctor fix</code></td><td>問題を自動修正</td></tr>
+<tr><td><code>/gsd doctor heal</code></td><td>状態を修復</td></tr>
+<tr><td><code>/gsd doctor audit</code></td><td>監査実行</td></tr>
+<tr><td><code>/gsd doctor --dry-run</code></td><td>修正内容をプレビュー（実際には変更しない）</td></tr>
+<tr><td><code>/gsd doctor --build</code></td><td>ビルド検証を含む診断</td></tr>
+<tr><td><code>/gsd doctor --test</code></td><td>テスト実行を含む診断</td></tr>
+<tr><td><code>/gsd export --json</code></td><td>JSON でエクスポート</td></tr>
+<tr><td><code>/gsd export --markdown</code></td><td>Markdown でエクスポート</td></tr>
+<tr><td><code>/gsd export --html</code></td><td>HTML でエクスポート</td></tr>
+<tr><td><code>/gsd export --html --all</code></td><td>全マイルストーンを HTML エクスポート</td></tr>
+<tr><td><code>/gsd cleanup branches</code></td><td>マージ済みブランチを削除</td></tr>
+<tr><td><code>/gsd cleanup snapshots</code></td><td>スナップショットを削除</td></tr>
+<tr><td><code>/gsd cleanup worktrees</code></td><td>worktree をクリーンアップ</td></tr>
+<tr><td><code>/gsd cleanup projects</code></td><td>プロジェクトをクリーンアップ</td></tr>
+<tr><td><code>/gsd cleanup projects --fix</code></td><td>プロジェクト問題を修正</td></tr>
+<tr><td><code>/gsd logs</code></td><td>アクティビティログ閲覧</td></tr>
+<tr><td><code>/gsd logs debug</code></td><td>デバッグログ</td></tr>
+<tr><td><code>/gsd logs tail</code></td><td>ログをリアルタイム追跡</td></tr>
+<tr><td><code>/gsd logs clear</code></td><td>ログをクリア</td></tr>
+<tr><td><code>/gsd forensics</code></td><td>実行ログの詳細調査</td></tr>
+<tr><td><code>/gsd inspect</code></td><td>SQLite DB 診断</td></tr>
+<tr><td><code>/gsd skill-health</code></td><td>スキルライフサイクルダッシュボード</td></tr>
+<tr><td><code>/gsd update</code></td><td>GSD を最新版に更新</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- 上級 -->
+<section id="advanced">
+<div class="grid">
+<div class="card">
+<h2>並列実行</h2>
+<span class="tag tag-auto">PARALLEL</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd parallel start</code></td><td>並列マイルストーン開始</td></tr>
+<tr><td><code>/gsd parallel status</code></td><td>並列実行状態</td></tr>
+<tr><td><code>/gsd parallel stop [id]</code></td><td>並列実行停止</td></tr>
+<tr><td><code>/gsd parallel pause [id]</code></td><td>並列実行一時停止</td></tr>
+<tr><td><code>/gsd parallel resume [id]</code></td><td>並列実行再開</td></tr>
+<tr><td><code>/gsd parallel merge [id]</code></td><td>並列実行をマージ</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h2>カスタムワークフロー</h2>
+<span class="tag tag-auto">WORKFLOW</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd workflow new</code></td><td>カスタムワークフロー作成</td></tr>
+<tr><td><code>/gsd workflow run &lt;name&gt; [k=v]</code></td><td>カスタムワークフロー実行</td></tr>
+<tr><td><code>/gsd workflow list [name]</code></td><td>カスタムワークフロー一覧</td></tr>
+<tr><td><code>/gsd workflow validate &lt;name&gt;</code></td><td>カスタムワークフロー検証</td></tr>
+<tr><td><code>/gsd workflow pause</code></td><td>カスタムワークフロー一時停止</td></tr>
+<tr><td><code>/gsd workflow resume</code></td><td>カスタムワークフロー再開</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h2>リモート・連携</h2>
+<span class="tag tag-setup">REMOTE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd remote slack</code></td><td>Slack 連携</td></tr>
+<tr><td><code>/gsd remote discord</code></td><td>Discord 連携</td></tr>
+<tr><td><code>/gsd remote status</code></td><td>リモート自律モード状態</td></tr>
+<tr><td><code>/gsd remote disconnect</code></td><td>リモート接続解除</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- 全体像 -->
+<section id="overview">
+<div class="card">
+<h2>ワークフロー全体像</h2>
+<pre>
+┌──────────────────────────────────────────────────────────────┐
+│  gsd init            ← プロジェクト初期化 (.gsd/ 生成)        │
+│  /gsd discuss        ← マイルストーン・スライスの対話設計      │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+          ┌────────────────────▼────────────────────┐
+          │          各マイルストーンを繰り返す         │
+          │                                           │
+          │  /gsd start &lt;template&gt;  ← テンプレート起動 │
+          │  /gsd next              ← 1タスク実行      │
+          │       または                               │
+          │  /gsd auto              ← 連続自動実行     │
+          │  /gsd status            ← 進捗確認         │
+          │  /gsd steer &lt;desc&gt;      ← 軌道修正        │
+          │           ↓                               │
+          │     次のマイルストーンへ ──────────────────┘
+          │           │ 全完了
+          └───────────┼────────────────────────────────┘
+                      │
+          /gsd export --html --all   ← 全体エクスポート
+          /gsd cleanup branches      ← ブランチ整理
+</pre>
+</div>
+<div class="grid">
+<div class="card">
+<h3>タスク階層</h3>
+<pre>
+Milestone (M001)        ← 大きな目標単位
+  └─ Slice (S01)        ← 機能・フェーズ単位
+       └─ Task (T01)    ← 実装タスク単位
+
+ユニット指定: M001/S01/T01
+</pre>
+</div>
+<div class="card">
+<h3>リカバリー早見表</h3>
+<table class="table">
+<thead><tr><th>問題</th><th>対処</th></tr></thead>
+<tbody>
+<tr><td>直近の作業を取り消したい</td><td><code>/gsd undo</code></td></tr>
+<tr><td>特定タスクをリセット</td><td><code>/gsd undo-task M001/S01/T01</code></td></tr>
+<tr><td>スライス全体をリセット</td><td><code>/gsd reset-slice M001/S01</code></td></tr>
+<tr><td>状態が壊れている</td><td><code>/gsd doctor fix</code></td></tr>
+<tr><td>破損からリカバリー</td><td><code>/gsd recover</code></td></tr>
+<tr><td>マイルストーンを一時スキップ</td><td><code>/gsd park M001</code></td></tr>
+<tr><td>作業方針を変えたい</td><td><code>/gsd steer &lt;説明&gt;</code></td></tr>
+<tr><td>プロジェクト全体を再編成</td><td><code>/gsd rethink</code></td></tr>
+<tr><td>自動実行を止めたい</td><td><code>/gsd pause</code>（状態保持）/ <code>/gsd stop</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- ディレクトリ構造 -->
+<section id="dir" class="card">
+<h2>.gsd/ ディレクトリ構造</h2>
+<pre>
+.gsd/
+  preferences.json       # プロジェクト設定
+  *.db                   # SQLite 状態データベース（/gsd inspect で確認）
+  logs/                  # アクティビティログ（/gsd logs で閲覧）
+  snapshots/             # 状態スナップショット（/gsd cleanup snapshots で削除）
+  captures/              # /gsd capture のキャプチャ → /gsd triage で処理
+  knowledge/             # /gsd knowledge で蓄積した知識
+
+~/.gsd/
+  preferences.json       # グローバル設定
+</pre>
+
+<h3 style="margin-top:16px">設定ファイル（preferences.json）の主な項目</h3>
+<table class="table">
+<thead><tr><th>設定</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>model</code></td><td>デフォルトモデル（スコープ別設定も可能）</td></tr>
+<tr><td><code>mode</code></td><td>ワークフローモード（<code>solo</code> / <code>team</code>）</td></tr>
+<tr><td><code>fast.tier</code></td><td>OpenAI サービスティア（<code>on</code> / <code>off</code> / <code>flex</code>）</td></tr>
+<tr><td>hooks</td><td>post-unit / pre-dispatch フック設定</td></tr>
+<tr><td>extensions</td><td>拡張の有効・無効</td></tr>
+</tbody>
+</table>
+<p class="small">設定の確認・変更: <code>/gsd prefs status</code> → <code>/gsd prefs wizard</code></p>
+</section>
+
+<div class="card" style="margin-top:20px">
+<h2>出典</h2>
+<ul>
+<li>ソース: <code>src/cli.ts</code>, <code>src/help-text.ts</code>, <code>src/resources/extensions/gsd/commands/</code></li>
+<li>主要ファイル: <code>catalog.ts</code>（全コマンド定義）, <code>dispatcher.ts</code>（ルーティング）, <code>handlers/*.ts</code>（各実装）</li>
+</ul>
+<p class="small">Single HTML / offline friendly / 印刷対応</p>
+</div>
+
+</div>
+</body>
+</html>
