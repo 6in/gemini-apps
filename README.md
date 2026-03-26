@@ -11,6 +11,7 @@ Google Gemini Canvas Apps
 | [favicon-emoji](https://6in.github.io/gemini-apps/favicon-emoji.html) | 絵文字からFaviconを生成するツール |
 | [ecc-cheatsheet](https://6in.github.io/gemini-apps/ecc-cheatsheet.html) | Everything Claude Code チートシート |
 | [gsd-cheatsheet](https://6in.github.io/gemini-apps/gsd-cheatsheet.html) | GSD（Getting Things Done）チートシート |
+| [gsd2-cheatsheet](https://6in.github.io/gemini-apps/gsd2-cheatsheet.html) | GSD 2.0 チートシート |
 | [skillmix](https://6in.github.io/gemini-apps/skillmix.html) | スキルを掛け合わせて新しいアイデアを生み出すツール |
 | [idea-generation-tool](https://6in.github.io/gemini-apps/idea-generation-tool.html) | アイデア発想支援ツール（思考の全技術） |
 | [keisensan-2026](https://6in.github.io/gemini-apps/keisensan-2026.html) | ASCIIアート（罫線図）を生成するツール |
