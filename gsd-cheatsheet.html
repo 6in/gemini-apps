@@ -45,14 +45,14 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <section id="judge" class="grid">
 <div class="card">
 <h2>まずはこれで判定</h2>
-<div class="decision"><strong>今すぐ実装しない</strong> → <span class="kbd">/gsd:add-todo</span></div>
-<div class="decision"><strong>今やる小変更</strong> → <span class="kbd">/gsd:quick</span></div>
-<div class="decision"><strong>小さいが先に少し仕様確認したい</strong> → <span class="kbd">/gsd:quick --discuss</span></div>
-<div class="decision"><strong>小さいが品質保証もほしい</strong> → <span class="kbd">/gsd:quick --full</span></div>
-<div class="decision"><strong>独立した新機能を末尾に追加</strong> → <span class="kbd">/gsd:add-phase</span></div>
-<div class="decision"><strong>既存計画の途中に urgent work を差し込む</strong> → <span class="kbd">/gsd:insert-phase [N]</span></div>
-<div class="decision"><strong>phase の方針が曖昧</strong> → <span class="kbd">/gsd:discuss-phase [N]</span> → <span class="kbd">/gsd:plan-phase [N]</span></div>
-<div class="decision"><strong>何かが壊れた</strong> → <span class="kbd">/gsd:debug [desc]</span></div>
+<div class="decision"><strong>今すぐ実装しない</strong> → <span class="kbd">/gsd-add-todo</span></div>
+<div class="decision"><strong>今やる小変更</strong> → <span class="kbd">/gsd-quick</span></div>
+<div class="decision"><strong>小さいが先に少し仕様確認したい</strong> → <span class="kbd">/gsd-quick --discuss</span></div>
+<div class="decision"><strong>小さいが品質保証もほしい</strong> → <span class="kbd">/gsd-quick --full</span></div>
+<div class="decision"><strong>独立した新機能を末尾に追加</strong> → <span class="kbd">/gsd-add-phase</span></div>
+<div class="decision"><strong>既存計画の途中に urgent work を差し込む</strong> → <span class="kbd">/gsd-insert-phase [N]</span></div>
+<div class="decision"><strong>phase の方針が曖昧</strong> → <span class="kbd">/gsd-discuss-phase [N]</span> → <span class="kbd">/gsd-plan-phase [N]</span></div>
+<div class="decision"><strong>何かが壊れた</strong> → <span class="kbd">/gsd-debug [desc]</span></div>
 </div>
 <div class="card">
 <h2>3つの見分け方</h2>
@@ -83,14 +83,14 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>コマンド</th><th>用途</th><th>主な引数・フラグ</th></tr></thead>
 <tbody>
-<tr><td><code>/gsd:new-project</code></td><td>プロジェクト初期化: 質問 → リサーチ → 要件 → ロードマップ</td><td><code>[--auto]</code> ドキュメントから自動生成</td></tr>
-<tr><td><code>/gsd:discuss-phase</code></td><td>実装方針・前提・好みを固定する（CONTEXT.md 作成）</td><td><code>&lt;N&gt; [--auto]</code></td></tr>
-<tr><td><code>/gsd:plan-phase</code></td><td>リサーチ + プラン作成 + 検証ループ</td><td><code>[N] [--auto] [--skip-research] [--skip-verify] [--prd &lt;file&gt;]</code></td></tr>
-<tr><td><code>/gsd:execute-phase</code></td><td>全プランをウェーブ並列実行 → atomic commit</td><td><code>&lt;N&gt; [--gaps-only]</code></td></tr>
-<tr><td><code>/gsd:verify-work</code></td><td>手動 UAT（受け入れテスト）+ 自動診断</td><td><code>[N]</code></td></tr>
-<tr><td><code>/gsd:audit-milestone</code></td><td>マイルストーン完了前の達成度監査</td><td><code>[version]</code></td></tr>
-<tr><td><code>/gsd:complete-milestone</code></td><td>マイルストーンをアーカイブ + タグ付け</td><td><code>&lt;version&gt;</code> 例: "1.0"</td></tr>
-<tr><td><code>/gsd:new-milestone</code></td><td>次のバージョンサイクル開始</td><td><code>[name]</code> 例: "v1.1 Notifications"</td></tr>
+<tr><td><code>/gsd-new-project</code></td><td>プロジェクト初期化: 質問 → リサーチ → 要件 → ロードマップ</td><td><code>[--auto]</code> ドキュメントから自動生成</td></tr>
+<tr><td><code>/gsd-discuss-phase</code></td><td>実装方針・前提・好みを固定する（CONTEXT.md 作成）</td><td><code>&lt;N&gt; [--auto]</code></td></tr>
+<tr><td><code>/gsd-plan-phase</code></td><td>リサーチ + プラン作成 + 検証ループ</td><td><code>[N] [--auto] [--skip-research] [--skip-verify] [--prd &lt;file&gt;]</code></td></tr>
+<tr><td><code>/gsd-execute-phase</code></td><td>全プランをウェーブ並列実行 → atomic commit</td><td><code>&lt;N&gt; [--gaps-only]</code></td></tr>
+<tr><td><code>/gsd-verify-work</code></td><td>手動 UAT（受け入れテスト）+ 自動診断</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd-audit-milestone</code></td><td>マイルストーン完了前の達成度監査</td><td><code>[version]</code></td></tr>
+<tr><td><code>/gsd-complete-milestone</code></td><td>マイルストーンをアーカイブ + タグ付け</td><td><code>&lt;version&gt;</code> 例: "1.0"</td></tr>
+<tr><td><code>/gsd-new-milestone</code></td><td>次のバージョンサイクル開始</td><td><code>[name]</code> 例: "v1.1 Notifications"</td></tr>
 </tbody>
 </table>
 </div>
@@ -101,14 +101,14 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
 <tbody>
-<tr><td><code>/gsd:add-phase</code></td><td>ロードマップ末尾にフェーズ追加</td><td><code>&lt;description&gt;</code></td></tr>
-<tr><td><code>/gsd:insert-phase</code></td><td>途中に urgent work を小数番号で差し込み</td><td><code>&lt;after&gt; &lt;description&gt;</code></td></tr>
-<tr><td><code>/gsd:remove-phase</code></td><td>未開始フェーズを削除 + リナンバー</td><td><code>&lt;N&gt;</code></td></tr>
-<tr><td><code>/gsd:list-phase-assumptions</code></td><td>Claude の想定アプローチを事前確認</td><td><code>[N]</code></td></tr>
-<tr><td><code>/gsd:research-phase</code></td><td>フェーズの単体リサーチ（通常は plan-phase に含まれる）</td><td><code>[N]</code></td></tr>
-<tr><td><code>/gsd:validate-phase</code></td><td>完了フェーズの Nyquist バリデーション監査</td><td><code>[N]</code></td></tr>
-<tr><td><code>/gsd:add-tests</code></td><td>完了フェーズのテスト生成（unit + E2E）</td><td><code>&lt;phase&gt; [instructions]</code></td></tr>
-<tr><td><code>/gsd:plan-milestone-gaps</code></td><td>監査で見つかったギャップを埋めるフェーズ作成</td><td>（引数なし — MILESTONE-AUDIT.md から読み取り）</td></tr>
+<tr><td><code>/gsd-add-phase</code></td><td>ロードマップ末尾にフェーズ追加</td><td><code>&lt;description&gt;</code></td></tr>
+<tr><td><code>/gsd-insert-phase</code></td><td>途中に urgent work を小数番号で差し込み</td><td><code>&lt;after&gt; &lt;description&gt;</code></td></tr>
+<tr><td><code>/gsd-remove-phase</code></td><td>未開始フェーズを削除 + リナンバー</td><td><code>&lt;N&gt;</code></td></tr>
+<tr><td><code>/gsd-list-phase-assumptions</code></td><td>Claude の想定アプローチを事前確認</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd-research-phase</code></td><td>フェーズの単体リサーチ（通常は plan-phase に含まれる）</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd-validate-phase</code></td><td>完了フェーズの Nyquist バリデーション監査</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd-add-tests</code></td><td>完了フェーズのテスト生成（unit + E2E）</td><td><code>&lt;phase&gt; [instructions]</code></td></tr>
+<tr><td><code>/gsd-plan-milestone-gaps</code></td><td>監査で見つかったギャップを埋めるフェーズ作成</td><td>（引数なし — MILESTONE-AUDIT.md から読み取り）</td></tr>
 </tbody>
 </table>
 </div>
@@ -119,9 +119,9 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>コマンド</th><th>用途</th></tr></thead>
 <tbody>
-<tr><td><code>/gsd:progress</code></td><td>現在位置と次のアクションを表示</td></tr>
-<tr><td><code>/gsd:resume-work</code></td><td>前回セッションからコンテキスト復元</td></tr>
-<tr><td><code>/gsd:pause-work</code></td><td>中断ハンドオフ（.continue-here.md 作成）</td></tr>
+<tr><td><code>/gsd-progress</code></td><td>現在位置と次のアクションを表示</td></tr>
+<tr><td><code>/gsd-resume-work</code></td><td>前回セッションからコンテキスト復元</td></tr>
+<tr><td><code>/gsd-pause-work</code></td><td>中断ハンドオフ（.continue-here.md 作成）</td></tr>
 </tbody>
 </table>
 </div>
@@ -132,19 +132,19 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
 <tbody>
-<tr><td><code>/gsd:quick</code></td><td>アドホックタスクを GSD 保証付きで実行</td><td><code>[--full] [--discuss]</code></td></tr>
-<tr><td><code>/gsd:debug</code></td><td>科学的手法によるデバッグ（サブエージェント分離）</td><td><code>[description]</code></td></tr>
-<tr><td><code>/gsd:map-codebase</code></td><td>既存コードベースを 4 並列エージェントで分析</td><td><code>[area]</code> 例: "api", "auth"</td></tr>
-<tr><td><code>/gsd:add-todo</code></td><td>あとでやるアイデアをキャプチャ（実装は開始しない）</td><td><code>[description]</code></td></tr>
-<tr><td><code>/gsd:check-todos</code></td><td>保留中の todo を一覧表示 → 選択 → アクションへ</td><td><code>[area filter]</code></td></tr>
-<tr><td><code>/gsd:settings</code></td><td>ワークフロートグル・モデルプロファイル設定</td><td>（対話式）</td></tr>
-<tr><td><code>/gsd:set-profile</code></td><td>モデルプロファイル切替</td><td><code>&lt;quality|balanced|budget&gt;</code></td></tr>
-<tr><td><code>/gsd:health</code></td><td>.planning/ ディレクトリ整合性チェック</td><td><code>[--repair]</code></td></tr>
-<tr><td><code>/gsd:cleanup</code></td><td>完了マイルストーンのフェーズディレクトリをアーカイブ</td><td>（対話式）</td></tr>
-<tr><td><code>/gsd:update</code></td><td>GSD を最新版に更新（changelog 表示）</td><td>—</td></tr>
-<tr><td><code>/gsd:reapply-patches</code></td><td>アップデート後にローカル変更を再適用</td><td>—</td></tr>
-<tr><td><code>/gsd:help</code></td><td>コマンドリファレンス表示</td><td>—</td></tr>
-<tr><td><code>/gsd:join-discord</code></td><td>Discord コミュニティへの招待リンク</td><td>—</td></tr>
+<tr><td><code>/gsd-quick</code></td><td>アドホックタスクを GSD 保証付きで実行</td><td><code>[--full] [--discuss]</code></td></tr>
+<tr><td><code>/gsd-debug</code></td><td>科学的手法によるデバッグ（サブエージェント分離）</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd-map-codebase</code></td><td>既存コードベースを 4 並列エージェントで分析</td><td><code>[area]</code> 例: "api", "auth"</td></tr>
+<tr><td><code>/gsd-add-todo</code></td><td>あとでやるアイデアをキャプチャ（実装は開始しない）</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd-check-todos</code></td><td>保留中の todo を一覧表示 → 選択 → アクションへ</td><td><code>[area filter]</code></td></tr>
+<tr><td><code>/gsd-settings</code></td><td>ワークフロートグル・モデルプロファイル設定</td><td>（対話式）</td></tr>
+<tr><td><code>/gsd-set-profile</code></td><td>モデルプロファイル切替</td><td><code>&lt;quality|balanced|budget&gt;</code></td></tr>
+<tr><td><code>/gsd-health</code></td><td>.planning/ ディレクトリ整合性チェック</td><td><code>[--repair]</code></td></tr>
+<tr><td><code>/gsd-cleanup</code></td><td>完了マイルストーンのフェーズディレクトリをアーカイブ</td><td>（対話式）</td></tr>
+<tr><td><code>/gsd-update</code></td><td>GSD を最新版に更新（changelog 表示）</td><td>—</td></tr>
+<tr><td><code>/gsd-reapply-patches</code></td><td>アップデート後にローカル変更を再適用</td><td>—</td></tr>
+<tr><td><code>/gsd-help</code></td><td>コマンドリファレンス表示</td><td>—</td></tr>
+<tr><td><code>/gsd-join-discord</code></td><td>Discord コミュニティへの招待リンク</td><td>—</td></tr>
 </tbody>
 </table>
 </div>
@@ -156,25 +156,25 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <h2>ワークフロー全体像</h2>
 <pre>
 ┌─────────────────────────────────────────────────────────────┐
-│  /gsd:map-codebase        ← 既存コードがある場合のみ          │
-│  /gsd:new-project         ← 質問 → リサーチ → 要件 → ロードマップ │
+│  /gsd-map-codebase        ← 既存コードがある場合のみ          │
+│  /gsd-new-project         ← 質問 → リサーチ → 要件 → ロードマップ │
 └──────────────────────────────┬──────────────────────────────┘
                                │
           ┌────────────────────▼────────────────────┐
           │          各フェーズを繰り返す              │
           │                                          │
-          │  /gsd:discuss-phase N   ← 方針固定        │
-          │  /gsd:plan-phase N      ← 計画 + 検証     │
-          │  /gsd:execute-phase N   ← 並列実行        │
-          │  /gsd:verify-work N     ← 手動 UAT        │
+          │  /gsd-discuss-phase N   ← 方針固定        │
+          │  /gsd-plan-phase N      ← 計画 + 検証     │
+          │  /gsd-execute-phase N   ← 並列実行        │
+          │  /gsd-verify-work N     ← 手動 UAT        │
           │           ↓                               │
           │     次のフェーズへ ────────────────────────┘
           │           │ 全フェーズ完了
           └───────────┼─────────────────────────────┘
                       │
-          /gsd:audit-milestone      ← 達成度チェック
-          /gsd:complete-milestone   ← アーカイブ + タグ
-          /gsd:new-milestone        ← 次バージョンへ
+          /gsd-audit-milestone      ← 達成度チェック
+          /gsd-complete-milestone   ← アーカイブ + タグ
+          /gsd-new-milestone        ← 次バージョンへ
 </pre>
 </div>
 
@@ -182,7 +182,7 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <div class="card">
 <h3>plan-phase のエージェント構成</h3>
 <pre>
-/gsd:plan-phase N
+/gsd-plan-phase N
   ├── Phase Researcher (×4 並列)
   │    ├── Stack / Features
   │    ├── Architecture / Pitfalls
@@ -196,7 +196,7 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <div class="card">
 <h3>execute-phase のウェーブ実行</h3>
 <pre>
-/gsd:execute-phase N
+/gsd-execute-phase N
   ├── 依存関係分析
   ├── Wave 1 (独立プラン並列)
   │    ├── Executor A → commit
@@ -218,17 +218,17 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>やりたいこと</th><th>推奨コマンド</th><th>理由</th></tr></thead>
 <tbody>
-<tr><td>help 文言の修正</td><td><code>/gsd:quick</code></td><td>局所修正で完結</td></tr>
-<tr><td>エラーメッセージの見直し（表現方針も決めたい）</td><td><code>/gsd:quick --discuss</code></td><td>小さい変更だが事前の認識合わせが必要</td></tr>
-<tr><td>バグ修正で品質保証もほしい</td><td><code>/gsd:quick --full</code></td><td>plan-check + verification 付きで安全</td></tr>
-<tr><td>新しい <code>sync</code> サブコマンドを追加</td><td><code>/gsd:add-phase</code></td><td>独立した機能のまとまり、末尾追加が自然</td></tr>
-<tr><td>設定ファイル構造を作り直してから後続に進みたい</td><td><code>/gsd:insert-phase [N]</code></td><td>後続フェーズの前提となる urgent work</td></tr>
-<tr><td>そのうち欲しい機能アイデアをメモ</td><td><code>/gsd:add-todo</code></td><td>今すぐ実装しない</td></tr>
-<tr><td>実装後に少し変えたい箇所が見つかった</td><td><code>/gsd:quick</code> or <code>/gsd:verify-work</code></td><td>execute-phase の再実行は避ける</td></tr>
-<tr><td>原因不明のバグが発生</td><td><code>/gsd:debug</code></td><td>科学的手法 + サブエージェントで調査</td></tr>
-<tr><td>フェーズの方向性が合っているか確認したい</td><td><code>/gsd:list-phase-assumptions</code></td><td>計画前に Claude の想定を可視化</td></tr>
-<tr><td>実装後にテストを追加したい</td><td><code>/gsd:add-tests</code></td><td>完了フェーズから unit + E2E テスト生成</td></tr>
-<tr><td>既存プロジェクトで初めて GSD を使う</td><td><code>/gsd:map-codebase</code> → <code>/gsd:new-project</code></td><td>先にコードベースを分析、質問は「何を追加するか」に集中</td></tr>
+<tr><td>help 文言の修正</td><td><code>/gsd-quick</code></td><td>局所修正で完結</td></tr>
+<tr><td>エラーメッセージの見直し（表現方針も決めたい）</td><td><code>/gsd-quick --discuss</code></td><td>小さい変更だが事前の認識合わせが必要</td></tr>
+<tr><td>バグ修正で品質保証もほしい</td><td><code>/gsd-quick --full</code></td><td>plan-check + verification 付きで安全</td></tr>
+<tr><td>新しい <code>sync</code> サブコマンドを追加</td><td><code>/gsd-add-phase</code></td><td>独立した機能のまとまり、末尾追加が自然</td></tr>
+<tr><td>設定ファイル構造を作り直してから後続に進みたい</td><td><code>/gsd-insert-phase [N]</code></td><td>後続フェーズの前提となる urgent work</td></tr>
+<tr><td>そのうち欲しい機能アイデアをメモ</td><td><code>/gsd-add-todo</code></td><td>今すぐ実装しない</td></tr>
+<tr><td>実装後に少し変えたい箇所が見つかった</td><td><code>/gsd-quick</code> or <code>/gsd-verify-work</code></td><td>execute-phase の再実行は避ける</td></tr>
+<tr><td>原因不明のバグが発生</td><td><code>/gsd-debug</code></td><td>科学的手法 + サブエージェントで調査</td></tr>
+<tr><td>フェーズの方向性が合っているか確認したい</td><td><code>/gsd-list-phase-assumptions</code></td><td>計画前に Claude の想定を可視化</td></tr>
+<tr><td>実装後にテストを追加したい</td><td><code>/gsd-add-tests</code></td><td>完了フェーズから unit + E2E テスト生成</td></tr>
+<tr><td>既存プロジェクトで初めて GSD を使う</td><td><code>/gsd-map-codebase</code> → <code>/gsd-new-project</code></td><td>先にコードベースを分析、質問は「何を追加するか」に集中</td></tr>
 </tbody>
 </table>
 </div>
@@ -239,34 +239,34 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <div>
 <h3>新規プロジェクト</h3>
 <pre>claude --dangerously-skip-permissions
-/gsd:new-project
+/gsd-new-project
 /clear
-/gsd:discuss-phase 1
-/gsd:plan-phase 1
-/gsd:execute-phase 1
-/gsd:verify-work 1
+/gsd-discuss-phase 1
+/gsd-plan-phase 1
+/gsd-execute-phase 1
+/gsd-verify-work 1
 /clear
-/gsd:discuss-phase 2
+/gsd-discuss-phase 2
 ...</pre>
 </div>
 <div>
 <h3>既存コードベース</h3>
-<pre>/gsd:map-codebase
-/gsd:new-project
+<pre>/gsd-map-codebase
+/gsd-new-project
 /clear
 # 以降は通常のフェーズワークフロー</pre>
 </div>
 <div>
 <h3>セッション再開</h3>
-<pre>/gsd:progress        # 状況確認
+<pre>/gsd-progress        # 状況確認
 # または
-/gsd:resume-work     # フルコンテキスト復元</pre>
+/gsd-resume-work     # フルコンテキスト復元</pre>
 </div>
 <div>
 <h3>ドキュメントからの自動生成</h3>
-<pre>/gsd:new-project --auto @prd.md
+<pre>/gsd-new-project --auto @prd.md
 /clear
-/gsd:discuss-phase 1
+/gsd-discuss-phase 1
 ...</pre>
 </div>
 </div>
@@ -422,15 +422,15 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <!-- 注意点 -->
 <section id="notes" class="card">
 <h2>注意点</h2>
-<div class="warn"><strong>execute-phase をやり直さない。</strong> 実装後に少し変えたいなら <span class="kbd">/gsd:quick</span>、体系的に問題を洗いたいなら <span class="kbd">/gsd:verify-work</span> を使う。</div>
+<div class="warn"><strong>execute-phase をやり直さない。</strong> 実装後に少し変えたいなら <span class="kbd">/gsd-quick</span>、体系的に問題を洗いたいなら <span class="kbd">/gsd-verify-work</span> を使う。</div>
 <ul>
-<li>計画がズレていると感じたら <span class="kbd">/gsd:discuss-phase [N]</span> を挟んでから re-plan。</li>
-<li>セッションをまたぐなら <span class="kbd">/gsd:progress</span> または <span class="kbd">/gsd:resume-work</span>。</li>
-<li>コンテキスト品質が落ちたら <code>/clear</code> してから <span class="kbd">/gsd:resume-work</span>。</li>
-<li>既存コードベースで初めて GSD を使う場合は <span class="kbd">/gsd:map-codebase</span> → <span class="kbd">/gsd:new-project</span> の流れ。</li>
+<li>計画がズレていると感じたら <span class="kbd">/gsd-discuss-phase [N]</span> を挟んでから re-plan。</li>
+<li>セッションをまたぐなら <span class="kbd">/gsd-progress</span> または <span class="kbd">/gsd-resume-work</span>。</li>
+<li>コンテキスト品質が落ちたら <code>/clear</code> してから <span class="kbd">/gsd-resume-work</span>。</li>
+<li>既存コードベースで初めて GSD を使う場合は <span class="kbd">/gsd-map-codebase</span> → <span class="kbd">/gsd-new-project</span> の流れ。</li>
 <li>プランが大きすぎると stub になる。タスクは 2-3 個が目安。</li>
-<li>コスト削減: <span class="kbd">/gsd:set-profile budget</span> + <span class="kbd">/gsd:settings</span> で research / plan_check をオフ。</li>
-<li>アップデート後にローカル変更が消えたら <span class="kbd">/gsd:reapply-patches</span>。</li>
+<li>コスト削減: <span class="kbd">/gsd-set-profile budget</span> + <span class="kbd">/gsd-settings</span> で research / plan_check をオフ。</li>
+<li>アップデート後にローカル変更が消えたら <span class="kbd">/gsd-reapply-patches</span>。</li>
 <li>.planning/ をバージョン管理したくない場合は <code>commit_docs: false</code> + <code>.gitignore</code> に追加。</li>
 </ul>
 
@@ -438,15 +438,15 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <table class="table">
 <thead><tr><th>問題</th><th>対処</th></tr></thead>
 <tbody>
-<tr><td>新セッション / コンテキスト喪失</td><td><code>/gsd:resume-work</code> or <code>/gsd:progress</code></td></tr>
+<tr><td>新セッション / コンテキスト喪失</td><td><code>/gsd-resume-work</code> or <code>/gsd-progress</code></td></tr>
 <tr><td>フェーズの実装がおかしい</td><td><code>git revert</code> → re-plan</td></tr>
-<tr><td>スコープ変更が必要</td><td><code>/gsd:add-phase</code> / <code>insert-phase</code> / <code>remove-phase</code></td></tr>
-<tr><td>マイルストーン監査でギャップ</td><td><code>/gsd:plan-milestone-gaps</code></td></tr>
-<tr><td>何かが壊れた</td><td><code>/gsd:debug "description"</code></td></tr>
-<tr><td>素早い修正</td><td><code>/gsd:quick</code></td></tr>
-<tr><td>コストが高い</td><td><code>/gsd:set-profile budget</code> + エージェントをオフ</td></tr>
-<tr><td>アップデートでローカル変更消失</td><td><code>/gsd:reapply-patches</code></td></tr>
-<tr><td>.planning/ が壊れた</td><td><code>/gsd:health --repair</code></td></tr>
+<tr><td>スコープ変更が必要</td><td><code>/gsd-add-phase</code> / <code>insert-phase</code> / <code>remove-phase</code></td></tr>
+<tr><td>マイルストーン監査でギャップ</td><td><code>/gsd-plan-milestone-gaps</code></td></tr>
+<tr><td>何かが壊れた</td><td><code>/gsd-debug "description"</code></td></tr>
+<tr><td>素早い修正</td><td><code>/gsd-quick</code></td></tr>
+<tr><td>コストが高い</td><td><code>/gsd-set-profile budget</code> + エージェントをオフ</td></tr>
+<tr><td>アップデートでローカル変更消失</td><td><code>/gsd-reapply-patches</code></td></tr>
+<tr><td>.planning/ が壊れた</td><td><code>/gsd-health --repair</code></td></tr>
 </tbody>
 </table>
 </section>
@@ -462,13 +462,13 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
   STATE.md                # 決定・ブロッカー・セッションメモリ
   config.json             # ワークフロー設定
   MILESTONES.md           # 完了マイルストーンのアーカイブ
-  research/               # /gsd:new-project のドメインリサーチ
+  research/               # /gsd-new-project のドメインリサーチ
   todos/
     pending/              # キャプチャ済みアイデア
     done/                 # 完了した todo
   debug/                  # アクティブなデバッグセッション
     resolved/             # 解決済みデバッグセッション
-  codebase/               # /gsd:map-codebase の出力
+  codebase/               # /gsd-map-codebase の出力
     STACK.md / ARCHITECTURE.md / CONVENTIONS.md / CONCERNS.md
   phases/
     XX-phase-name/
