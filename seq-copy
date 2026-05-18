@@ -1,0 +1,691 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequential Copy Tool</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- AG Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/dist/ag-grid-community.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-theme-alpine.css" />
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+    <!-- Lucide Icons (Fixed Version 0.263.1 for Maximum Stability) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .ag-theme-alpine {
+            --ag-selected-row-background-color: rgba(79, 70, 229, 0.1);
+            --ag-row-hover-color: rgba(243, 244, 246, 0.5);
+        }
+
+        /* Modal Animation */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 200ms, transform 200ms; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 200ms, transform 200ms; }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col font-sans overflow-hidden text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                <i data-lucide="copy" class="w-5 h-5"></i>
+            </div>
+            <h1 class="text-lg font-bold text-gray-800 whitespace-nowrap">Sequential Copy Tool (Vanilla)</h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div id="progress-container" class="hidden sm:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm">
+                <span class="text-gray-500">Progress:</span>
+                <span id="progress-text" class="font-bold text-indigo-600">0 / 0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- Left: Monaco Editor -->
+        <div class="w-full lg:w-1/2 h-1/2 lg:h-full flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 bg-white">
+            <div class="h-14 px-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0 gap-2">
+                
+                <!-- Regex Input Area -->
+                <div class="flex items-center gap-2 flex-1 min-w-0 mr-2">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0" title="Regular Expression extraction">Regex:</span>
+                    <div class="relative flex-1">
+                        <input id="regex-input" type="text" 
+                            class="w-full border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-indigo-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors"
+                            value="^(?<target>.+)$"
+                            placeholder="例: ^(?<target>.+)$ または ^(\S+)"
+                            title="正規表現を入力。名前付きグループ (?<target>...) があればそれを優先して抽出します"
+                        />
+                    </div>
+                </div>
+                
+                <button id="btn-parse" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md font-semibold shadow-sm transition-all active:scale-[0.98] text-xs sm:text-sm shrink-0">
+                    <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
+                    <span>解析実行</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4 opacity-70"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 relative overflow-hidden">
+                <div id="editor-container" class="w-full h-full"></div>
+                <div id="editor-placeholder" class="absolute top-10 left-10 text-gray-400 pointer-events-none z-10 font-mono text-sm">
+                    // ここにテキストを貼り付けてください<br>
+                    // <br>
+                    // 例:<br>
+                    // 名前： ああああ<br>
+                    // メール： test@example.com<br>
+                    // <br>
+                    // --- <br>
+                    // <br>
+                    // ブロックテキスト1<br>
+                    // ブロックテキスト2
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: AG Grid -->
+        <div class="w-full lg:w-1/2 h-1/2 lg:h-full flex flex-col bg-gray-100 relative">
+            <div class="h-14 px-4 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm shrink-0 overflow-x-auto">
+                
+                <div class="flex items-center whitespace-nowrap">
+                    <!-- Add Newline Control -->
+                    <div class="flex items-center gap-2 mr-4 border-r border-gray-300 pr-4">
+                        <label class="flex items-center cursor-pointer relative select-none" title="コピー時に末尾に改行を追加します">
+                            <input type="checkbox" id="chk-add-newline" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700 hidden sm:inline">Add Newline</span>
+                            <span class="ml-2 text-sm font-medium text-gray-700 sm:hidden">\n</span>
+                        </label>
+                    </div>
+
+                    <!-- Sound Control (New) -->
+                    <div class="flex items-center gap-2 mr-4 border-r border-gray-300 pr-4">
+                        <label class="flex items-center cursor-pointer relative select-none" title="効果音を再生します">
+                            <input type="checkbox" id="chk-sound-enabled" class="sr-only peer" checked>
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700 hidden sm:inline">Sound</span>
+                            <span class="ml-2 text-sm font-medium text-gray-700 sm:hidden">♪</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 pl-2 ml-auto">
+                    <!-- Sequential Mode Button -->
+                    <button id="btn-start-sequential" disabled class="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium text-sm transition-colors bg-green-600 text-white hover:bg-green-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-lucide="play-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">連続モード開始</span>
+                        <span class="sm:hidden">Start</span>
+                    </button>
+                    
+                    <button id="btn-reset" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-md" title="Reset Status">
+                        <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 relative overflow-hidden flex flex-col">
+                <div id="myGrid" class="ag-theme-alpine flex-1 w-full h-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sequential Copy Dialog (Overlay) -->
+    <div id="sequential-dialog" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-200">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 flex flex-col overflow-hidden transform transition-all scale-100">
+            <!-- Dialog Header -->
+            <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-white font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                    Sequential Copy
+                </h3>
+                <div class="text-indigo-100 text-sm font-mono bg-indigo-700 px-2 py-1 rounded">
+                    <span id="dlg-current-index">1</span> / <span id="dlg-total-count">10</span>
+                </div>
+            </div>
+
+            <!-- Dialog Body -->
+            <div class="p-6 flex flex-col gap-4">
+                <div class="flex justify-between items-end mb-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Next Content</label>
+                    <span class="text-xs text-gray-400">Preview</span>
+                </div>
+                
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 h-32 overflow-y-auto font-mono text-sm text-gray-700 whitespace-pre-wrap break-all shadow-inner" id="dlg-text-preview">
+                    <!-- Text content will be here -->
+                </div>
+
+                <div class="flex flex-col gap-2 mt-2">
+                    <!-- Main Action Button -->
+                    <button id="btn-copy-next" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3">
+                        <i data-lucide="copy" class="w-6 h-6"></i>
+                        Copy & Next
+                    </button>
+                    
+                    <div class="flex gap-2 mt-2">
+                        <button id="btn-skip" class="flex-1 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium text-sm transition-colors">
+                            Skip
+                        </button>
+                        <button id="btn-close-dialog" class="flex-1 py-2 bg-white border border-gray-300 text-red-600 hover:bg-red-50 rounded-lg font-medium text-sm transition-colors">
+                            Exit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transition-all transform translate-y-20 opacity-0 bg-gray-800 text-white">
+        <span id="toast-message" class="text-sm font-medium">Message</span>
+    </div>
+
+    <script>
+        // --- Global State ---
+        let editor = null;
+        let gridApi = null;
+        let segments = [];
+        let activeSegmentIndex = -1;
+        
+        // Audio Context (Singleton)
+        let audioCtx = null;
+
+        // --- DOM Elements ---
+        const btnParse = document.getElementById('btn-parse');
+        const editorContainer = document.getElementById('editor-container');
+        const editorPlaceholder = document.getElementById('editor-placeholder');
+        const regexInput = document.getElementById('regex-input'); 
+        
+        const btnStartSequential = document.getElementById('btn-start-sequential');
+        const btnReset = document.getElementById('btn-reset');
+        
+        const progressContainer = document.getElementById('progress-container');
+        const progressText = document.getElementById('progress-text');
+
+        // Dialog Elements
+        const dialog = document.getElementById('sequential-dialog');
+        const dlgCurrentIndex = document.getElementById('dlg-current-index');
+        const dlgTotalCount = document.getElementById('dlg-total-count');
+        const dlgTextPreview = document.getElementById('dlg-text-preview');
+        const btnCopyNext = document.getElementById('btn-copy-next');
+        const btnSkip = document.getElementById('btn-skip');
+        const btnCloseDialog = document.getElementById('btn-close-dialog');
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            ensureIconsLoaded();
+            initMonaco();
+            initGrid();
+            setupEventListeners();
+        });
+
+        function ensureIconsLoaded(retryCount = 0) {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                if (retryCount < 50) { 
+                    setTimeout(() => ensureIconsLoaded(retryCount + 1), 100);
+                } else {
+                    console.warn("Lucide icons failed to load.");
+                }
+            }
+        }
+
+        // --- Monaco Editor ---
+        function initMonaco() {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function() {
+                editor = monaco.editor.create(editorContainer, {
+                    value: '',
+                    language: 'plaintext',
+                    theme: 'vs-light',
+                    minimap: { enabled: false },
+                    automaticLayout: true,
+                    wordWrap: 'on',
+                    fontSize: 14,
+                    padding: { top: 16, bottom: 16 }
+                });
+
+                editor.onDidChangeModelContent(() => {
+                    if (editor.getValue().trim() === '') {
+                        editorPlaceholder.style.display = 'block';
+                    } else {
+                        editorPlaceholder.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // --- AG Grid ---
+        function initGrid() {
+            const gridDiv = document.querySelector('#myGrid');
+            const gridOptions = {
+                rowData: [],
+                rowStyle: { cursor: 'pointer' }, // Cursor pointer for entire row
+                onRowClicked: (params) => {
+                    // Logic when row is clicked
+                    if (params.data.isCopied) {
+                        resetSingleStatus(params.node.rowIndex);
+                    } else {
+                        manualCopy(params.data, params.node.rowIndex);
+                    }
+                },
+                columnDefs: [
+                    { 
+                        headerName: '', 
+                        field: 'action', 
+                        width: 90,
+                        cellRenderer: (params) => {
+                            if (!params.data) return null;
+                            const btn = document.createElement('button');
+                            const isCopied = params.data.isCopied;
+                            
+                            btn.innerText = isCopied ? 'Reset' : 'Copy';
+                            btn.className = `w-full px-2 py-1 rounded text-xs font-bold transition-colors ${
+                                isCopied 
+                                ? 'bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100' 
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`;
+                            
+                            // Prevent row click when button is clicked (although logic is same, stop propagation is cleaner)
+                            btn.onclick = (e) => {
+                                e.stopPropagation(); 
+                                if (isCopied) {
+                                    resetSingleStatus(params.node.rowIndex);
+                                } else {
+                                    manualCopy(params.data, params.node.rowIndex);
+                                }
+                            };
+                            return btn;
+                        },
+                        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                    },
+                    { 
+                        headerName: '#', 
+                        valueGetter: 'node.rowIndex + 1', 
+                        width: 60,
+                        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontWeight: 'bold' }
+                    },
+                    { 
+                        headerName: 'Content', 
+                        field: 'text', 
+                        flex: 1, 
+                        wrapText: true, 
+                        autoHeight: true,
+                        cellStyle: { lineHeight: '1.5', padding: '10px', display: 'flex', alignItems: 'center' }
+                    },
+                    {
+                        headerName: 'Status',
+                        field: 'isCopied',
+                        width: 100,
+                        cellRenderer: (params) => params.value ? '<span class="text-green-600 flex items-center gap-1">✅ Copied</span>' : '',
+                        cellStyle: { display: 'flex', alignItems: 'center' }
+                    }
+                ],
+                getRowId: (params) => String(params.data.id),
+                rowClassRules: {
+                    'bg-gray-100 text-gray-400': (params) => params.data.isCopied,
+                    'bg-indigo-50 border-l-4 border-indigo-500': (params) => params.data.id === getActiveId()
+                },
+                animateRows: true,
+                headerHeight: 40,
+                rowHeight: 60,
+                suppressCellFocus: true,
+                overlayNoRowsTemplate: '<div style="padding: 20px; color: #999;">データがありません。<br/>左側の「解析実行」ボタンを押してください。</div>'
+            };
+
+            gridApi = agGrid.createGrid(gridDiv, gridOptions);
+        }
+
+        // --- Sound ---
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            // Check toggle status first
+            const chk = document.getElementById('chk-sound-enabled');
+            if (chk && !chk.checked) return;
+
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'tick') {
+                    // Not used
+                } else {
+                    // Copy sound
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch (e) { console.error("Audio error:", e); }
+        }
+
+        // --- Logic ---
+
+        function setupEventListeners() {
+            btnParse.addEventListener('click', parseText);
+            
+            btnReset.addEventListener('click', () => {
+                segments = segments.map(s => ({ ...s, isCopied: false }));
+                activeSegmentIndex = -1;
+                if (gridApi) gridApi.setGridOption('rowData', segments);
+                updateProgress();
+                showToast("ステータスをリセットしました", "success");
+            });
+
+            // Sequential Mode Handlers
+            btnStartSequential.addEventListener('click', startSequentialMode);
+            btnCopyNext.addEventListener('click', handleCopyNext);
+            btnSkip.addEventListener('click', handleSkip);
+            btnCloseDialog.addEventListener('click', closeDialog);
+        }
+
+        // --- Sequential Mode Logic ---
+
+        function startSequentialMode() {
+            if (segments.length === 0) return;
+
+            // Start from first uncopied or 0
+            if (activeSegmentIndex < 0 || activeSegmentIndex >= segments.length) {
+                const firstUncopied = segments.findIndex(s => !s.isCopied);
+                activeSegmentIndex = firstUncopied !== -1 ? firstUncopied : 0;
+            }
+
+            if (segments[activeSegmentIndex].isCopied) {
+                 const firstUncopied = segments.findIndex(s => !s.isCopied);
+                 if(firstUncopied !== -1) activeSegmentIndex = firstUncopied;
+            }
+
+            initAudioContext(); // Pre-init audio
+            updateDialogUI();
+            dialog.classList.remove('hidden');
+            highlightActiveRow();
+        }
+
+        function closeDialog() {
+            dialog.classList.add('hidden');
+        }
+
+        async function handleCopyNext() {
+            if (activeSegmentIndex >= segments.length) return;
+
+            // 1. Copy
+            const item = segments[activeSegmentIndex];
+            await performCopy(item.text);
+
+            // 2. Mark done
+            item.isCopied = true;
+            
+            // 3. Move next
+            moveToNext();
+        }
+
+        function handleSkip() {
+            moveToNext();
+        }
+
+        function moveToNext() {
+            activeSegmentIndex++;
+            refreshGridDisplay();
+
+            if (activeSegmentIndex >= segments.length) {
+                closeDialog();
+                showToast("全ての項目が完了しました", "success");
+                activeSegmentIndex = -1;
+                refreshGridDisplay();
+            } else {
+                updateDialogUI();
+                highlightActiveRow();
+            }
+        }
+
+        function updateDialogUI() {
+            if (activeSegmentIndex >= 0 && activeSegmentIndex < segments.length) {
+                const item = segments[activeSegmentIndex];
+                dlgCurrentIndex.textContent = activeSegmentIndex + 1;
+                dlgTotalCount.textContent = segments.length;
+                dlgTextPreview.textContent = item.text;
+            }
+        }
+
+        function highlightActiveRow() {
+            if (gridApi && activeSegmentIndex >= 0 && activeSegmentIndex < segments.length) {
+                const rowNode = gridApi.getRowNode(String(segments[activeSegmentIndex].id));
+                if (rowNode) {
+                    gridApi.ensureIndexVisible(rowNode.rowIndex, 'middle');
+                    gridApi.flashCells({ rowNodes: [rowNode] });
+                }
+                gridApi.redrawRows();
+            }
+        }
+
+        // --- Core Logic ---
+
+        // Helper to apply regex
+        function applyRegexExtraction(text, pattern) {
+            if (!pattern || pattern.trim() === '') return text;
+            try {
+                // 'm' flag allows ^ and $ to match start/end of lines
+                // 's' flag allows . to match newline characters (dotAll) - Added for multiline support
+                const regex = new RegExp(pattern, 'ms'); 
+                const match = text.match(regex);
+                
+                if (match) {
+                    // Check for named capture group 'target' first
+                    if (match.groups && match.groups.target) {
+                        return match.groups.target;
+                    }
+                    // If there's a capture group, use it. Otherwise use full match
+                    if (match[1]) return match[1];
+                    // If matched but no groups (e.g. ^.+$), return full match
+                    return match[0];
+                }
+                // No match logic: currently returns original text
+                return text;
+            } catch (e) {
+                console.error("Regex error:", e);
+                return text;
+            }
+        }
+
+        function parseText() {
+            if (!editor) return;
+            const text = editor.getValue();
+            const lines = text.split(/\r\n|\n|\r/);
+            const regexPattern = regexInput.value; // Get regex pattern
+            const newSegments = [];
+            
+            let buffer = [];
+            let isBlockMode = false;
+
+            // Function to add segment with regex processing
+            const addSegment = (rawText) => {
+                const processedText = applyRegexExtraction(rawText, regexPattern);
+                newSegments.push({
+                    id: Date.now() + Math.random(),
+                    text: processedText,
+                    isCopied: false
+                });
+            };
+
+            lines.forEach((line) => {
+                const trimmed = line.trim();
+                const isDelimiter = trimmed === '' || trimmed === '---';
+
+                if (isDelimiter) {
+                    if (isBlockMode) {
+                        if (buffer.length > 0) {
+                            addSegment(buffer.join('\n'));
+                            buffer = [];
+                        }
+                        isBlockMode = false;
+                    } else {
+                        isBlockMode = true;
+                    }
+                } else {
+                    if (isBlockMode) {
+                        buffer.push(line);
+                    } else {
+                        addSegment(line);
+                    }
+                }
+            });
+
+            if (buffer.length > 0) {
+                addSegment(buffer.join('\n'));
+            }
+
+            if (newSegments.length === 0) {
+                showToast("テキストが入力されていません", "error");
+                return;
+            }
+
+            segments = newSegments;
+            activeSegmentIndex = -1;
+            
+            if (gridApi) gridApi.setGridOption('rowData', segments);
+            updateProgress();
+            
+            btnStartSequential.disabled = false;
+            
+            showToast(`${newSegments.length}件のデータを解析しました`, "success");
+        }
+
+        function updateProgress() {
+            const done = segments.filter(s => s.isCopied).length;
+            const total = segments.length;
+            progressText.textContent = `${done} / ${total}`;
+            if (total > 0) progressContainer.classList.remove('hidden');
+            else progressContainer.classList.add('hidden');
+            
+            btnStartSequential.disabled = segments.length === 0;
+        }
+
+        function getActiveId() {
+            if (activeSegmentIndex >= 0 && activeSegmentIndex < segments.length) {
+                return segments[activeSegmentIndex].id;
+            }
+            return null;
+        }
+
+        async function manualCopy(data, index) {
+            await performCopy(data.text);
+            markAsCopied(index);
+        }
+
+        async function performCopy(text) {
+            const chk = document.getElementById('chk-add-newline');
+            const isAddNewline = chk ? chk.checked : false;
+            const finalText = isAddNewline ? text + '\n\n' : text;
+
+            console.log("Copying text:", finalText);
+
+            let success = false;
+
+            try {
+                window.focus();
+                await navigator.clipboard.writeText(finalText);
+                success = true;
+            } catch (err) {
+                console.warn("navigator.clipboard failed:", err);
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = finalText;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    success = true;
+                } catch(e) {
+                    console.error("Fallback failed", e);
+                }
+            }
+
+            if (success) {
+                playSound('copy');
+                const msg = isAddNewline ? "コピーしました (改行付)" : "コピーしました";
+                showToast(msg, "success");
+            } else {
+                showToast("コピーに失敗しました", "error");
+            }
+        }
+
+        function markAsCopied(index) {
+            if (segments[index]) {
+                segments[index].isCopied = true;
+                refreshGridDisplay();
+            }
+        }
+
+        function resetSingleStatus(index) {
+            if (segments[index]) {
+                segments[index].isCopied = false;
+                refreshGridDisplay();
+            }
+        }
+
+        function refreshGridDisplay() {
+            if (gridApi) {
+                gridApi.redrawRows();
+                updateProgress();
+            }
+        }
+
+        let toastTimeout;
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            
+            toastMsg.textContent = msg;
+            toast.className = `fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transition-all transform duration-300 ${
+                type === 'success' ? 'bg-gray-800 text-white' : 'bg-red-600 text-white'
+            } translate-y-0 opacity-100`;
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>
