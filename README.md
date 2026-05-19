@@ -18,4 +18,5 @@ Google Gemini Canvas Apps
 | [mermaid-to-x](https://6in.github.io/gemini-apps/mermaid-to-x.html) | MermaidダイアグラムをExcel/PPT形式に変換するツール |
 | [reading-support](https://6in.github.io/gemini-apps/reading-support.html) | AI読書サポート用プロンプト集 |
 | [scheduler](https://6in.github.io/gemini-apps/scheduler.html) | WebWorkerを使った定期実行スケジューラー |
+| [seq-copy](https://6in.github.io/gemini-apps/seq-copy.html) | テキストを順番にコピーするツール |
 | [systemd-user-config-settings](https://6in.github.io/gemini-apps/systemd-user-config-settings.html) | systemdのuser設定をまとめたリファレンス |

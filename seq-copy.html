@@ -67,13 +67,13 @@
                 
                 <!-- Regex Input Area -->
                 <div class="flex items-center gap-2 flex-1 min-w-0 mr-2">
-                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0" title="Regular Expression extraction">Regex:</span>
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0" title="Pattern or delimiter">Pattern:</span>
                     <div class="relative flex-1">
                         <input id="regex-input" type="text" 
                             class="w-full border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-indigo-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors"
-                            value="^(?<target>.+)$"
-                            placeholder="例: ^(?<target>.+)$ または ^(\S+)"
-                            title="正規表現を入力。名前付きグループ (?<target>...) があればそれを優先して抽出します"
+                            value="^<TARGET>$"
+                            placeholder="例: 名前：<TARGET>（抽出） / ---（区切り分割）"
+                            title="<TARGET>を含む場合は抽出パターンとして処理します。含まない場合は区切り文字としてsplitします"
                         />
                     </div>
                 </div>
@@ -498,82 +498,113 @@
 
         // --- Core Logic ---
 
-        // Helper to apply regex
-        function applyRegexExtraction(text, pattern) {
-            if (!pattern || pattern.trim() === '') return text;
+        // Extract text by regex pattern that includes <TARGET>
+        function applyTargetPatternExtraction(text, pattern) {
+            if (!pattern || !pattern.includes('<TARGET>')) return null;
             try {
-                // 'm' flag allows ^ and $ to match start/end of lines
-                // 's' flag allows . to match newline characters (dotAll) - Added for multiline support
-                const regex = new RegExp(pattern, 'ms'); 
+                const regexSource = pattern.replace(/<TARGET>/g, '([\\s\\S]+?)');
+                const regex = new RegExp(regexSource, 'ms');
                 const match = text.match(regex);
                 
                 if (match) {
-                    // Check for named capture group 'target' first
-                    if (match.groups && match.groups.target) {
-                        return match.groups.target;
-                    }
-                    // If there's a capture group, use it. Otherwise use full match
-                    if (match[1]) return match[1];
-                    // If matched but no groups (e.g. ^.+$), return full match
-                    return match[0];
+                    return typeof match[1] === 'string' ? match[1] : match[0];
                 }
-                // No match logic: currently returns original text
-                return text;
+                return null;
             } catch (e) {
-                console.error("Regex error:", e);
-                return text;
+                console.error("Pattern error:", e);
+                return null;
             }
         }
 
         function parseText() {
             if (!editor) return;
             const text = editor.getValue();
-            const lines = text.split(/\r\n|\n|\r/);
-            const regexPattern = regexInput.value; // Get regex pattern
+            const pattern = regexInput.value;
             const newSegments = [];
-            
-            let buffer = [];
-            let isBlockMode = false;
 
-            // Function to add segment with regex processing
-            const addSegment = (rawText) => {
-                const processedText = applyRegexExtraction(rawText, regexPattern);
-                newSegments.push({
-                    id: Date.now() + Math.random(),
-                    text: processedText,
-                    isCopied: false
-                });
+            const trimBlankLines = (value) => {
+                const lines = value.split(/\r\n|\n|\r/);
+                let start = 0;
+                let end = lines.length - 1;
+
+                while (start <= end && /^\s*$/.test(lines[start])) start++;
+                while (end >= start && /^\s*$/.test(lines[end])) end--;
+
+                if (start > end) return '';
+                return lines.slice(start, end + 1).join('\n');
             };
 
-            lines.forEach((line) => {
-                const trimmed = line.trim();
-                const isDelimiter = trimmed === '' || trimmed === '---';
-
-                if (isDelimiter) {
-                    if (isBlockMode) {
-                        if (buffer.length > 0) {
-                            addSegment(buffer.join('\n'));
-                            buffer = [];
-                        }
-                        isBlockMode = false;
-                    } else {
-                        isBlockMode = true;
-                    }
-                } else {
-                    if (isBlockMode) {
-                        buffer.push(line);
-                    } else {
-                        addSegment(line);
-                    }
-                }
-            });
-
-            if (buffer.length > 0) {
-                addSegment(buffer.join('\n'));
+            if (!text || text.trim() === '') {
+                showToast("テキストが入力されていません", "error");
+                return;
             }
 
+            if (!pattern || pattern.trim() === '') {
+                showToast("Patternを入力してください", "error");
+                return;
+            }
+
+            // Mode A: regex extraction mode when <TARGET> exists in pattern
+            if (pattern.includes('<TARGET>')) {
+                const lines = text.split(/\r\n|\n|\r/);
+                let buffer = [];
+                let isBlockMode = false;
+
+                const addSegmentFromPattern = (rawText) => {
+                    const processedText = applyTargetPatternExtraction(rawText, pattern);
+                    const trimmedText = processedText === null ? '' : trimBlankLines(processedText);
+                    if (trimmedText !== '') {
+                        newSegments.push({
+                            id: Date.now() + Math.random(),
+                            text: trimmedText,
+                            isCopied: false
+                        });
+                    }
+                };
+
+                lines.forEach((line) => {
+                    const trimmed = line.trim();
+                    const isDelimiter = trimmed === '' || trimmed === '---';
+
+                    if (isDelimiter) {
+                        if (isBlockMode) {
+                            if (buffer.length > 0) {
+                                addSegmentFromPattern(buffer.join('\n'));
+                                buffer = [];
+                            }
+                            isBlockMode = false;
+                        } else {
+                            isBlockMode = true;
+                        }
+                    } else {
+                        if (isBlockMode) {
+                            buffer.push(line);
+                        } else {
+                            addSegmentFromPattern(line);
+                        }
+                    }
+                });
+
+                if (buffer.length > 0) {
+                    addSegmentFromPattern(buffer.join('\n'));
+                }
+            } else {
+                // Mode B: delimiter split mode when <TARGET> is not present
+                const splitResult = text.split(pattern);
+                splitResult.forEach((item) => {
+                    const trimmedItem = trimBlankLines(item);
+                    if (trimmedItem !== '') {
+                        newSegments.push({
+                            id: Date.now() + Math.random(),
+                            text: trimmedItem,
+                            isCopied: false
+                        });
+                    }
+                });
+            }
+            
             if (newSegments.length === 0) {
-                showToast("テキストが入力されていません", "error");
+                showToast("分割結果が0件です（Patternを確認してください）", "error");
                 return;
             }
 
