@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills Cheat Sheet</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-yellow: #d29922;
+    --accent-red: #f85149;
+    --accent-purple: #bc8cff;
+    --code-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+  }
+  h1 + p { color: var(--text-muted); margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.35rem;
+    margin-top: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--accent);
+  }
+  h2 code {
+    font-size: 0.85em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-weight: normal;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .skill-name { font-weight: 600; white-space: nowrap; }
+  .cmd {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--code-bg);
+    padding: 0.2em 0.45em;
+    border-radius: 4px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15em 0.5em;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge-hard { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+  .badge-soft { background: rgba(210,153,34,0.15); color: var(--accent-yellow); }
+  .badge-first { background: rgba(63,185,80,0.15); color: var(--accent-green); }
+  .badge-none { color: var(--text-muted); }
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .note strong { color: var(--text); }
+  .quick-ref {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem;
+    line-height: 2;
+  }
+  .quick-ref .label {
+    color: var(--text-muted);
+    display: inline-block;
+    min-width: 220px;
+  }
+  .quick-ref .arrow { color: var(--text-muted); }
+  .quick-ref .skill-link { color: var(--accent); }
+  .quick-ref .paren { color: var(--text-muted); font-size: 0.8em; }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2.5rem 0;
+  }
+  .section-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .tag-draft { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+  .tag-personal { background: rgba(139,148,158,0.15); color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<h1>Skills Cheat Sheet</h1>
+<p>Matt Pocock's "Skills For Real Engineers" — 全スキル一覧</p>
+
+<!-- ===== Engineering ===== -->
+<h2>Engineering <code>/skills/engineering/</code></h2>
+<p class="subtitle">日常のコード作業で使うスキル群。</p>
+
+<table>
+  <thead>
+    <tr><th>スキル</th><th>コマンド</th><th>用途</th><th>セットアップ</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="skill-name">diagnose</td>
+      <td><span class="cmd">/diagnose</span></td>
+      <td>バグ・パフォーマンス劣化の体系的な診断ループ（再現→最小化→仮説→計測→修正→回帰テスト）</td>
+      <td><span class="badge badge-soft">soft</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">grill-with-docs</td>
+      <td><span class="cmd">/grill-with-docs</span></td>
+      <td>プランをドメインモデルに照らして徹底的にグリル。CONTEXT.md / ADR をインラインで更新</td>
+      <td><span class="badge badge-soft">soft</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">improve-codebase-architecture</td>
+      <td><span class="cmd">/improve-codebase-architecture</span></td>
+      <td>CONTEXT.md と ADR に基づいてコードベースの深化機会を発見</td>
+      <td><span class="badge badge-soft">soft</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">prototype</td>
+      <td><span class="cmd">/prototype</span></td>
+      <td>使い捨てプロトタイプ作成。ターミナルアプリ or 複数UIバリエーション切り替え</td>
+      <td><span class="badge badge-none">-</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">setup-matt-pocock-skills</td>
+      <td><span class="cmd">/setup-matt-pocock-skills</span></td>
+      <td>リポジトリ別設定の初期化（Issue tracker, triage ラベル, ドメインドキュメント構成）</td>
+      <td><span class="badge badge-first">最初に実行</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">tdd</td>
+      <td><span class="cmd">/tdd</span></td>
+      <td>Red-Green-Refactor ループによるテスト駆動開発。垂直スライスで1テストずつ</td>
+      <td><span class="badge badge-soft">soft</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">to-issues</td>
+      <td><span class="cmd">/to-issues</span></td>
+      <td>プラン/スペック/PRD を垂直スライスの独立 Issue に分割</td>
+      <td><span class="badge badge-hard">hard</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">to-prd</td>
+      <td><span class="cmd">/to-prd</span></td>
+      <td>現在の会話コンテキストから PRD を生成し Issue tracker に公開</td>
+      <td><span class="badge badge-hard">hard</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">triage</td>
+      <td><span class="cmd">/triage</span></td>
+      <td>Issue のトリアージ（状態マシン駆動のラベル付けワークフロー）</td>
+      <td><span class="badge badge-hard">hard</span></td>
+    </tr>
+    <tr>
+      <td class="skill-name">zoom-out</td>
+      <td><span class="cmd">/zoom-out</span></td>
+      <td>不慣れなコード領域の全体像・上位文脈を説明させる</td>
+      <td><span class="badge badge-soft">soft</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>セットアップ列:</strong>
+  <span class="badge badge-hard">hard</span> = <code>/setup-matt-pocock-skills</code> が必須 &nbsp;|&nbsp;
+  <span class="badge badge-soft">soft</span> = なくても動くが精度向上 &nbsp;|&nbsp;
+  <span class="badge badge-none">-</span> = 依存なし
+</div>
+
+<!-- ===== Productivity ===== -->
+<h2>Productivity <code>/skills/productivity/</code></h2>
+<p class="subtitle">コード以外の汎用ワークフローツール。</p>
+
+<table>
+  <thead>
+    <tr><th>スキル</th><th>コマンド</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="skill-name">caveman</td>
+      <td><span class="cmd">/caveman</span></td>
+      <td>超圧縮コミュニケーションモード。トークン使用量 ~75% 削減</td>
+    </tr>
+    <tr>
+      <td class="skill-name">grill-me</td>
+      <td><span class="cmd">/grill-me</span></td>
+      <td>プラン/設計について1問ずつ徹底的にインタビュー。意思決定ツリーの全分岐を解決</td>
+    </tr>
+    <tr>
+      <td class="skill-name">handoff</td>
+      <td><span class="cmd">/handoff</span></td>
+      <td>会話を引き継ぎドキュメントに圧縮。別エージェントが続行可能に</td>
+    </tr>
+    <tr>
+      <td class="skill-name">write-a-skill</td>
+      <td><span class="cmd">/write-a-skill</span></td>
+      <td>新しいスキルの作成（構造・段階的開示・バンドルリソース付き）</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== Misc ===== -->
+<h2>Misc <code>/skills/misc/</code></h2>
+<p class="subtitle">保持しているが使用頻度は低い。</p>
+
+<table>
+  <thead>
+    <tr><th>スキル</th><th>コマンド</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="skill-name">git-guardrails-claude-code</td>
+      <td><span class="cmd">/git-guardrails-claude-code</span></td>
+      <td>Claude Code フックで危険な git コマンド（push, reset --hard 等）をブロック</td>
+    </tr>
+    <tr>
+      <td class="skill-name">migrate-to-shoehorn</td>
+      <td><span class="cmd">/migrate-to-shoehorn</span></td>
+      <td>テストの <code>as</code> 型アサーションを @total-typescript/shoehorn に移行</td>
+    </tr>
+    <tr>
+      <td class="skill-name">scaffold-exercises</td>
+      <td><span class="cmd">/scaffold-exercises</span></td>
+      <td>セクション・問題・解答・解説の演習ディレクトリ構造をスキャフォールド</td>
+    </tr>
+    <tr>
+      <td class="skill-name">setup-pre-commit</td>
+      <td><span class="cmd">/setup-pre-commit</span></td>
+      <td>Husky + lint-staged（Prettier, 型チェック, テスト）のプリコミットフック設定</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== In-Progress ===== -->
+<h2>In-Progress <code>/skills/in-progress/</code> <span class="section-tag tag-draft">未リリース</span></h2>
+
+<table>
+  <thead>
+    <tr><th>スキル</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="skill-name">review</td>
+      <td>コミット/ブランチ/タグ以降の変更を Standards + Spec の2軸で並列レビュー</td>
+    </tr>
+    <tr>
+      <td class="skill-name">writing-beats</td>
+      <td>素材からビート（断片）を選びながら記事をナラティブとして組み立て</td>
+    </tr>
+    <tr>
+      <td class="skill-name">writing-fragments</td>
+      <td>グリル形式で断片（主張、短文、半端な思考）を掘り出して素材ドキュメントに蓄積</td>
+    </tr>
+    <tr>
+      <td class="skill-name">writing-shape</td>
+      <td>素材やラフドラフトを段落ごとに対話しながら記事に成形</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== Personal ===== -->
+<h2>Personal <code>/skills/personal/</code> <span class="section-tag tag-personal">作者専用</span></h2>
+
+<table>
+  <thead>
+    <tr><th>スキル</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="skill-name">edit-article</td>
+      <td>記事の構成改善・明瞭化・推敲</td>
+    </tr>
+    <tr>
+      <td class="skill-name">obsidian-vault</td>
+      <td>Obsidian ノートの検索・作成・管理</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ===== Quick Reference ===== -->
+<h2>Quick Reference — よく使う組み合わせ</h2>
+
+<div class="quick-ref">
+  <div>
+    <span class="label">新機能を作る前に:</span>
+    <span class="skill-link">/grill-with-docs</span>
+    <span class="arrow"> → </span>
+    <span class="skill-link">/to-prd</span>
+    <span class="arrow"> → </span>
+    <span class="skill-link">/to-issues</span>
+    <span class="arrow"> → </span>
+    <span class="skill-link">/tdd</span>
+  </div>
+  <div>
+    <span class="label">バグを直す:</span>
+    <span class="skill-link">/diagnose</span>
+    <span class="arrow"> → </span>
+    <span class="skill-link">/tdd</span>
+  </div>
+  <div>
+    <span class="label">設計を壁打ちしたい:</span>
+    <span class="skill-link">/grill-me</span>
+    <span class="paren">（コード不要）</span>
+    <span class="arrow"> or </span>
+    <span class="skill-link">/grill-with-docs</span>
+    <span class="paren">（コード付き）</span>
+  </div>
+  <div>
+    <span class="label">コードベースの健康診断:</span>
+    <span class="skill-link">/improve-codebase-architecture</span>
+  </div>
+  <div>
+    <span class="label">別セッションに引き継ぐ:</span>
+    <span class="skill-link">/handoff</span>
+  </div>
+  <div>
+    <span class="label">トークン節約:</span>
+    <span class="skill-link">/caveman</span>
+  </div>
+</div>
+
+</body>
+</html>
