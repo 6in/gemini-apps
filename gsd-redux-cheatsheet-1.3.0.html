@@ -39,7 +39,8 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 <strong>open-gsd/get-shit-done-redux</strong> は旧 gsd-build/get-shit-done の後継フォーク（2026-04 にメンテナ TÂCHES が連絡不能・$GSD トークン rug-pull 疑惑のため、コミュニティ trek-e が継続）。<br>
 インストール: <code>npx @opengsd/get-shit-done-redux@latest</code><br>
 <strong>67 コマンド</strong>（旧 v1.42.x ベース：v1.40 で 86→59 skills にスリム化したフラグ統合 + ns-* メタスキル、v1.41 で MVP モード / クロス AI プラン収束ループ / phase edit、v1.42 で <code>/gsd-surface</code> と <code>plan-phase --ingest</code> 追加）。<br>
-ユーザー向けコマンド表記は <code>/gsd-&lt;cmd&gt;</code>（ハイフン）。Antigravity を含むマルチランタイム対応。</p>
+<strong>redux 独自の追加（下表詳細）:</strong> markdown link safety scanner、npm 依存整合性ゲート、<code>--strict</code> secret-scan、reproducible npm 環境、<code>check-env</code> バリデータ、<code>adaptive</code> model_profile UI 表示、<code>surface</code> を core プロファイルに同梱、<code>CommandRoutingHub</code> 導入。v1.03.0 で <strong>ADR-0174</strong>（<code>@opengsd/gsd-sdk</code> パッケージ境界廃止 → dual-runtime → single-runtime 移行）を採択。<br>
+ユーザー向けコマンド表記は <code>/gsd-&lt;cmd&gt;</code>（ハイフン）。<code>/gsd:</code> コロン形式の namespace invariant は旧 2543 で廃止。Antigravity を含むマルチランタイム対応。</p>
 <div class="toolbar">
 <button onclick="window.print()">印刷 / PDF化</button>
 <button onclick="copyText('prompt-judge')">判定プロンプトをコピー</button>
@@ -67,8 +68,70 @@ function copyText(id){navigator.clipboard.writeText(document.getElementById(id).
 </table>
 
 <div class="info">
-<strong>v1.0.0 〜 v1.3.0 のリリース:</strong> redux の v1.0.0 は旧 v1.42.x からの分岐スナップショット。コマンド体系は v1.42 と同等で、以降 v1.1.0 / v1.3.0 はバグ修正・運用面強化が中心。<br>
+<strong>v1.0.0 〜 v1.3.0 のリリース:</strong> redux の v1.0.0 は旧 v1.42.x からの分岐スナップショット。コマンド体系は v1.42 と同等で、以降 v1.1.0 / v1.3.0 はバグ修正・セキュリティゲート・運用面の強化が中心。<br>
 <strong>移行アクション:</strong> 既存ユーザーは旧 <code>get-shit-done-cc</code> をアンインストールし <code>@opengsd/get-shit-done-redux</code> に置き換え推奨。続報: <a href="https://github.com/open-gsd/get-shit-done-redux/discussions/109">continuity announcement</a> / <a href="https://github.com/open-gsd/get-shit-done-redux/discussions/119">audit report</a>
+</div>
+
+<h3 style="margin-top:18px">v1.0.0（フォーク初版）の追加・修正</h3>
+<table class="table">
+<thead><tr><th>カテゴリ</th><th>変更</th><th>Issue</th></tr></thead>
+<tbody>
+<tr><td>Branding</td><td><code>get-shit-done-cc</code> / <code>@gsd-build/sdk</code> → <code>@opengsd/get-shit-done-redux</code> / <code>@opengsd/gsd-sdk</code></td><td>#127, #120</td></tr>
+<tr><td>命名</td><td><code>/gsd-&lt;cmd&gt;</code>（ハイフン）形式を正式化。旧 <code>/gsd:&lt;cmd&gt;</code>（コロン）の namespace invariant（旧 2543）を廃止</td><td>#164</td></tr>
+<tr><td>Workflow</td><td><code>--auto</code> フラグが <code>/gsd-progress --next</code> ハンドオフで正しく機能</td><td>#14</td></tr>
+<tr><td>Workflow</td><td>STATE.md テンプレに YAML frontmatter 付与</td><td>#21</td></tr>
+<tr><td>Workflow</td><td><code>/gsd-phase --insert</code> がチェックボックス形式 ROADMAP に対応</td><td>#3815</td></tr>
+<tr><td>Workflow</td><td><code>/gsd-code-review --fix</code> フラグの dispatch が正しく接続</td><td>#3727</td></tr>
+<tr><td>Workflow</td><td><code>fast.md</code> の <code>log_to_state</code> 行追加が schema-aware</td><td>#3805</td></tr>
+<tr><td>Surface</td><td><code>surface</code> がデフォルトの <code>core</code> プロファイルに含まれる（ADR-0011 expand contract 復帰）</td><td>#3735</td></tr>
+<tr><td>Surface</td><td><code>applySurface</code> がクラスタ無効化時にスキルディレクトリも掃除</td><td>#3659</td></tr>
+<tr><td>Model</td><td><code>model_profile</code> の <code>adaptive</code> 値が settings UI で表示される</td><td>#3784</td></tr>
+<tr><td>Runtime</td><td>Codex Windows hooks が <code>.cmd</code> shim 経由で起動（PowerShell silent-fail 対策）</td><td>#3426</td></tr>
+<tr><td>Runtime</td><td>Codex adapter が <code>request_user_input</code> 不在時に TEXT_MODE を起動</td><td>#3808</td></tr>
+<tr><td>Runtime</td><td>migration lock の Windows での self-deadlock 修正</td><td>#3670</td></tr>
+<tr><td>Phase</td><td><code>gap-checker</code> が padded-prefix CONTEXT.md を検出</td><td>#3739</td></tr>
+<tr><td>Phase</td><td>milestone-scoped phase ディレクトリを roadmap parser / phase.add / init に対応</td><td>#3816</td></tr>
+<tr><td>Worktree</td><td><code>worktree.cleanup-wave</code> がコミット前 SUMMARY.md を救済</td><td>#3804</td></tr>
+<tr><td>Worktree</td><td><code>use_worktrees=false</code> 時に strategy-branch の自動切替をスキップ</td><td>#105</td></tr>
+<tr><td>Local-first</td><td><code>init.*</code> がプロジェクトローカルの <code>agents/</code> を検出</td><td>#3799</td></tr>
+<tr><td>Phase</td><td><code>verify.cjs</code> の cooperating-sibling を generator + I/O adapter に置換（W005/W006/I001）</td><td>#26, #6, #7, #3806</td></tr>
+<tr><td>Phase</td><td>case-insensitive な <code>depends_on</code> 解決</td><td>#3785</td></tr>
+<tr><td>Architecture</td><td><code>CommandRoutingHub</code> 導入（ADR-0012、phase-command-router の単一 dispatch seam に統合）</td><td>#3828</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.01.0（v1.1.0）— セキュリティ・サプライチェーン強化 <span class="tag-new">redux 新規</span></h3>
+<table class="table">
+<thead><tr><th>カテゴリ</th><th>追加</th><th>Issue</th></tr></thead>
+<tbody>
+<tr><td>Link safety</td><td>Markdown link 中の <code>javascript:</code> / <code>data:</code> / userinfo / token-in-query を検出</td><td>feat #113</td></tr>
+<tr><td>npm 整合性</td><td><code>npm ls invalid/extraneous</code> を CI ゲートとして検出</td><td>feat #114</td></tr>
+<tr><td>Secret-scan</td><td>除外ガバナンス + <code>--strict</code> フラグで縮小スキャン</td><td>feat #115</td></tr>
+<tr><td>Reproducibility</td><td>npm 環境の reproducible bootstrap + <code>check-env</code> バリデータ</td><td>feat #117</td></tr>
+<tr><td>Base64-scan</td><td>ロケール安全な base64 スキャン + portable timeout + 部分スキャン通知</td><td>fix #116</td></tr>
+<tr><td>Runtime alias</td><td>runtime alias canonicalization を seam として集約</td><td>enh #142</td></tr>
+<tr><td>CI</td><td>11 PR ワークフローに concurrency block 追加（Windows 並列縮退）</td><td>#140, #173</td></tr>
+<tr><td>Decision gate</td><td>decision-coverage gate が <code>&lt;action&gt;</code> XML タグ本文の D-NN 引用を解析</td><td>fix #5</td></tr>
+<tr><td>Process</td><td>milestone.complete のヘッダ重複・bullet 流出・one-liner ノイズ修正</td><td>fix #3</td></tr>
+<tr><td>Drift safeguard</td><td>sdk/dist freshness を <code>gen-*.mjs</code> で強制 + staleness ガードヘルパ</td><td>#169</td></tr>
+<tr><td>Phase generator</td><td>phase.* の cooperating-sibling を generator + I/O adapter に置換、<code>cmdPhaseComplete</code> 修正</td><td>fix #4, #154</td></tr>
+<tr><td>Docs</td><td>10 のセッション anti-pattern を CONTEXT.md にコード化（プロジェクト規約として）</td><td>#172</td></tr>
+<tr><td>CI auth</td><td>github-hosted auth 強制 + 耐性のある rebase fetch（PR テスト）</td><td>#153</td></tr>
+<tr><td>Release</td><td>release-tarball-smoke で HOME を分離（before() + runSmoke A-F）</td><td>#131</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.03.0（v1.3.0）— アーキテクチャ大転換の予告 <span class="tag-new">redux 新規</span></h3>
+<table class="table">
+<thead><tr><th>カテゴリ</th><th>変更</th><th>Issue</th></tr></thead>
+<tbody>
+<tr><td>ADR</td><td><strong>ADR-0174: <code>@opengsd/gsd-sdk</code> パッケージ境界を廃止する決定</strong>。dual-runtime（SDK + CJS）→ single-runtime（<code>src/</code> TypeScript ソース）への移行。<code>synckit</code> ワーカープール / 各種 generator / parity tests / 2 系統 release pipeline を全廃止。<code>ADR-0005</code> / <code>0007</code> / <code>0012</code> / <code>3524</code> を supersede。実装は v1.04+ で段階的に</td><td>ADR-0174, #198</td></tr>
+<tr><td>CI</td><td>release finalize ジョブの Node heap を 6144 MB に引き上げ</td><td>#200</td></tr>
+</tbody>
+</table>
+
+<div class="warn">
+<strong>⚠️ ADR-0174 の影響予定:</strong> 将来的に <code>@opengsd/gsd-sdk</code> は npm から消える可能性が高い。外部から SDK を <code>require</code> しているコードは <code>get-shit-done-cc</code> 単一パッケージへの統合に追随する必要がある。本リポジトリ用途（チートシート）には直接影響なし。
 </div>
 </section>
 
