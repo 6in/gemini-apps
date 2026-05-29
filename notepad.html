@@ -583,9 +583,9 @@ body[data-theme="light"] .toast {
       <div class="fmt-sep"></div>
       <div class="fmt-group">
         <button class="fmt-btn" onclick="applyLine('> ')" title="引用 (Ctrl/Cmd+>)">＞</button>
-        <button class="fmt-btn" onclick="applyLine('- ')" title="箇条書き">•</button>
-        <button class="fmt-btn" onclick="toggleTaskCheckboxOrBullet()" title="チェックボックス切替 / 先頭に - [ ] 付与 (Ctrl/Cmd+K)">[ ]</button>
-        <button class="fmt-btn" onclick="applyOrderedList()" title="番号付きリスト (Ctrl/Cmd+N)">1.</button>
+        <button class="fmt-btn" onclick="applyLine('- ')" title="箇条書き (Ctrl/Cmd+K)">•</button>
+        <button class="fmt-btn" onclick="toggleTaskCheckboxOrBullet()" title="チェックボックス切替 / 先頭に - [ ] 付与 (Ctrl/Cmd+L)">[ ]</button>
+        <button class="fmt-btn" onclick="applyOrderedList()" title="番号付きリスト (Ctrl/Cmd+M)">1.</button>
       </div>
       <div class="fmt-sep"></div>
       <div class="fmt-group">
@@ -1768,8 +1768,9 @@ require(['vs/editor/editor.main'], async function() {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, function() { applyInline('*'); });
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, function() { toggleHeadingCycle(); });
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, function() { toggleCodeBySelection(); });
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, function() { toggleTaskCheckboxOrBullet(); });
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, function() { applyOrderedList(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, function() { applyLine('- '); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, function() { toggleTaskCheckboxOrBullet(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyM, function() { applyOrderedList(); });
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Period, function() { applyLine('> '); });
 
   editor.onDidChangeModelContent(function() {
