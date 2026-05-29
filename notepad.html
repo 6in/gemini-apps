@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --font-ui: "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  --bg: #151722;
+  --panel: #1f2233;
+  --panel-2: #272b41;
+  --line: #3a4061;
+  --text: #e8ebff;
+  --muted: #9aa1c3;
+  --accent: #2c7be5;
+  --accent-2: #205fb4;
+  --ok: #2e9d52;
+  --danger: #b14646;
+}
+body[data-theme="light"] {
+  --bg: #f4f7ff;
+  --panel: #ffffff;
+  --panel-2: #eef2ff;
+  --line: #ccd6f0;
+  --text: #1b223d;
+  --muted: #5a668f;
+  --accent: #2166d8;
+  --accent-2: #1952ad;
+  --ok: #248a48;
+  --danger: #b14646;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: radial-gradient(circle at 10% 10%, rgba(94, 121, 246, 0.16), transparent 30%), var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+}
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: linear-gradient(170deg, var(--panel), var(--panel-2));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sidebar-head {
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.note-list {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+.note-item {
+  width: 100%;
+  display: block;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.note-item:hover { background: rgba(85, 113, 240, 0.15); }
+.note-item.active { border-color: var(--accent); background: rgba(85, 113, 240, 0.18); }
+.note-title { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-meta { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+.sidebar-mode {
+  width: 100%;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  overflow: auto hidden;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active {
+  background: rgba(85, 113, 240, 0.15);
+  color: var(--text);
+  border-color: var(--accent);
+}
+.tab-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+input[type=text] {
+  flex: 1;
+  border: 1px solid var(--line);
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--panel);
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-family: inherit;
+}
+input[type=text]::placeholder { color: var(--muted); font-weight: 400; }
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--accent-2); }
+.btn.done { background: var(--ok); }
+.btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.btn-clear:hover { color: var(--text); border-color: var(--muted); }
+.fmt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  position: relative;
+}
+body.toolbar-floating-mode .main {
+  position: relative;
+}
+body.toolbar-floating-mode .fmt-toolbar {
+  position: absolute;
+  top: 84px;
+  right: 12px;
+  z-index: 30;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+  background: var(--panel);
+  max-width: calc(100% - 24px);
+  min-width: 240px;
+  min-height: 42px;
+  overflow: auto;
+}
+body.toolbar-floating-mode .fmt-sep {
+  margin: 0 3px;
+}
+.fmt-float-titlebar,
+.fmt-resize-handle {
+  display: none;
+}
+body.toolbar-floating-mode .fmt-float-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  margin-bottom: 2px;
+}
+.fmt-float-titlebar strong { color: var(--text); font-size: 0.75rem; }
+.fmt-float-titlebar span { opacity: 0.9; }
+.fmt-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fmt-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.fmt-pin-btn:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+body.toolbar-floating-mode .fmt-resize-handle {
+  display: block;
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  border-radius: 2px;
+  cursor: nwse-resize;
+  user-select: none;
+  touch-action: none;
+}
+.fmt-group { display: flex; gap: 1px; }
+.fmt-sep { width: 1px; height: 16px; background: var(--line); margin: 0 4px; flex-shrink: 0; }
+.fmt-float-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+body.toolbar-floating-mode .fmt-float-control {
+  display: none;
+}
+body.toolbar-floating-mode #toolbarFloatBtn {
+  min-width: auto;
+  padding: 2px 6px;
+  line-height: 1.1;
+  font-size: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.fmt-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 26px;
+}
+.fmt-btn:hover { background: rgba(85, 113, 240, 0.16); border-color: var(--line); color: var(--text); }
+.fmt-bold { font-weight: 700; }
+.fmt-italic { font-style: italic; }
+.fmt-strike { text-decoration: line-through; }
+.fmt-mono { font-family: monospace; font-size: 0.82rem; }
+.content {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 58%) minmax(320px, 42%);
+  overflow: hidden;
+}
+#editor {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.preview {
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  overflow: auto;
+  padding: 16px 18px 24px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+.preview h1 { font-size: 1.28rem; color: #8cb8ff; }
+.preview h2 { font-size: 1.12rem; color: #a9c8ff; }
+.preview h3 { font-size: 1rem; color: #c6d7ff; }
+.preview h1, .preview h2, .preview h3 {
+  margin: 18px 0 8px;
+  line-height: 1.35;
+  font-weight: 700;
+  cursor: pointer;
+}
+.preview h1:hover, .preview h2:hover, .preview h3:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.preview h1 {
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(140, 184, 255, 0.32);
+}
+.preview p, .preview ul, .preview ol, .preview pre, .preview blockquote, .preview table { margin: 6px 0; }
+.preview ul, .preview ol {
+  padding-left: 1.6em;
+}
+.preview ul ul, .preview ol ol, .preview ul ol, .preview ol ul {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+.preview li {
+  margin: 0.24em 0;
+  padding-left: 0.2em;
+}
+.preview li > p {
+  margin: 0.18em 0;
+}
+.preview strong {
+  color: #c6a347;
+  font-weight: 700;
+}
+.preview em {
+  color: #ff7ab8;
+  font-style: italic;
+}
+.preview pre {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 7px;
+  overflow: auto;
+}
+.preview code {
+  color: #ff9aa9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+.preview a { color: #8cb8ff; }
+.preview blockquote {
+  padding-left: 12px;
+  border-left: 3px solid rgba(140, 184, 255, 0.32);
+  color: var(--muted);
+}
+.preview table { border-collapse: collapse; }
+.preview th, .preview td { border: 1px solid var(--line); padding: 4px 6px; }
+.preview th {
+  background: rgba(140, 184, 255, 0.16);
+}
+.preview tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.04);
+}
+body[data-theme="light"] .preview pre {
+  background: #edf3ff;
+  color: #243252;
+  border: 1px solid rgba(33, 102, 216, 0.14);
+}
+body[data-theme="light"] .preview h1 {
+  color: #174ea6;
+  border-bottom-color: rgba(23, 78, 166, 0.22);
+}
+body[data-theme="light"] .preview h2 {
+  color: #2458b8;
+}
+body[data-theme="light"] .preview h3 {
+  color: #355f9b;
+}
+body[data-theme="light"] .preview strong {
+  color: #8a6a12;
+}
+body[data-theme="light"] .preview em {
+  color: #c23678;
+}
+body[data-theme="light"] .preview code {
+  color: #a12849;
+}
+body[data-theme="light"] .preview tr:nth-child(even) td {
+  background: rgba(33, 102, 216, 0.06);
+}
+.footer {
+  padding: 3px 14px;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: var(--accent);
+  text-align: right;
+  flex-shrink: 0;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 20, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.dialog-backdrop[hidden] {
+  display: none;
+}
+.dialog-card {
+  width: min(460px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.dialog-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.dialog-body {
+  padding: 14px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px 14px;
+}
+.btn-danger {
+  background: var(--danger);
+}
+.btn-danger:hover {
+  filter: brightness(0.95);
+}
+.toast {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 1100;
+  background: rgba(21, 28, 46, 0.96);
+  color: #eaf0ff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+body[data-theme="light"] .toast {
+  background: rgba(27, 40, 72, 0.95);
+  color: #f4f7ff;
+  border-color: rgba(255, 255, 255, 0.26);
+}
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
+  .content { grid-template-columns: minmax(0, 1fr) minmax(260px, 40%); }
+  body.toolbar-floating-mode .fmt-toolbar {
+    top: 92px;
+    left: 10px;
+    right: 10px;
+  }
+}
+</style>
+</head>
+<body data-theme="dark">
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <button class="btn btn-clear" onclick="openFolderPicker()">フォルダを開く</button>
+      <button class="btn" onclick="createNewNote()">+ 新規メモ</button>
+      <button class="btn btn-clear" onclick="deleteCurrentNote()">削除</button>
+      <div class="sidebar-mode" id="sidebarMode">保存先: Dexie</div>
+    </div>
+    <div class="note-list" id="noteList"></div>
+  </aside>
+  <main class="main">
+    <div class="tabs" id="tabs"></div>
+    <div class="toolbar">
+      <input type="text" id="title" placeholder="タイトル (任意)" oninput="onTitleInput()" />
+      <button class="btn" id="saveBtn" onclick="saveCurrentNote()" title="保存 (Ctrl/Cmd+S)">保存</button>
+      <button class="btn-clear btn" onclick="clearCurrentBody()">本文クリア</button>
+      <button class="btn btn-clear" id="copyBtn" onclick="copyMarkdownText()">コピー</button>
+      <button class="btn btn-clear" onclick="toggleTheme()">テーマ</button>
+    </div>
+    <div class="fmt-toolbar" id="fmtToolbar">
+      <div class="fmt-float-titlebar" id="fmtToolbarTitleBar">
+        <strong>ツールバー</strong>
+        <div class="fmt-title-actions">
+          <button class="fmt-pin-btn" id="toolbarFloatPinBtn" onclick="toggleToolbarFloatingMode()" title="フロート固定を解除" aria-label="フロート固定を解除">📌</button>
+        </div>
+      </div>
+      <div class="fmt-group">
+        <button class="fmt-btn" onclick="applyHeading(1)" title="見出し1 (見出し切替: Ctrl/Cmd+H)">H1</button>
+        <button class="fmt-btn" onclick="applyHeading(2)" title="見出し2 (見出し切替: Ctrl/Cmd+H)">H2</button>
+        <button class="fmt-btn" onclick="applyHeading(3)" title="見出し3 (見出し切替: Ctrl/Cmd+H)">H3</button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="fmt-group">
+        <button class="fmt-btn fmt-bold" onclick="applyInline('**')" title="太文字 (Ctrl/Cmd+B)">B</button>
+        <button class="fmt-btn fmt-italic" onclick="applyInline('*')" title="斜体 (Ctrl/Cmd+I)">I</button>
+        <button class="fmt-btn fmt-strike" onclick="applyInline('~~')" title="打ち消し線">S</button>
+        <button class="fmt-btn fmt-mono" onclick="applyInline('`')" title="インラインコード (Ctrl/Cmd+T: 文字列選択時)">` `</button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="fmt-group">
+        <button class="fmt-btn" onclick="applyLine('> ')" title="引用 (Ctrl/Cmd+>)">＞</button>
+        <button class="fmt-btn" onclick="applyLine('- ')" title="箇条書き">•</button>
+        <button class="fmt-btn" onclick="toggleTaskCheckboxOrBullet()" title="チェックボックス切替 / 先頭に - [ ] 付与 (Ctrl/Cmd+K)">[ ]</button>
+        <button class="fmt-btn" onclick="applyOrderedList()" title="番号付きリスト (Ctrl/Cmd+N)">1.</button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="fmt-group">
+        <button class="fmt-btn fmt-mono" onclick="toggleCodeBlock()" title="コードブロック (Ctrl/Cmd+T: 複数行選択時)">&lt;/&gt;</button>
+        <button class="fmt-btn" onclick="insertHR()" title="水平線">-</button>
+        <button class="fmt-btn" onclick="insertLink()" title="リンク">🔗</button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="fmt-group">
+        <button class="fmt-btn" onclick="convertToTable()" title="タブ区切りをMarkdownテーブルに変換">⊞ Table</button>
+        <button class="fmt-btn" onclick="aiAssistPlaceholder()" title="AI構成支援 (未実装)">AI支援</button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="fmt-float-control">
+        <button class="fmt-btn" id="toolbarFloatBtn" onclick="toggleToolbarFloatingMode()" title="フォーマットツールバーのフロート表示切替">📌</button>
+      </div>
+      <div class="fmt-resize-handle" id="fmtToolbarResizeHandle" title="ドラッグでリサイズ"></div>
+    </div>
+    <div class="content" id="contentWrap">
+      <div id="editor"></div>
+      <article class="preview" id="preview"></article>
+    </div>
+    <div class="footer"><span id="count">0</span> 文字 | Markdown</div>
+  </main>
+</div>
+
+<div class="dialog-backdrop" id="appDialogBackdrop" hidden>
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage">
+    <div class="dialog-head" id="appDialogTitle">通知</div>
+    <div class="dialog-body" id="appDialogMessage"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-clear" id="appDialogCancelBtn">キャンセル</button>
+      <button class="btn" id="appDialogConfirmBtn">OK</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="appToast" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/dexie@4.0.8/dist/dexie.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script>
+window.MonacoEnvironment = {
+  getWorkerUrl: function() { return ''; }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
+<script>
+var editor;
+var db;
+var notes = [];
+var noteMap = new Map();
+var openTabs = [];
+var activeNoteId = null;
+var saveTimer = null;
+var isFileMode = false;
+var isToolbarFloating = false;
+var toolbarFloatRect = null;
+var toolbarPointerState = null;
+var directoryHandle = null;
+var appToastTimer = null;
+var fullWidthMap = {
+  '＃': '#', '＊': '*', '－': '-', 'ー': '-', '＞': '>', '｀': '`',
+  '＋': '+', '＝': '=', '～': '~', '＿': '_', '．': '.', '　': ' ',
+  '１': '1', '２': '2', '３': '3', '４': '4', '５': '5',
+  '６': '6', '７': '7', '８': '8', '９': '9', '０': '0'
+};
+
+function convertLineStart(text) {
+  return text.replace(/^[＃＊－ー＞｀＋＝～＿．　１２３４５６７８９０]+/, function(m) {
+    return m.split('').map(function(c) { return fullWidthMap[c] || c; }).join('');
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, function(ch) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch];
+  });
+}
+
+function fmtDate(ts) {
+  var d = new Date(ts);
+  return d.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function getNoteLabel(note) {
+  var suffix = note && note.isDirty ? ' *' : '';
+  if (note.path) {
+    var parts = note.path.split('/');
+    return (parts[parts.length - 1] || note.path) + suffix;
+  }
+  return ((note.title || '').trim() || '無題メモ') + suffix;
+}
+
+function getSidebarMeta(note) {
+  if (note.path) {
+    return note.path;
+  }
+  return '更新: ' + fmtDate(note.updatedAt);
+}
+
+var appDialogResolve = null;
+var appDialogHasCancel = false;
+var appDialogLastFocus = null;
+
+function closeAppDialog(result) {
+  var backdrop = document.getElementById('appDialogBackdrop');
+  if (!backdrop || backdrop.hidden) return;
+  backdrop.hidden = true;
+  var resolve = appDialogResolve;
+  appDialogResolve = null;
+  if (appDialogLastFocus && appDialogLastFocus.focus) {
+    appDialogLastFocus.focus();
+  }
+  appDialogLastFocus = null;
+  if (resolve) resolve(result);
+}
+
+function showAppDialog(options) {
+  var opts = options || {};
+  var backdrop = document.getElementById('appDialogBackdrop');
+  var titleEl = document.getElementById('appDialogTitle');
+  var msgEl = document.getElementById('appDialogMessage');
+  var okBtn = document.getElementById('appDialogConfirmBtn');
+  var cancelBtn = document.getElementById('appDialogCancelBtn');
+  if (!backdrop || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+    return Promise.resolve(false);
+  }
+
+  appDialogHasCancel = !!opts.cancelText;
+  titleEl.textContent = opts.title || '通知';
+  msgEl.textContent = opts.message || '';
+  okBtn.textContent = opts.confirmText || 'OK';
+  cancelBtn.textContent = opts.cancelText || 'キャンセル';
+  cancelBtn.hidden = !appDialogHasCancel;
+  okBtn.className = opts.danger ? 'btn btn-danger' : 'btn';
+
+  appDialogLastFocus = document.activeElement;
+  backdrop.hidden = false;
+  setTimeout(function() { okBtn.focus(); }, 0);
+
+  return new Promise(function(resolve) {
+    appDialogResolve = resolve;
+  });
+}
+
+function appAlert(message, title, confirmText) {
+  return showAppDialog({
+    title: title || '通知',
+    message: message || '',
+    confirmText: confirmText || 'OK'
+  });
+}
+
+function appConfirm(message, title, confirmText, cancelText, danger) {
+  return showAppDialog({
+    title: title || '確認',
+    message: message || '',
+    confirmText: confirmText || 'OK',
+    cancelText: cancelText || 'キャンセル',
+    danger: !!danger
+  });
+}
+
+function setupAppDialog() {
+  var backdrop = document.getElementById('appDialogBackdrop');
+  var okBtn = document.getElementById('appDialogConfirmBtn');
+  var cancelBtn = document.getElementById('appDialogCancelBtn');
+  var card = document.querySelector('.dialog-card');
+  if (!backdrop || !okBtn || !cancelBtn || !card) return;
+
+  okBtn.addEventListener('click', function() {
+    closeAppDialog(true);
+  });
+  cancelBtn.addEventListener('click', function() {
+    closeAppDialog(false);
+  });
+  backdrop.addEventListener('click', function(e) {
+    if (e.target === backdrop) {
+      closeAppDialog(appDialogHasCancel ? false : true);
+    }
+  });
+  card.addEventListener('click', function(e) {
+    e.stopPropagation();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    if (!backdrop.hidden) {
+      e.preventDefault();
+      closeAppDialog(appDialogHasCancel ? false : true);
+    }
+  });
+}
+
+function showToast(message) {
+  var el = document.getElementById('appToast');
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.add('show');
+  clearTimeout(appToastTimer);
+  appToastTimer = setTimeout(function() {
+    el.classList.remove('show');
+  }, 1300);
+}
+
+function updateSidebarModeLabel() {
+  var el = document.getElementById('sidebarMode');
+  if (!el) return;
+  if (isFileMode && directoryHandle) {
+    el.textContent = '保存先: ' + directoryHandle.name + ' (*.md)';
+  } else {
+    el.textContent = '保存先: Dexie';
+  }
+}
+
+function updateSaveButtonVisibility() {
+  var saveBtn = document.getElementById('saveBtn');
+  if (!saveBtn) return;
+  saveBtn.hidden = !isFileMode;
+}
+
+function applyToolbarFloatingMode() {
+  document.body.classList.toggle('toolbar-floating-mode', isToolbarFloating);
+  var btn = document.getElementById('toolbarFloatBtn');
+  var pinBtn = document.getElementById('toolbarFloatPinBtn');
+  if (btn) {
+    btn.textContent = '📌';
+    btn.title = isToolbarFloating ? 'フロート固定を解除' : 'フォーマットツールバーのフロート表示切替';
+    btn.classList.toggle('done', isToolbarFloating);
+  }
+  if (pinBtn) {
+    pinBtn.textContent = '📌';
+    pinBtn.title = isToolbarFloating ? 'フロート固定を解除' : 'フォーマットツールバーをフロート表示';
+  }
+
+  var toolbar = document.getElementById('fmtToolbar');
+  if (!toolbar) return;
+
+  if (!isToolbarFloating) {
+    toolbar.style.left = '';
+    toolbar.style.top = '';
+    toolbar.style.right = '';
+    toolbar.style.width = '';
+    toolbar.style.height = '';
+    return;
+  }
+
+  if (toolbarFloatRect) {
+    var clamped = clampToolbarRect(toolbarFloatRect);
+    toolbarFloatRect = clamped;
+    toolbar.style.left = clamped.left + 'px';
+    toolbar.style.top = clamped.top + 'px';
+    toolbar.style.right = 'auto';
+    toolbar.style.width = clamped.width + 'px';
+    toolbar.style.height = clamped.height + 'px';
+  }
+}
+
+function clampToolbarRect(rect) {
+  var main = document.querySelector('.main');
+  if (!main || !rect) return rect;
+
+  var minWidth = 240;
+  var minHeight = 42;
+  var maxWidth = Math.max(minWidth, main.clientWidth - 16);
+  var maxHeight = Math.max(minHeight, main.clientHeight - 16);
+
+  var width = Math.max(minWidth, Math.min(rect.width, maxWidth));
+  var height = Math.max(minHeight, Math.min(rect.height, maxHeight));
+  var left = Math.max(8, Math.min(rect.left, main.clientWidth - width - 8));
+  var top = Math.max(8, Math.min(rect.top, main.clientHeight - height - 8));
+
+  return {
+    left: Math.round(left),
+    top: Math.round(top),
+    width: Math.round(width),
+    height: Math.round(height)
+  };
+}
+
+function saveToolbarRectSetting() {
+  if (!toolbarFloatRect) return;
+  saveSetting('toolbarFloatingRect', JSON.stringify(toolbarFloatRect));
+}
+
+function setupFloatingToolbarInteractions() {
+  var toolbar = document.getElementById('fmtToolbar');
+  var titleBar = document.getElementById('fmtToolbarTitleBar');
+  var resizeHandle = document.getElementById('fmtToolbarResizeHandle');
+  if (!toolbar || !titleBar || !resizeHandle) return;
+
+  function startPointerAction(e, mode) {
+    if (!isToolbarFloating) return;
+    e.preventDefault();
+
+    var main = document.querySelector('.main');
+    if (!main) return;
+
+    var tr = toolbar.getBoundingClientRect();
+    var mr = main.getBoundingClientRect();
+    var baseRect = clampToolbarRect({
+      left: tr.left - mr.left,
+      top: tr.top - mr.top,
+      width: tr.width,
+      height: tr.height
+    });
+
+    toolbarFloatRect = baseRect;
+    toolbar.style.left = baseRect.left + 'px';
+    toolbar.style.top = baseRect.top + 'px';
+    toolbar.style.right = 'auto';
+    toolbar.style.width = baseRect.width + 'px';
+    toolbar.style.height = baseRect.height + 'px';
+
+    toolbarPointerState = {
+      mode: mode,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      base: baseRect
+    };
+
+    if (e.target && e.target.setPointerCapture) {
+      e.target.setPointerCapture(e.pointerId);
+    }
+  }
+
+  function onPointerMove(e) {
+    if (!toolbarPointerState || e.pointerId !== toolbarPointerState.pointerId) return;
+    if (!isToolbarFloating) return;
+
+    var dx = e.clientX - toolbarPointerState.startX;
+    var dy = e.clientY - toolbarPointerState.startY;
+    var next;
+
+    if (toolbarPointerState.mode === 'move') {
+      next = {
+        left: toolbarPointerState.base.left + dx,
+        top: toolbarPointerState.base.top + dy,
+        width: toolbarPointerState.base.width,
+        height: toolbarPointerState.base.height
+      };
+    } else {
+      next = {
+        left: toolbarPointerState.base.left,
+        top: toolbarPointerState.base.top,
+        width: toolbarPointerState.base.width + dx,
+        height: toolbarPointerState.base.height + dy
+      };
+    }
+
+    toolbarFloatRect = clampToolbarRect(next);
+    toolbar.style.left = toolbarFloatRect.left + 'px';
+    toolbar.style.top = toolbarFloatRect.top + 'px';
+    toolbar.style.right = 'auto';
+    toolbar.style.width = toolbarFloatRect.width + 'px';
+    toolbar.style.height = toolbarFloatRect.height + 'px';
+  }
+
+  function endPointerAction(e) {
+    if (!toolbarPointerState || e.pointerId !== toolbarPointerState.pointerId) return;
+    toolbarPointerState = null;
+    saveToolbarRectSetting();
+  }
+
+  titleBar.addEventListener('pointerdown', function(e) {
+    startPointerAction(e, 'move');
+  });
+  resizeHandle.addEventListener('pointerdown', function(e) {
+    startPointerAction(e, 'resize');
+  });
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', endPointerAction);
+  document.addEventListener('pointercancel', endPointerAction);
+
+  window.addEventListener('resize', function() {
+    if (!isToolbarFloating || !toolbarFloatRect) return;
+    toolbarFloatRect = clampToolbarRect(toolbarFloatRect);
+    toolbar.style.left = toolbarFloatRect.left + 'px';
+    toolbar.style.top = toolbarFloatRect.top + 'px';
+    toolbar.style.right = 'auto';
+    toolbar.style.width = toolbarFloatRect.width + 'px';
+    toolbar.style.height = toolbarFloatRect.height + 'px';
+  });
+}
+
+function getActiveNote() {
+  return noteMap.get(activeNoteId) || null;
+}
+
+async function ensureHandlePermission(handle, mode) {
+  if (!handle || !handle.queryPermission || !handle.requestPermission) return true;
+  var opts = { mode: mode || 'read' };
+  var state = await handle.queryPermission(opts);
+  if (state === 'granted') return true;
+  state = await handle.requestPermission(opts);
+  return state === 'granted';
+}
+
+function scheduleSave(noteId) {
+  if (isFileMode) return;
+  clearTimeout(saveTimer);
+  var targetId = noteId || activeNoteId;
+  if (!targetId) return;
+  saveTimer = setTimeout(function() {
+    saveActiveNote(targetId);
+  }, 320);
+}
+
+async function initDb() {
+  db = new Dexie('notepadDexieDB');
+  db.version(1).stores({
+    notes: '++id, updatedAt, createdAt',
+    settings: '&key'
+  });
+  await db.open();
+}
+
+async function loadSettings() {
+  var themeRow = await db.settings.get('theme');
+  var theme = (themeRow && themeRow.value) || 'dark';
+  document.body.setAttribute('data-theme', theme);
+
+  var floatingRow = await db.settings.get('toolbarFloating');
+  isToolbarFloating = !!(floatingRow && (floatingRow.value === true || floatingRow.value === '1'));
+
+  var rectRow = await db.settings.get('toolbarFloatingRect');
+  if (rectRow && rectRow.value) {
+    try {
+      var parsed = typeof rectRow.value === 'string' ? JSON.parse(rectRow.value) : rectRow.value;
+      if (parsed && isFinite(parsed.left) && isFinite(parsed.top) && isFinite(parsed.width) && isFinite(parsed.height)) {
+        toolbarFloatRect = {
+          left: Number(parsed.left),
+          top: Number(parsed.top),
+          width: Number(parsed.width),
+          height: Number(parsed.height)
+        };
+      }
+    } catch (e) {
+      toolbarFloatRect = null;
+    }
+  }
+
+  applyToolbarFloatingMode();
+}
+
+async function saveSetting(key, value) {
+  await db.settings.put({ key: key, value: value, updatedAt: Date.now() });
+}
+
+function renderSidebar() {
+  var wrap = document.getElementById('noteList');
+  wrap.innerHTML = notes.map(function(n) {
+    var cls = 'note-item' + (n.id === activeNoteId ? ' active' : '');
+    return '<button class="' + cls + '" onclick="openNoteEncoded(\'' + encodeURIComponent(String(n.id)) + '\')">' +
+      '<div class="note-title">' + escapeHtml(getNoteLabel(n)) + '</div>' +
+      '<div class="note-meta">' + escapeHtml(getSidebarMeta(n)) + '</div>' +
+      '</button>';
+  }).join('');
+}
+
+function renderTabs() {
+  var tabs = document.getElementById('tabs');
+  if (!openTabs.length) {
+    tabs.innerHTML = isFileMode ? '' : '<button class="tab" onclick="createNewNote()">+ 新規タブ</button>';
+    return;
+  }
+  tabs.innerHTML = openTabs.map(function(id) {
+    var note = noteMap.get(id);
+    if (!note) return '';
+    var cls = 'tab' + (id === activeNoteId ? ' active' : '');
+    return '<button class="' + cls + '" onclick="openNoteEncoded(\'' + encodeURIComponent(String(id)) + '\')">' +
+      '<span>' + escapeHtml(getNoteLabel(note)) + '</span>' +
+      '<span class="tab-close" onclick="event.stopPropagation(); closeTabEncoded(\'' + encodeURIComponent(String(id)) + '\')">×</span>' +
+      '</button>';
+  }).join('') + (isFileMode ? '' : '<button class="tab" onclick="createNewNote()">+ 新規タブ</button>');
+}
+
+function openNoteEncoded(id) {
+  return openNote(decodeURIComponent(id));
+}
+
+function closeTabEncoded(id) {
+  return closeTab(decodeURIComponent(id));
+}
+
+function normalizeNoteId(id) {
+  if (noteMap.has(id)) return id;
+  if (typeof id === 'string') {
+    var asNum = Number(id);
+    if (String(asNum) === id && noteMap.has(asNum)) return asNum;
+  } else if (typeof id === 'number') {
+    var asStr = String(id);
+    if (noteMap.has(asStr)) return asStr;
+  }
+  return id;
+}
+
+function bindModelForNote(note) {
+  if (!note.model) {
+    note.model = monaco.editor.createModel(note.body || '', 'markdown');
+  }
+  editor.setModel(note.model);
+}
+
+async function refreshNotes() {
+  var previousMap = noteMap;
+  var rows = await db.notes.orderBy('updatedAt').reverse().toArray();
+  noteMap = new Map(rows.map(function(n) {
+    var prev = previousMap.get(n.id);
+    if (prev && prev.model) {
+      n.model = prev.model;
+    }
+    return [n.id, n];
+  }));
+  notes = Array.from(noteMap.values());
+}
+
+function syncTitleAndCount() {
+  var note = getActiveNote();
+  var titleInput = document.getElementById('title');
+  if (note && note.path) {
+    titleInput.value = note.path;
+    titleInput.readOnly = true;
+  } else {
+    titleInput.value = note ? note.title : '';
+    titleInput.readOnly = false;
+  }
+  document.getElementById('count').textContent = note && note.body ? note.body.length : 0;
+}
+
+async function openNote(id) {
+  id = normalizeNoteId(id);
+  if (!noteMap.has(id)) {
+    await refreshNotes();
+    id = normalizeNoteId(id);
+  }
+  var note = noteMap.get(id);
+  if (!note) return;
+  activeNoteId = id;
+  if (!openTabs.includes(id)) {
+    openTabs.push(id);
+  }
+  bindModelForNote(note);
+  syncTitleAndCount();
+  renderTabs();
+  renderSidebar();
+  renderPreview();
+  editor.focus();
+}
+
+async function saveActiveNote(noteId, allowPrompt, notifySuccess) {
+  var note = noteMap.get(noteId || activeNoteId);
+  if (!note) return;
+  if (note.path && note.fileHandle) {
+    var granted = true;
+    if (!allowPrompt && note.fileHandle.queryPermission) {
+      granted = (await note.fileHandle.queryPermission({ mode: 'readwrite' })) === 'granted';
+    }
+    if (!granted) {
+      note.isDirty = true;
+      renderTabs();
+      renderSidebar();
+      await appAlert('ファイル保存には「保存」ボタンからの権限許可が必要です。', '権限が必要です');
+      return;
+    }
+    try {
+      var writable = await note.fileHandle.createWritable();
+      await writable.write(note.body || '');
+      await writable.close();
+      note.updatedAt = Date.now();
+      note.isDirty = false;
+      renderTabs();
+      renderSidebar();
+      if (notifySuccess) showToast('保存しました');
+    } catch (e) {
+      console.error('save file failed', e);
+      note.isDirty = true;
+      renderTabs();
+      renderSidebar();
+      var detail = (e && e.name) ? ('\n' + e.name + ': ' + (e.message || '')) : '';
+      var hint = (e && e.name === 'NotAllowedError')
+        ? '\n\nこの実行環境では実ファイル書き込みが許可されていない可能性があります。通常のブラウザで開いて保存してください。'
+        : '';
+      await appAlert('ファイル保存に失敗しました。' + detail + hint, '保存エラー');
+    }
+    return;
+  }
+  note.updatedAt = Date.now();
+  await db.notes.put({
+    id: note.id,
+    title: note.title,
+    body: note.body,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt
+  });
+  await refreshNotes();
+  renderTabs();
+  renderSidebar();
+  if (notifySuccess) showToast('保存しました');
+}
+
+async function saveCurrentNote() {
+  var note = getActiveNote();
+  if (!note) return;
+  await saveActiveNote(note.id, true, true);
+}
+
+async function createNewNote(initialTitle, initialBody) {
+  if (isFileMode) {
+    await appAlert('フォルダモードでは新規メモ作成はできません。*.md ファイルを編集してください。', '操作できません');
+    return;
+  }
+  var now = Date.now();
+  var id = await db.notes.add({
+    title: initialTitle || '',
+    body: initialBody || '',
+    createdAt: now,
+    updatedAt: now
+  });
+  await refreshNotes();
+  if (!openTabs.includes(id)) openTabs.push(id);
+  await openNote(id);
+}
+
+async function closeTab(id) {
+  id = normalizeNoteId(id);
+  openTabs = openTabs.filter(function(tabId) { return tabId !== id; });
+  if (id !== activeNoteId) {
+    renderTabs();
+    return;
+  }
+  if (openTabs.length) {
+    await openNote(openTabs[openTabs.length - 1]);
+  } else if (notes.length) {
+    await openNote(notes[0].id);
+  } else {
+    await createNewNote();
+  }
+}
+
+async function deleteCurrentNote() {
+  if (isFileMode) {
+    await appAlert('フォルダモードでは削除は無効です。ファイル削除はOS側で行ってください。', '操作できません');
+    return;
+  }
+  var note = getActiveNote();
+  if (!note) return;
+  var ok = await appConfirm('このメモを削除しますか?', '削除確認', '削除する', 'キャンセル', true);
+  if (!ok) return;
+  await db.notes.delete(note.id);
+  if (note.model) note.model.dispose();
+  openTabs = openTabs.filter(function(id) { return id !== note.id; });
+  await refreshNotes();
+  if (notes.length) {
+    await openNote(openTabs[0] || notes[0].id);
+  } else {
+    await createNewNote();
+  }
+}
+
+function onTitleInput() {
+  var note = getActiveNote();
+  if (!note) return;
+  if (note.path) return;
+  note.title = document.getElementById('title').value;
+  note.updatedAt = Date.now();
+  renderTabs();
+  renderSidebar();
+  scheduleSave(note.id);
+}
+
+function normalizeHeadingText(text) {
+  return String(text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function collectHeadingLineMatches(body) {
+  var lines = String(body || '').split(/\r?\n/);
+  var matches = new Map();
+
+  function addMatch(rawText, lineNumber) {
+    var key = normalizeHeadingText(rawText)
+      .replace(/^#+\s*/, '')
+      .replace(/\s+#+\s*$/, '');
+    if (!key) return;
+    var list = matches.get(key);
+    if (!list) {
+      list = [];
+      matches.set(key, list);
+    }
+    list.push(lineNumber);
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var atx = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (atx) {
+      addMatch(atx[2], i + 1);
+      continue;
+    }
+
+    if (i < lines.length - 1) {
+      var current = line.trim();
+      var underline = lines[i + 1].trim();
+      if (current && (/^=+$/.test(underline) || /^-+$/.test(underline))) {
+        addMatch(current, i + 1);
+      }
+    }
+  }
+
+  return matches;
+}
+
+function findHeadingLineNumber(body, headingText, occurrence) {
+  var key = normalizeHeadingText(headingText);
+  if (!key) return null;
+  var all = collectHeadingLineMatches(body).get(key);
+  if (!all || !all.length) return null;
+  var index = Math.max(0, Math.min(occurrence || 0, all.length - 1));
+  return all[index];
+}
+
+function bindPreviewHeadingNavigation() {
+  var preview = document.getElementById('preview');
+  if (!preview || !editor) return;
+
+  var seen = Object.create(null);
+  var headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  headings.forEach(function(el) {
+    var key = normalizeHeadingText(el.textContent)
+      .replace(/^#+\s*/, '')
+      .replace(/\s+#+\s*$/, '');
+    if (!key) return;
+    var count = seen[key] || 0;
+    seen[key] = count + 1;
+    el.dataset.headingKey = key;
+    el.dataset.headingOccurrence = String(count);
+    el.title = 'クリックでエディタの該当見出しへ移動';
+  });
+
+  preview.onclick = function(event) {
+    var target = event.target.closest('h1, h2, h3, h4, h5, h6');
+    if (!target || !preview.contains(target)) return;
+    var note = getActiveNote();
+    if (!note || !note.body) return;
+
+    var lineNumber = findHeadingLineNumber(
+      note.body,
+      target.textContent || '',
+      Number(target.dataset.headingOccurrence || '0')
+    );
+
+    if (!lineNumber) return;
+    editor.setPosition({ lineNumber: lineNumber, column: 1 });
+    editor.revealLineInCenter(lineNumber);
+    editor.focus();
+  };
+}
+
+function renderPreview() {
+  var note = getActiveNote();
+  var body = note ? note.body || '' : '';
+  document.getElementById('preview').innerHTML = marked.parse(body, { breaks: true, gfm: true });
+  bindPreviewHeadingNavigation();
+}
+
+async function toggleTheme() {
+  var current = document.body.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', next);
+  await saveSetting('theme', next);
+  monaco.editor.setTheme(next === 'light' ? 'markdown-light' : 'markdown-dark');
+}
+
+async function toggleToolbarFloatingMode() {
+  isToolbarFloating = !isToolbarFloating;
+  applyToolbarFloatingMode();
+  await saveSetting('toolbarFloating', isToolbarFloating ? '1' : '0');
+}
+
+async function loadMarkdownFilesFromDirectory() {
+  if (!directoryHandle) return;
+  var stack = [{ handle: directoryHandle, prefix: '' }];
+  var files = [];
+
+  while (stack.length) {
+    var current = stack.pop();
+    for await (var entry of current.handle.values()) {
+      if (entry.kind === 'directory') {
+        stack.push({ handle: entry, prefix: current.prefix + entry.name + '/' });
+      } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.md')) {
+        files.push({ path: current.prefix + entry.name, handle: entry });
+      }
+    }
+  }
+
+  files.sort(function(a, b) { return a.path.localeCompare(b.path, 'ja'); });
+
+  var previousMap = noteMap;
+  noteMap = new Map();
+  notes = files.map(function(fileInfo, idx) {
+    var id = 'file:' + fileInfo.path;
+    var prev = previousMap.get(id);
+    var note = {
+      id: id,
+      title: fileInfo.path,
+      path: fileInfo.path,
+      body: prev ? prev.body : '',
+      fileHandle: fileInfo.handle,
+      updatedAt: Date.now(),
+      isDirty: prev ? !!prev.isDirty : false
+    };
+    if (prev && prev.model) {
+      note.model = prev.model;
+    }
+    noteMap.set(id, note);
+    return note;
+  });
+
+  for (var i = 0; i < notes.length; i++) {
+    var n = notes[i];
+    if (!n.model) {
+      var f = await n.fileHandle.getFile();
+      n.body = await f.text();
+      n.updatedAt = f.lastModified || Date.now();
+      n.model = monaco.editor.createModel(n.body, 'markdown');
+    }
+  }
+
+  openTabs = [];
+  if (notes.length) {
+    openTabs = [notes[0].id];
+    await openNote(notes[0].id);
+  } else {
+    activeNoteId = null;
+    editor.setValue('');
+    renderPreview();
+    document.getElementById('count').textContent = '0';
+  }
+
+  renderTabs();
+  renderSidebar();
+}
+
+async function openFolderPicker() {
+  if (!window.showDirectoryPicker) {
+    await appAlert('このブラウザは File System Access API に対応していません。', '未対応ブラウザ');
+    return;
+  }
+  try {
+    directoryHandle = await window.showDirectoryPicker();
+    isFileMode = true;
+    updateSidebarModeLabel();
+    updateSaveButtonVisibility();
+    await loadMarkdownFilesFromDirectory();
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    await appAlert('フォルダを開けませんでした。', '読み込みエラー');
+  }
+}
+
+function clearCurrentBody() {
+  var note = getActiveNote();
+  if (!note || !editor) return;
+  note.model.setValue('');
+  renderPreview();
+  if (isFileMode) {
+    note.isDirty = true;
+    renderTabs();
+    renderSidebar();
+    return;
+  }
+  scheduleSave(note.id);
+}
+
+async function copyMarkdownText() {
+  var note = getActiveNote();
+  if (!note) return;
+  var text = note.body || '';
+  if (!text) return;
+
+  var copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    }
+  } catch (e) {
+    copied = false;
+  }
+
+  if (!copied) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    copied = document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  var btn = document.getElementById('copyBtn');
+  var prevText = btn.textContent;
+  btn.textContent = copied ? 'コピー完了' : 'コピー失敗';
+  if (copied) btn.classList.add('done');
+  setTimeout(function() {
+    btn.textContent = prevText;
+    btn.classList.remove('done');
+  }, 1200);
+}
+
+function aiAssistPlaceholder() {
+  appAlert('AI構成支援は次フェーズで実装予定です。\n現在は空実装です。', 'AI構成支援');
+}
+
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' } });
+require(['vs/editor/editor.main'], async function() {
+  setupAppDialog();
+  setupFloatingToolbarInteractions();
+  monaco.editor.defineTheme('markdown-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'keyword.md', foreground: '61afef', fontStyle: 'bold' },
+      { token: 'strong.md', foreground: 'e5c07b', fontStyle: 'bold' },
+      { token: 'emphasis.md', foreground: 'c678dd', fontStyle: 'italic' },
+      { token: 'string.link.md', foreground: '56b6c2' },
+      { token: 'string.md', foreground: '98c379' },
+      { token: 'variable.md', foreground: 'e06c75' },
+      { token: 'comment.md', foreground: '5c6370', fontStyle: 'italic' }
+    ],
+    colors: {
+      'editor.background': '#1e2030',
+      'editor.foreground': '#abb2bf',
+      'editorLineNumber.foreground': '#495162',
+      'editorLineNumber.activeForeground': '#9da5b4',
+      'editor.lineHighlightBackground': '#2a2d3e',
+      'editorCursor.foreground': '#61afef'
+    }
+  });
+  monaco.editor.defineTheme('markdown-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [
+      { token: 'keyword.md', foreground: '215bb8', fontStyle: 'bold' },
+      { token: 'strong.md', foreground: '8d5b00', fontStyle: 'bold' },
+      { token: 'emphasis.md', foreground: '8c49b8', fontStyle: 'italic' },
+      { token: 'string.link.md', foreground: '007a88' },
+      { token: 'string.md', foreground: '22712f' },
+      { token: 'variable.md', foreground: 'b32545' },
+      { token: 'comment.md', foreground: '6b7280', fontStyle: 'italic' }
+    ],
+    colors: {
+      'editor.background': '#fbfdff',
+      'editor.foreground': '#1b223d',
+      'editorLineNumber.foreground': '#98a3c4',
+      'editorLineNumber.activeForeground': '#35406d',
+      'editor.lineHighlightBackground': '#eef2ff',
+      'editorCursor.foreground': '#215bb8'
+    }
+  });
+
+  editor = monaco.editor.create(document.getElementById('editor'), {
+    value: '',
+    language: 'markdown',
+    theme: document.body.getAttribute('data-theme') === 'light' ? 'markdown-light' : 'markdown-dark',
+    fontSize: 14,
+    lineHeight: 22,
+    wordWrap: 'on',
+    insertSpaces: false,
+    tabSize: 4,
+    detectIndentation: false,
+    minimap: { enabled: true, scale: 1 },
+    lineNumbers: 'on',
+    folding: false,
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    quickSuggestions: false,
+    suggestOnTriggerCharacters: false,
+    wordBasedSuggestions: 'off',
+    parameterHints: { enabled: false },
+    padding: { top: 12, bottom: 12 },
+    scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6, alwaysConsumeMouseWheel: true },
+    mouseWheelScrollSensitivity: 1,
+    fastScrollSensitivity: 5
+  });
+
+  editor.addCommand(monaco.KeyCode.Enter, function() {
+    var model = editor.getModel();
+    var pos = editor.getPosition();
+    var lineText = model.getLineContent(pos.lineNumber);
+    var converted = convertLineStart(lineText);
+    if (converted !== lineText) {
+      editor.executeEdits('fw-convert', [{
+        range: new monaco.Range(pos.lineNumber, 1, pos.lineNumber, lineText.length + 1),
+        text: converted
+      }]);
+    }
+    editor.trigger('keyboard', 'type', { text: '\n' });
+  });
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, function() { applyInline('**'); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, function() { applyInline('*'); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, function() { toggleHeadingCycle(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, function() { toggleCodeBySelection(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, function() { toggleTaskCheckboxOrBullet(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, function() { applyOrderedList(); });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Period, function() { applyLine('> '); });
+
+  editor.onDidChangeModelContent(function() {
+    var note = getActiveNote();
+    var model = editor.getModel();
+    if (!note || !model || note.model !== model) return;
+    note.body = model.getValue();
+    note.updatedAt = Date.now();
+    if (isFileMode) {
+      note.isDirty = true;
+    }
+    document.getElementById('count').textContent = note.body.length;
+    renderPreview();
+    if (!isFileMode) {
+      scheduleSave(note.id);
+    }
+    renderTabs();
+    renderSidebar();
+  });
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+    saveCurrentNote();
+  });
+
+  await initDb();
+  await loadSettings();
+  updateSidebarModeLabel();
+  updateSaveButtonVisibility();
+  monaco.editor.setTheme(document.body.getAttribute('data-theme') === 'light' ? 'markdown-light' : 'markdown-dark');
+  await refreshNotes();
+  if (!notes.length) {
+    await createNewNote('新しいメモ', '');
+  } else {
+    var firstId = notes[0].id;
+    openTabs = [firstId];
+    await openNote(firstId);
+  }
+});
+
+function applyInline(marker) {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var text = model.getValueInRange(sel);
+  var mlen = marker.length;
+  if (!text) {
+    editor.executeEdits('fmt', [{ range: sel, text: marker + marker }]);
+    var pos = editor.getPosition();
+    editor.setPosition(new monaco.Position(pos.lineNumber, pos.column - mlen));
+  } else if (text.length > mlen * 2 && text.slice(0, mlen) === marker && text.slice(-mlen) === marker) {
+    editor.executeEdits('fmt', [{ range: sel, text: text.slice(mlen, -mlen) }]);
+  } else {
+    editor.executeEdits('fmt', [{ range: sel, text: marker + text + marker }]);
+  }
+  editor.focus();
+}
+
+function applyLine(prefix) {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var edits = [];
+  for (var i = sel.startLineNumber; i <= sel.endLineNumber; i++) {
+    var line = model.getLineContent(i);
+    if (line.startsWith(prefix)) {
+      edits.push({ range: new monaco.Range(i, 1, i, prefix.length + 1), text: '' });
+    } else {
+      edits.push({ range: new monaco.Range(i, 1, i, 1), text: prefix });
+    }
+  }
+  editor.executeEdits('fmt', edits);
+  editor.focus();
+}
+
+function toggleTaskCheckboxOrBullet() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var edits = [];
+
+  for (var i = sel.startLineNumber; i <= sel.endLineNumber; i++) {
+    var line = model.getLineContent(i);
+    if (/^\s*[-+*]\s+\[( |x|X)\]/.test(line)) {
+      var toggled = line.replace(/^(\s*[-+*]\s+\[)( |x|X)(\])/, function(_, head, mark, tail) {
+        return head + (mark === ' ' ? 'x' : ' ') + tail;
+      });
+      edits.push({ range: new monaco.Range(i, 1, i, model.getLineMaxColumn(i)), text: toggled });
+    } else {
+      edits.push({ range: new monaco.Range(i, 1, i, 1), text: '- [ ] ' });
+    }
+  }
+
+  if (edits.length) {
+    editor.executeEdits('fmt', edits);
+    editor.focus();
+  }
+}
+
+function applyHeading(level) {
+  if (!editor) return;
+  var prefix = '#'.repeat(level) + ' ';
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var edits = [];
+  for (var i = sel.startLineNumber; i <= sel.endLineNumber; i++) {
+    var line = model.getLineContent(i);
+    var m = line.match(/^(#{1,6}) /);
+    if (m) {
+      if (m[0] === prefix) {
+        edits.push({ range: new monaco.Range(i, 1, i, m[0].length + 1), text: '' });
+      } else {
+        edits.push({ range: new monaco.Range(i, 1, i, m[0].length + 1), text: prefix });
+      }
+    } else {
+      edits.push({ range: new monaco.Range(i, 1, i, 1), text: prefix });
+    }
+  }
+  editor.executeEdits('fmt', edits);
+  editor.focus();
+}
+
+function toggleHeadingCycle() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var edits = [];
+  for (var i = sel.startLineNumber; i <= sel.endLineNumber; i++) {
+    var line = model.getLineContent(i);
+    var m = line.match(/^(#{1,6})\s+/);
+    if (!m) {
+      edits.push({ range: new monaco.Range(i, 1, i, 1), text: '# ' });
+      continue;
+    }
+    var current = m[1].length;
+    var next = 0;
+    if (current === 1) next = 2;
+    else if (current === 2) next = 3;
+    else if (current === 3) next = 0;
+    else next = 0;
+    var nextPrefix = next ? '#'.repeat(next) + ' ' : '';
+    edits.push({ range: new monaco.Range(i, 1, i, m[0].length + 1), text: nextPrefix });
+  }
+  editor.executeEdits('fmt', edits);
+  editor.focus();
+}
+
+function applyOrderedList() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var edits = [];
+  var n = 1;
+  for (var i = sel.startLineNumber; i <= sel.endLineNumber; i++) {
+    var line = model.getLineContent(i);
+    var m = line.match(/^\d+\. /);
+    if (m) {
+      edits.push({ range: new monaco.Range(i, 1, i, m[0].length + 1), text: '' });
+    } else {
+      edits.push({ range: new monaco.Range(i, 1, i, 1), text: (n++) + '. ' });
+    }
+  }
+  editor.executeEdits('fmt', edits);
+  editor.focus();
+}
+
+function insertHR() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var line = model.getLineContent(sel.startLineNumber);
+  var text = (line.trim() ? '\n' : '') + '---\n';
+  editor.executeEdits('fmt', [{ range: sel, text: text }]);
+  editor.focus();
+}
+
+function insertLink() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var selected = model.getValueInRange(sel);
+  var label = selected || 'テキスト';
+  editor.executeEdits('fmt', [{ range: sel, text: '[' + label + '](url)' }]);
+  editor.focus();
+}
+
+function toggleCodeBlock() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var text = model.getValueInRange(sel);
+  var fence = '```';
+  if (!text.trim()) {
+    editor.executeEdits('fmt', [{ range: sel, text: fence + '\n\n' + fence }]);
+    var pos = editor.getPosition();
+    editor.setPosition(new monaco.Position(pos.lineNumber - 1, 1));
+  } else {
+    var inner = text.trim().split('\n');
+    if (inner[0].startsWith(fence) && inner[inner.length - 1] === fence) {
+      inner.shift();
+      inner.pop();
+      editor.executeEdits('fmt', [{ range: sel, text: inner.join('\n') }]);
+    } else {
+      editor.executeEdits('fmt', [{ range: sel, text: fence + '\n' + text.trim() + '\n' + fence }]);
+    }
+  }
+  editor.focus();
+}
+
+function toggleCodeBySelection() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var text = model.getValueInRange(sel);
+  if (text && text.indexOf('\n') >= 0) {
+    toggleCodeBlock();
+    return;
+  }
+  applyInline('`');
+}
+
+function convertToTable() {
+  if (!editor) return;
+  var sel = editor.getSelection();
+  var model = editor.getModel();
+  var text = model.getValueInRange(sel);
+  if (!text.trim()) return;
+  var lines = text.trim().split('\n');
+  var isTable = lines.every(function(l) { return l.trim().startsWith('|'); });
+  var result;
+  if (isTable) {
+    result = lines
+      .filter(function(l) { return !/^\|[\s|:\-]+\|$/.test(l.trim()); })
+      .map(function(l) {
+        return l.trim().replace(/^\||\|$/g, '').split('|').map(function(c) { return c.trim(); }).join('\t');
+      }).join('\n');
+  } else {
+    var rows = lines.map(function(l) { return l.split('\t'); });
+    var cols = Math.max.apply(null, rows.map(function(r) { return r.length; }));
+    rows = rows.map(function(r) { while (r.length < cols) r.push(''); return r; });
+    var sep = Array(cols).fill('---');
+    var out = ['| ' + rows[0].join(' | ') + ' |', '| ' + sep.join(' | ') + ' |'];
+    rows.slice(1).forEach(function(r) { out.push('| ' + r.join(' | ') + ' |'); });
+    result = out.join('\n');
+  }
+  editor.executeEdits('fmt', [{ range: sel, text: result }]);
+  editor.focus();
+}
+</script>
+</body>
+</html>
