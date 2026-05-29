@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link id="hljsDarkTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+<link id="hljsLightTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css" disabled>
 <style>
 :root {
   --font-ui: "Hiragino Sans", "Yu Gothic UI", sans-serif;
@@ -43,12 +45,20 @@ body {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
 }
+body.sidebar-collapsed .app-shell {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
 .sidebar {
   border-right: 1px solid var(--line);
   background: linear-gradient(170deg, var(--panel), var(--panel-2));
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+body.sidebar-collapsed .sidebar {
+  opacity: 0;
+  pointer-events: none;
+  border-right: none;
 }
 .sidebar-head {
   padding: 12px;
@@ -291,8 +301,32 @@ body.toolbar-floating-mode #toolbarFloatBtn {
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 58%) minmax(320px, 42%);
+  grid-template-columns: minmax(280px, 58%) 8px minmax(320px, 1fr);
   overflow: hidden;
+}
+.content-splitter {
+  position: relative;
+  cursor: col-resize;
+  background: transparent;
+}
+.content-splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--line);
+}
+.content-splitter:hover::before,
+body.split-resizing .content-splitter::before {
+  width: 2px;
+  background: var(--accent);
+}
+body.split-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 #editor {
   min-width: 0;
@@ -301,7 +335,7 @@ body.toolbar-floating-mode #toolbarFloatBtn {
   overflow: hidden;
 }
 .preview {
-  border-left: 1px solid var(--line);
+  border-left: none;
   background: var(--panel);
   overflow: auto;
   padding: 16px 18px 24px;
@@ -361,6 +395,13 @@ body.toolbar-floating-mode #toolbarFloatBtn {
   border-radius: 4px;
   font-size: 0.88em;
 }
+.preview pre code {
+  display: block;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
 .preview a { color: #8cb8ff; }
 .preview blockquote {
   padding-left: 12px;
@@ -398,6 +439,9 @@ body[data-theme="light"] .preview em {
 }
 body[data-theme="light"] .preview code {
   color: #a12849;
+}
+body[data-theme="light"] .preview pre code {
+  color: inherit;
 }
 body[data-theme="light"] .preview tr:nth-child(even) td {
   background: rgba(33, 102, 216, 0.06);
@@ -484,7 +528,10 @@ body[data-theme="light"] .toast {
 }
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
-  .content { grid-template-columns: minmax(0, 1fr) minmax(260px, 40%); }
+  body.sidebar-collapsed .app-shell { grid-template-columns: 0 minmax(0, 1fr); }
+  .content { grid-template-columns: minmax(0, 1fr) 0 minmax(260px, 40%); }
+  .content-splitter { display: none; }
+  .preview { border-left: 1px solid var(--line); }
   body.toolbar-floating-mode .fmt-toolbar {
     top: 92px;
     left: 10px;
@@ -507,6 +554,7 @@ body[data-theme="light"] .toast {
   <main class="main">
     <div class="tabs" id="tabs"></div>
     <div class="toolbar">
+      <button class="btn btn-clear" id="sidebarToggleBtn" onclick="toggleSidebarVisibility()" title="サイドバーを非表示" aria-label="サイドバーを非表示">☰</button>
       <input type="text" id="title" placeholder="タイトル (任意)" oninput="onTitleInput()" />
       <button class="btn" id="saveBtn" onclick="saveCurrentNote()" title="保存 (Ctrl/Cmd+S)">保存</button>
       <button class="btn-clear btn" onclick="clearCurrentBody()">本文クリア</button>
@@ -558,6 +606,7 @@ body[data-theme="light"] .toast {
     </div>
     <div class="content" id="contentWrap">
       <div id="editor"></div>
+      <div class="content-splitter" id="contentSplitter" title="ドラッグで横幅を調整"></div>
       <article class="preview" id="preview"></article>
     </div>
     <div class="footer"><span id="count">0</span> 文字 | Markdown</div>
@@ -578,6 +627,8 @@ body[data-theme="light"] .toast {
 
 <script src="https://cdn.jsdelivr.net/npm/dexie@4.0.8/dist/dexie.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
 window.MonacoEnvironment = {
   getWorkerUrl: function() { return ''; }
@@ -593,9 +644,12 @@ var openTabs = [];
 var activeNoteId = null;
 var saveTimer = null;
 var isFileMode = false;
+var isSidebarVisible = true;
 var isToolbarFloating = false;
 var toolbarFloatRect = null;
 var toolbarPointerState = null;
+var contentSplitRatio = 0.58;
+var contentSplitSaveTimer = null;
 var directoryHandle = null;
 var appToastTimer = null;
 var fullWidthMap = {
@@ -756,6 +810,23 @@ function updateSaveButtonVisibility() {
   var saveBtn = document.getElementById('saveBtn');
   if (!saveBtn) return;
   saveBtn.hidden = !isFileMode;
+}
+
+function applySidebarVisibility() {
+  document.body.classList.toggle('sidebar-collapsed', !isSidebarVisible);
+  var btn = document.getElementById('sidebarToggleBtn');
+  if (btn) {
+    btn.textContent = '☰';
+    btn.title = isSidebarVisible ? 'サイドバーを非表示' : 'サイドバーを表示';
+    btn.setAttribute('aria-label', btn.title);
+  }
+  applyContentSplitLayout();
+}
+
+async function toggleSidebarVisibility() {
+  isSidebarVisible = !isSidebarVisible;
+  applySidebarVisibility();
+  await saveSetting('sidebarVisible', isSidebarVisible ? '1' : '0');
 }
 
 function applyToolbarFloatingMode() {
@@ -959,6 +1030,20 @@ async function loadSettings() {
   var themeRow = await db.settings.get('theme');
   var theme = (themeRow && themeRow.value) || 'dark';
   document.body.setAttribute('data-theme', theme);
+  applyCodeHighlightTheme(theme);
+
+  var splitRow = await db.settings.get('contentSplitRatio');
+  if (splitRow && splitRow.value != null) {
+    var parsedRatio = Number(splitRow.value);
+    if (isFinite(parsedRatio)) {
+      contentSplitRatio = Math.max(0.25, Math.min(0.75, parsedRatio));
+    }
+  }
+
+  var sidebarRow = await db.settings.get('sidebarVisible');
+  if (sidebarRow && sidebarRow.value != null) {
+    isSidebarVisible = sidebarRow.value === true || sidebarRow.value === '1';
+  }
 
   var floatingRow = await db.settings.get('toolbarFloating');
   isToolbarFloating = !!(floatingRow && (floatingRow.value === true || floatingRow.value === '1'));
@@ -981,6 +1066,8 @@ async function loadSettings() {
   }
 
   applyToolbarFloatingMode();
+  applySidebarVisibility();
+  applyContentSplitLayout();
 }
 
 async function saveSetting(key, value) {
@@ -1300,17 +1387,146 @@ function bindPreviewHeadingNavigation() {
   };
 }
 
+function normalizeMermaidFence(body) {
+  return String(body || '').replace(/^```\s*mermaid\.js\s*$/gmi, '```mermaid');
+}
+
+function renderMermaidInPreview() {
+  if (!window.mermaid) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+
+  var blocks = preview.querySelectorAll('pre > code[class*="language-mermaid"]');
+  if (!blocks.length) return;
+
+  blocks.forEach(function(codeEl, idx) {
+    var pre = codeEl.parentElement;
+    if (!pre) return;
+    var mermaidEl = document.createElement('div');
+    mermaidEl.className = 'mermaid';
+    mermaidEl.id = 'mermaid-' + Date.now() + '-' + idx;
+    mermaidEl.textContent = codeEl.textContent || '';
+    pre.replaceWith(mermaidEl);
+  });
+
+  try {
+    mermaid.initialize({ startOnLoad: false });
+    var nodes = preview.querySelectorAll('.mermaid');
+    if (mermaid.run) {
+      mermaid.run({ nodes: nodes });
+    } else if (mermaid.init) {
+      mermaid.init(undefined, nodes);
+    }
+  } catch (e) {
+    console.error('mermaid render failed', e);
+  }
+}
+
+function applyCodeHighlightTheme(theme) {
+  var dark = document.getElementById('hljsDarkTheme');
+  var light = document.getElementById('hljsLightTheme');
+  if (!dark || !light) return;
+  var isLight = theme === 'light';
+  dark.disabled = isLight;
+  light.disabled = !isLight;
+}
+
+function renderCodeHighlightInPreview() {
+  if (!window.hljs) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var blocks = preview.querySelectorAll('pre > code');
+  blocks.forEach(function(codeEl) {
+    if ((codeEl.className || '').indexOf('language-mermaid') >= 0) return;
+    hljs.highlightElement(codeEl);
+  });
+}
+
 function renderPreview() {
   var note = getActiveNote();
   var body = note ? note.body || '' : '';
+  body = normalizeMermaidFence(body);
   document.getElementById('preview').innerHTML = marked.parse(body, { breaks: true, gfm: true });
+  renderMermaidInPreview();
+  renderCodeHighlightInPreview();
   bindPreviewHeadingNavigation();
+}
+
+function applyContentSplitLayout() {
+  var wrap = document.getElementById('contentWrap');
+  if (!wrap) return;
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    wrap.style.removeProperty('grid-template-columns');
+    if (editor && editor.layout) editor.layout();
+    return;
+  }
+  contentSplitRatio = Math.max(0.25, Math.min(0.75, contentSplitRatio));
+  var pct = (contentSplitRatio * 100).toFixed(2);
+  wrap.style.gridTemplateColumns = 'minmax(280px, ' + pct + '%) 8px minmax(320px, 1fr)';
+  if (editor && editor.layout) editor.layout();
+}
+
+function saveContentSplitRatioSoon() {
+  clearTimeout(contentSplitSaveTimer);
+  contentSplitSaveTimer = setTimeout(function() {
+    saveSetting('contentSplitRatio', String(contentSplitRatio));
+  }, 160);
+}
+
+function setupContentSplitterInteractions() {
+  var splitter = document.getElementById('contentSplitter');
+  var wrap = document.getElementById('contentWrap');
+  if (!splitter || !wrap) return;
+
+  splitter.addEventListener('dblclick', function() {
+    contentSplitRatio = 0.58;
+    applyContentSplitLayout();
+    saveContentSplitRatioSoon();
+  });
+
+  splitter.addEventListener('pointerdown', function(e) {
+    if (window.matchMedia('(max-width: 900px)').matches) return;
+    e.preventDefault();
+    splitter.setPointerCapture(e.pointerId);
+    document.body.classList.add('split-resizing');
+
+    function onMove(ev) {
+      var rect = wrap.getBoundingClientRect();
+      var splitterWidth = 8;
+      var total = rect.width - splitterWidth;
+      if (total <= 0) return;
+      var minLeft = 280;
+      var minRight = 320;
+      var left = ev.clientX - rect.left - splitterWidth / 2;
+      left = Math.max(minLeft, Math.min(left, total - minRight));
+      contentSplitRatio = left / total;
+      applyContentSplitLayout();
+    }
+
+    function onUp(ev) {
+      splitter.releasePointerCapture(ev.pointerId);
+      splitter.removeEventListener('pointermove', onMove);
+      splitter.removeEventListener('pointerup', onUp);
+      splitter.removeEventListener('pointercancel', onUp);
+      document.body.classList.remove('split-resizing');
+      saveContentSplitRatioSoon();
+    }
+
+    splitter.addEventListener('pointermove', onMove);
+    splitter.addEventListener('pointerup', onUp);
+    splitter.addEventListener('pointercancel', onUp);
+  });
+
+  window.addEventListener('resize', function() {
+    applyContentSplitLayout();
+  });
 }
 
 async function toggleTheme() {
   var current = document.body.getAttribute('data-theme') || 'dark';
   var next = current === 'dark' ? 'light' : 'dark';
   document.body.setAttribute('data-theme', next);
+  applyCodeHighlightTheme(next);
   await saveSetting('theme', next);
   monaco.editor.setTheme(next === 'light' ? 'markdown-light' : 'markdown-dark');
 }
@@ -1462,6 +1678,7 @@ require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0
 require(['vs/editor/editor.main'], async function() {
   setupAppDialog();
   setupFloatingToolbarInteractions();
+  setupContentSplitterInteractions();
   monaco.editor.defineTheme('markdown-dark', {
     base: 'vs-dark',
     inherit: true,
@@ -1512,6 +1729,9 @@ require(['vs/editor/editor.main'], async function() {
     fontSize: 14,
     lineHeight: 22,
     wordWrap: 'on',
+    wordWrapOverride1: 'on',
+    wordWrapOverride2: 'on',
+    wrappingStrategy: 'advanced',
     insertSpaces: false,
     tabSize: 4,
     detectIndentation: false,
