@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Table Generator</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Dexie.js (IndexedDB Wrapper) -->
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Import Map for React modules via ESM -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
+    }
+    </script>
+
+    <style>
+        /* Custom scrollbar for dark mode output */
+        .dark-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .dark-scroll::-webkit-scrollbar-track {
+            background: #111827; 
+        }
+        .dark-scroll::-webkit-scrollbar-thumb {
+            background: #374151; 
+            border-radius: 4px;
+        }
+        .dark-scroll::-webkit-scrollbar-thumb:hover {
+            background: #4B5563; 
+        }
+        /* Resize handle hover effect */
+        .resize-handle:hover {
+            background-color: #3b82f6;
+        }
+        /* Animation for Toast */
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        .toast-animate {
+            animation: fadeInOut 3s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef, useCallback } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Copy, 
+            Plus, 
+            Minus, 
+            Merge, 
+            Split, 
+            Table as TableIcon, 
+            FileType, 
+            Code, 
+            FileJson, 
+            Eye,
+            MoveHorizontal,
+            AlignLeft,
+            AlignCenter,
+            AlignRight,
+            Ungroup,
+            Group,
+            X,
+            Check,
+            Save,
+            FolderOpen,
+            Upload,
+            Trash2,
+            RotateCcw,
+            RotateCw,
+            Sparkles,
+            // Type Icons
+            Type,       // String
+            Hash,       // Number
+            Calendar,   // Date
+            Clock,      // Time
+            ToggleLeft, // Boolean
+            HelpCircle  // Any
+        } from 'lucide-react';
+
+        // --- DB Configuration (Dexie) ---
+        const db = new Dexie('TableGeneratorDB');
+        db.version(1).stores({
+            savedGrids: '++id, name, updatedAt'
+        });
+
+        // --- Helper Functions ---
+
+        const createCell = (r, c, type = 'td', content = null, props = {}) => ({
+            id: `${r}-${c}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            row: r,
+            col: c,
+            // Modified: Use snake_case for better variable name compatibility
+            content: content !== null ? content : `${type === 'th' ? 'head' : 'cell'}_${r + 1}_${c + 1}`,
+            rowSpan: props.rowSpan || 1,
+            colSpan: props.colSpan || 1,
+            isVisible: props.isVisible !== undefined ? props.isVisible : true,
+            type: type,
+            textAlign: props.textAlign || 'center',
+            dataType: props.dataType || 'string' // string, number, date, time, boolean, any
+        });
+
+        const generateInitialGrid = (rows, cols, type = 'td') => {
+            const grid = [];
+            for (let r = 0; r < rows; r++) {
+                const row = [];
+                for (let c = 0; c < cols; c++) {
+                    row.push(createCell(r, c, type));
+                }
+                grid.push(row);
+            }
+            return grid;
+        };
+
+        const INITIAL_COL_WIDTH = 120;
+        const INITIAL_COLS = 6;
+        const MAX_HISTORY = 50;
+
+        // --- Components ---
+
+        const Toast = ({ message, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            return (
+                <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 toast-animate z-50">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span className="text-sm font-medium">{message}</span>
+                </div>
+            );
+        };
+
+        const GroupNameModal = ({ isOpen, onClose, onConfirm, initialValue }) => {
+            const [value, setValue] = useState(initialValue);
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setValue(initialValue);
+                    setTimeout(() => inputRef.current?.focus(), 100);
+                }
+            }, [isOpen, initialValue]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-80 max-w-full">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Group Columns</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Group Label</label>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={value}
+                                onChange={(e) => setValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && onConfirm(value)}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="e.g. User Info"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                            <button onClick={() => onConfirm(value)} className="px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded">OK</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SaveModal = ({ isOpen, onClose, onSave }) => {
+            const [name, setName] = useState("");
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setName("");
+                    setTimeout(() => inputRef.current?.focus(), 100);
+                }
+            }, [isOpen]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-80">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Save Table</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Table Name</label>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && name && onSave(name)}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="My Awesome Table"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                            <button onClick={() => name && onSave(name)} disabled={!name} className="px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50">Save</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoadModal = ({ isOpen, onClose, onLoad, onDelete }) => {
+            const [tables, setTables] = useState([]);
+
+            useEffect(() => {
+                if (isOpen) {
+                    db.savedGrids.toArray().then(data => {
+                        setTables(data.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)));
+                    }).catch(err => {
+                        console.error("Failed to load tables:", err);
+                        setTables([]);
+                    });
+                }
+            }, [isOpen]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-h-[80vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Load Table</h3>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto min-h-[200px]">
+                            {tables.length === 0 ? (
+                                <p className="text-center text-gray-500 py-8 text-sm">No saved tables found.</p>
+                            ) : (
+                                <ul className="divide-y divide-gray-100">
+                                    {tables.map(table => (
+                                        <li key={table.id} className="py-2 flex justify-between items-center group">
+                                            <div className="flex-1 cursor-pointer" onClick={() => onLoad(table)}>
+                                                <div className="font-medium text-gray-800 text-sm">{table.name}</div>
+                                                <div className="text-xs text-gray-400">{new Date(table.updatedAt).toLocaleString()}</div>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onDelete(table.id); setTables(tables.filter(t => t.id !== table.id)); }}
+                                                className="p-1.5 text-gray-400 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ImportJSONModal = ({ isOpen, onClose, onImport }) => {
+            const [jsonStr, setJsonStr] = useState("");
+
+            if (!isOpen) return null;
+
+            const handleImport = () => {
+                try {
+                    const data = JSON.parse(jsonStr);
+                    onImport(data);
+                    onClose();
+                } catch (e) {
+                    alert("Invalid JSON format");
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-[500px] h-[400px] flex flex-col">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Import JSON</h3>
+                        <textarea
+                            className="flex-1 w-full border border-gray-300 rounded-md p-3 text-xs font-mono mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                            placeholder="Paste your JSON code here..."
+                            value={jsonStr}
+                            onChange={(e) => setJsonStr(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                            <button onClick={handleImport} disabled={!jsonStr} className="px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50">Import</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main Component ---
+
+        function TableGenerator() {
+            const [activeTab, setActiveTab] = useState('thead');
+            
+            // Initial Data
+            const initialHeadGrid = generateInitialGrid(2, INITIAL_COLS, 'th');
+            // Changed initial rows from 3 to 2 for body layout definition
+            const initialBodyGrid = generateInitialGrid(2, INITIAL_COLS, 'td');
+            const initialColWidths = Array(INITIAL_COLS).fill(INITIAL_COL_WIDTH);
+            const initialColGroups = [];
+
+            // State
+            const [headGrid, setHeadGrid] = useState(initialHeadGrid);
+            const [bodyGrid, setBodyGrid] = useState(initialBodyGrid);
+            const [colWidths, setColWidths] = useState(initialColWidths);
+            const [colGroups, setColGroups] = useState(initialColGroups);
+            
+            // History State
+            const [history, setHistory] = useState([{
+                headGrid: initialHeadGrid,
+                bodyGrid: initialBodyGrid,
+                colWidths: initialColWidths,
+                colGroups: initialColGroups
+            }]);
+            const [historyIndex, setHistoryIndex] = useState(0);
+
+            const [selection, setSelection] = useState({ start: null, end: null, active: false, gridType: null });
+            const [resizingCol, setResizingCol] = useState(null);
+            
+            const [outputTab, setOutputTab] = useState('html');
+            const [generatedCode, setGeneratedCode] = useState('');
+            
+            const [toast, setToast] = useState(null);
+            const [currentTableName, setCurrentTableName] = useState("");
+            
+            const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+            const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+            const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+            const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+            const gridContainerRef = useRef(null);
+
+            // --- History Logic ---
+
+            const updateState = (updates, addToHistory = true) => {
+                if (updates.headGrid) setHeadGrid(updates.headGrid);
+                if (updates.bodyGrid) setBodyGrid(updates.bodyGrid);
+                if (updates.colWidths) setColWidths(updates.colWidths);
+                if (updates.colGroups) setColGroups(updates.colGroups);
+
+                if (addToHistory) {
+                    const newState = {
+                        headGrid: updates.headGrid || headGrid,
+                        bodyGrid: updates.bodyGrid || bodyGrid,
+                        colWidths: updates.colWidths || colWidths,
+                        colGroups: updates.colGroups || colGroups
+                    };
+
+                    const newHistory = history.slice(0, historyIndex + 1);
+                    newHistory.push(newState);
+                    
+                    if (newHistory.length > MAX_HISTORY) {
+                        newHistory.shift();
+                    }
+
+                    setHistory(newHistory);
+                    setHistoryIndex(newHistory.length - 1);
+                }
+            };
+
+            const undo = () => {
+                if (historyIndex > 0) {
+                    const prevIndex = historyIndex - 1;
+                    const state = history[prevIndex];
+                    setHeadGrid(state.headGrid);
+                    setBodyGrid(state.bodyGrid);
+                    setColWidths(state.colWidths);
+                    setColGroups(state.colGroups);
+                    setHistoryIndex(prevIndex);
+                }
+            };
+
+            const redo = () => {
+                if (historyIndex < history.length - 1) {
+                    const nextIndex = historyIndex + 1;
+                    const state = history[nextIndex];
+                    setHeadGrid(state.headGrid);
+                    setBodyGrid(state.bodyGrid);
+                    setColWidths(state.colWidths);
+                    setColGroups(state.colGroups);
+                    setHistoryIndex(nextIndex);
+                }
+            };
+
+            const setFullState = (state, resetHistory = false) => {
+                setHeadGrid(state.headGrid);
+                setBodyGrid(state.bodyGrid);
+                setColWidths(state.colWidths);
+                setColGroups(state.colGroups);
+                
+                if (resetHistory) {
+                    setHistory([state]);
+                    setHistoryIndex(0);
+                } else {
+                    updateState(state, true);
+                }
+            };
+
+            // --- Selection & Grid Logic ---
+            const getSelectedRange = () => {
+                if (!selection.start || !selection.end) return null;
+                const minR = Math.min(selection.start.r, selection.end.r);
+                const maxR = Math.max(selection.start.r, selection.end.r);
+                const minC = Math.min(selection.start.c, selection.end.c);
+                const maxC = Math.max(selection.start.c, selection.end.c);
+                return { minR, maxR, minC, maxC };
+            };
+
+            const currentGrid = activeTab === 'thead' ? headGrid : bodyGrid;
+
+            // --- Operations ---
+            const mergeCells = () => {
+                const range = getSelectedRange();
+                if (!range || (range.minR === range.maxR && range.minC === range.maxC)) return;
+                const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+                const mainCell = newGrid[range.minR][range.minC];
+                mainCell.rowSpan = range.maxR - range.minR + 1;
+                mainCell.colSpan = range.maxC - range.minC + 1;
+                mainCell.isVisible = true;
+                for (let r = range.minR; r <= range.maxR; r++) {
+                    for (let c = range.minC; c <= range.maxC; c++) {
+                        if (r === range.minR && c === range.minC) continue;
+                        newGrid[r][c].isVisible = false;
+                        newGrid[r][c].rowSpan = 1;
+                        newGrid[r][c].colSpan = 1;
+                    }
+                }
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+                setSelection(prev => ({ ...prev, start: null, end: null, active: false }));
+            };
+
+            const unmergeCells = () => {
+                const range = getSelectedRange();
+                if (!range) return;
+                const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+                for (let r = range.minR; r <= range.maxR; r++) {
+                    for (let c = range.minC; c <= range.maxC; c++) {
+                        const cell = newGrid[r][c];
+                        if (cell.isVisible && (cell.rowSpan > 1 || cell.colSpan > 1)) {
+                            const spanR = cell.rowSpan;
+                            const spanC = cell.colSpan;
+                            for(let i=0; i<spanR; i++) {
+                                for(let j=0; j<spanC; j++) {
+                                    newGrid[r+i][c+j].isVisible = true;
+                                    newGrid[r+i][c+j].rowSpan = 1;
+                                    newGrid[r+i][c+j].colSpan = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+            };
+
+            const addRow = () => {
+                const cols = currentGrid[0].length;
+                const newRow = [];
+                const r = currentGrid.length;
+                for (let c = 0; c < cols; c++) newRow.push(createCell(r, c, activeTab === 'thead' ? 'th' : 'td'));
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: [...currentGrid, newRow] });
+            };
+
+            const addCol = () => {
+                const newGrid = currentGrid.map((row, r) => {
+                    const newRow = [...row];
+                    newRow.push(createCell(r, row.length, activeTab === 'thead' ? 'th' : 'td'));
+                    return newRow;
+                });
+                const updates = { [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid };
+                if (colWidths.length < newGrid[0].length) {
+                    updates.colWidths = [...colWidths, INITIAL_COL_WIDTH];
+                }
+                updateState(updates);
+            };
+
+            const removeRow = () => {
+                if (currentGrid.length <= 1) return;
+                const newGrid = [...currentGrid];
+                newGrid.pop();
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+            };
+
+            const removeCol = () => {
+                if (currentGrid[0].length <= 1) return;
+                const targetColIndex = currentGrid[0].length - 1;
+                const newColGroups = colGroups.filter(g => g.end < targetColIndex);
+                const newGrid = currentGrid.map(row => {
+                    const newRow = [...row];
+                    newRow.pop();
+                    return newRow;
+                });
+                updateState({ 
+                    [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid,
+                    colGroups: newColGroups
+                });
+            };
+
+            const copyGridStructure = (sourceGrid, targetType) => {
+                const newGrid = sourceGrid.map((row, r) => 
+                    row.map((cell, c) => ({
+                        ...cell,
+                        id: `${r}-${c}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        type: targetType === 'thead' ? 'th' : 'td',
+                        content: cell.content,
+                        textAlign: cell.textAlign,
+                        dataType: cell.dataType // Copy data type
+                    }))
+                );
+                updateState({ [targetType === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+                setToast({ message: `Copied to ${targetType === 'thead' ? 'Header' : 'Body'}` });
+            };
+
+            const setAlignment = (alignment) => {
+                const range = getSelectedRange();
+                if (!range) return;
+                const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+                for (let r = range.minR; r <= range.maxR; r++) {
+                    for (let c = range.minC; c <= range.maxC; c++) {
+                        newGrid[r][c].textAlign = alignment;
+                    }
+                }
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+            };
+
+            const setDataType = (type) => {
+                const range = getSelectedRange();
+                if (!range) return;
+                const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+                for (let r = range.minR; r <= range.maxR; r++) {
+                    for (let c = range.minC; c <= range.maxC; c++) {
+                        newGrid[r][c].dataType = type;
+                    }
+                }
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+            };
+
+            const handlePaste = (e, startR, startC) => {
+                e.preventDefault();
+                const clipboardData = e.clipboardData.getData('text');
+                if (!clipboardData) return;
+
+                const rows = clipboardData.split(/\r\n|\n|\r/).filter(row => row !== '');
+                if (rows.length === 0) return;
+
+                const separator = rows[0].includes('\t') ? '\t' : ',';
+                const data = rows.map(row => row.split(separator));
+
+                const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+                let isUpdated = false;
+
+                data.forEach((rowData, i) => {
+                    const targetR = startR + i;
+                    if (targetR >= newGrid.length) return;
+
+                    rowData.forEach((cellData, j) => {
+                        const targetC = startC + j;
+                        if (targetC >= newGrid[0].length) return;
+
+                        let cleanData = cellData;
+                        if (separator === ',' && cleanData.startsWith('"') && cleanData.endsWith('"')) {
+                            cleanData = cleanData.slice(1, -1).replace(/""/g, '"');
+                        }
+
+                        newGrid[targetR][targetC].content = cleanData;
+                        isUpdated = true;
+                    });
+                });
+
+                if (isUpdated) {
+                    updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+                    setToast({ message: "Data pasted successfully" });
+                }
+            };
+
+            const updateCellContent = (r, c, val) => {
+                const newGrid = [...currentGrid];
+                newGrid[r][c].content = val;
+                if (activeTab === 'thead') setHeadGrid(newGrid);
+                else setBodyGrid(newGrid);
+            };
+
+            const handleCellBlur = () => {
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: currentGrid });
+            };
+
+            const toggleCellType = (r, c) => {
+                const newGrid = [...currentGrid];
+                const cell = newGrid[r][c];
+                cell.type = cell.type === 'td' ? 'th' : 'td';
+                updateState({ [activeTab === 'thead' ? 'headGrid' : 'bodyGrid']: newGrid });
+            };
+
+            const confirmAddColumnGroup = (label) => {
+                const range = getSelectedRange();
+                if (!range) { setIsGroupModalOpen(false); return; }
+                const newGroup = { start: range.minC, end: range.maxC, label: label || "Group" };
+                const newGroups = [...colGroups.filter(g => !(g.start <= newGroup.end && g.end >= newGroup.start)), newGroup];
+                updateState({ colGroups: newGroups });
+                setIsGroupModalOpen(false);
+                setToast({ message: "Column group added" });
+            };
+
+            const removeColumnGroup = () => {
+                const range = getSelectedRange();
+                if (!range) { setToast({ message: "Select columns to ungroup" }); return; }
+                const newGroups = colGroups.filter(g => !(g.start <= range.maxC && g.end >= range.minC));
+                updateState({ colGroups: newGroups });
+                setToast({ message: "Column groups removed" });
+            };
+
+            // --- Resizing ---
+            const handleResizeStart = (e, index) => {
+                e.preventDefault();
+                setResizingCol({ index, startX: e.clientX, startWidth: colWidths[index] });
+                document.addEventListener('mousemove', handleResizeMove);
+                document.addEventListener('mouseup', handleResizeEnd);
+            };
+            const handleResizeMove = (e) => {
+                setResizingCol(prev => {
+                    if (!prev) return null;
+                    const newWidth = Math.max(40, prev.startWidth + (e.clientX - prev.startX));
+                    setColWidths(widths => {
+                        const newWidths = [...widths];
+                        newWidths[prev.index] = newWidth;
+                        return newWidths;
+                    });
+                    return prev;
+                });
+            };
+            const handleResizeEnd = () => {
+                setResizingCol(prev => {
+                   if(prev) return null; 
+                });
+                
+                setColWidths(currentWidths => {
+                    const newWidths = [...currentWidths];
+                    setTimeout(() => {}, 0);
+                    return currentWidths;
+                });
+                
+                document.removeEventListener('mousemove', handleResizeMove);
+                document.removeEventListener('mouseup', handleResizeEnd);
+            };
+            
+            const stateRef = useRef({ headGrid, bodyGrid, colWidths, colGroups, history, historyIndex });
+            useEffect(() => {
+                stateRef.current = { headGrid, bodyGrid, colWidths, colGroups, history, historyIndex };
+            }, [headGrid, bodyGrid, colWidths, colGroups, history, historyIndex]);
+
+            const handleResizeEndStable = useCallback(() => {
+                setResizingCol(null);
+                document.removeEventListener('mousemove', handleResizeMove);
+                document.removeEventListener('mouseup', handleResizeEndStable);
+                
+                const currentState = stateRef.current;
+                const newState = {
+                    headGrid: currentState.headGrid,
+                    bodyGrid: currentState.bodyGrid,
+                    colWidths: currentState.colWidths,
+                    colGroups: currentState.colGroups
+                };
+                
+                const currentHistory = currentState.history;
+                const currentIndex = currentState.historyIndex;
+                const newHistory = currentHistory.slice(0, currentIndex + 1);
+                newHistory.push(newState);
+                if (newHistory.length > MAX_HISTORY) newHistory.shift();
+                
+                setHistory(newHistory);
+                setHistoryIndex(newHistory.length - 1);
+            }, []);
+
+            const handleResizeStartStable = (e, index) => {
+                e.preventDefault();
+                setResizingCol({ index, startX: e.clientX, startWidth: colWidths[index] });
+                document.addEventListener('mousemove', handleResizeMove);
+                document.addEventListener('mouseup', handleResizeEndStable);
+            };
+
+            const handleMouseDown = (r, c) => setSelection({ start: { r, c }, end: { r, c }, active: true, gridType: activeTab });
+            const handleMouseEnter = (r, c) => { if (selection.active && selection.gridType === activeTab) setSelection(prev => ({ ...prev, end: { r, c } })); };
+            const handleMouseUp = () => setSelection(prev => ({ ...prev, active: false }));
+            const isSelected = (r, c) => {
+                if (selection.gridType !== activeTab) return false;
+                const range = getSelectedRange();
+                if (!range) return false;
+                return r >= range.minR && r <= range.maxR && c >= range.minC && c <= range.maxC;
+            };
+
+            const saveDataToDB = async (name) => {
+                const data = {
+                    name,
+                    updatedAt: new Date().toISOString(),
+                    data: JSON.parse(generateJSON()) 
+                };
+                await db.savedGrids.put(data);
+                setCurrentTableName(name);
+                setIsSaveModalOpen(false);
+                setToast({ message: `Saved "${name}" successfully!` });
+            };
+
+            const restoreFromData = (data) => {
+                const restoreGrid = (rowsData, type) => {
+                    return rowsData.map((row, r) => row.map((cell, c) => {
+                        return createCell(r, c, cell.type || type, cell.content, {
+                            rowSpan: cell.rowSpan,
+                            colSpan: cell.colSpan,
+                            isVisible: cell.isVisible,
+                            // Support legacy nested props and new top-level props
+                            textAlign: cell.textAlign || cell.props?.style?.textAlign,
+                            dataType: cell.dataType || cell.props?.dataType || 'string'
+                        });
+                    }));
+                };
+                
+                const newHead = data.structure?.thead ? restoreGrid(data.structure.thead, 'th') : headGrid;
+                const newBody = data.structure?.tbody ? restoreGrid(data.structure.tbody, 'td') : bodyGrid;
+                const newWidths = data.meta?.columnWidths || colWidths;
+                const newGroups = data.meta?.columnGroups || colGroups;
+
+                setFullState({
+                    headGrid: newHead,
+                    bodyGrid: newBody,
+                    colWidths: newWidths,
+                    colGroups: newGroups
+                }, true);
+            };
+
+            const loadTableFromDB = (tableRecord) => {
+                restoreFromData(tableRecord.data);
+                setCurrentTableName(tableRecord.name);
+                setIsLoadModalOpen(false);
+                setToast({ message: `Loaded "${tableRecord.name}"` });
+            };
+            
+            const deleteTableFromDB = (id) => {
+                db.savedGrids.delete(id);
+            };
+
+            const handleImportJSON = (data) => {
+                if (!data.meta || !data.structure) {
+                    alert("Invalid table JSON format.");
+                    return;
+                }
+                restoreFromData(data);
+                setCurrentTableName("");
+                setToast({ message: "JSON Imported successfully" });
+            };
+
+            // --- Code Generation ---
+            
+            const generateHTML = () => {
+                const currentCols = Math.max(headGrid[0]?.length || 0, bodyGrid[0]?.length || 0);
+                const colGroupHtml = `  <colgroup>\n${colWidths.slice(0, currentCols).map(w => `    <col style="width: ${w}px;">`).join('\n')}\n  </colgroup>`;
+                
+                let groupRowHtml = '';
+                if (colGroups.length > 0) {
+                    let c = 0;
+                    let cells = [];
+                    const sortedGroups = [...colGroups].sort((a, b) => a.start - b.start);
+                    while (c < currentCols) {
+                        const group = sortedGroups.find(g => g.start === c);
+                        if (group) {
+                            const span = group.end - group.start + 1;
+                            cells.push(`      <th colspan="${span}" class="group-header" style="text-align: center; background-color: #f3f4f6;">${group.label}</th>`);
+                            c += span;
+                        } else {
+                            cells.push(`      <th></th>`);
+                            c++;
+                        }
+                    }
+                    groupRowHtml = `    <tr class="col-group-row">\n${cells.join('\n')}\n    </tr>`;
+                }
+
+                const generateRows = (grid) => grid.map(row => {
+                    const cellsHtml = row.map(cell => {
+                        if (!cell.isVisible) return '';
+                        const attrs = [];
+                        if (cell.colSpan > 1) attrs.push(`colspan="${cell.colSpan}"`);
+                        if (cell.rowSpan > 1) attrs.push(`rowspan="${cell.rowSpan}"`);
+                        if (cell.textAlign && cell.textAlign !== 'left') attrs.push(`style="text-align: ${cell.textAlign};"`);
+                        // Optionally add data-type attribute for HTML output
+                        if (cell.dataType && cell.dataType !== 'string') attrs.push(`data-type="${cell.dataType}"`); 
+                        const tag = cell.type;
+                        return `      <${tag}${attrs.length > 0 ? ' ' + attrs.join(' ') : ''}>${cell.content}</${tag}>`;
+                    }).filter(Boolean).join('\n');
+                    return `    <tr>\n${cellsHtml}\n    </tr>`;
+                }).join('\n');
+
+                const headHtml = generateRows(headGrid);
+                const bodyHtml = generateRows(bodyGrid);
+                const theadContent = groupRowHtml ? `${groupRowHtml}\n${headHtml}` : headHtml;
+
+                return `<table border="1">\n${colGroupHtml}\n  <thead>\n${theadContent}\n  </thead>\n  <tbody>\n${bodyHtml}\n  </tbody>\n</table>`;
+            };
+
+            const generateJSON = () => {
+                const extractData = (grid) => grid.map(row => row.map(cell => ({
+                    // Modified: Clear content if cell is hidden (merged) to reduce noise and confusion
+                    content: cell.isVisible ? cell.content : null,
+                    rowSpan: cell.rowSpan,
+                    colSpan: cell.colSpan,
+                    isVisible: cell.isVisible,
+                    type: cell.type,
+                    // Promoted Properties
+                    textAlign: cell.textAlign,
+                    dataType: cell.dataType,
+                    // Legacy props for compatibility/styling
+                    props: {
+                        className: cell.type === 'th' ? 'header-cell' : 'data-cell',
+                        style: { textAlign: cell.textAlign },
+                        dataType: cell.dataType
+                    }
+                })));
+                const currentCols = Math.max(headGrid[0]?.length || 0, bodyGrid[0]?.length || 0);
+                return JSON.stringify({
+                    meta: {
+                        title: "Table Structure Definition",
+                        generatedAt: new Date().toISOString(),
+                        dimensions: {
+                            head: { rows: headGrid.length, cols: headGrid[0]?.length || 0 },
+                            body: { rows: bodyGrid.length, cols: bodyGrid[0]?.length || 0 }
+                        },
+                        columnWidths: colWidths.slice(0, currentCols),
+                        columnGroups: colGroups
+                    },
+                    structure: { thead: extractData(headGrid), tbody: extractData(bodyGrid) }
+                }, null, 2);
+            };
+
+            // Generate Prompt for AI
+            const generatePrompt = () => {
+                const json = generateJSON();
+                const html = generateHTML();
+                return `以下のJSONデータは、テーブル（グリッド）の構造定義です。
+
+## データ構造の説明
+- \`meta.columnWidths\`: 各列の幅（px）の配列
+- \`meta.columnGroups\`: 列のグルーピング情報（\`start\`:開始列index, \`end\`:終了列index, \`label\`:グループ名）
+- \`structure.thead\` / \`structure.tbody\`: ヘッダとボディの行データ（2次元配列）
+  - **構造の解釈について**:
+    - このデータはExcelのようなグリッド表現です。論理的な親子関係（ヘッダの階層など）は、**「列インデックス（横の位置）」の一致**によって判断してください。
+    - 例: \`thead[0][2]\` の親ヘッダの下にある \`thead[1][2]\` は、その子ヘッダとなります。
+  - 各セルオブジェクト:
+    - \`content\`: セル内のテキスト。
+      - ヘッダ(\`thead\`)の場合: 表示ラベル（テキスト）を意味します。
+      - ボディ(\`tbody\`)の場合: そのセルにバインドされる**変数名（データキー）**を意味します。（例: "price", "user_name"）。もし具体的な値が入っていても、それはプレースホルダーとして扱い、適切なフィールド名に置き換えて実装してください。
+    - \`rowSpan\`: 縦方向の結合数（1以上）
+    - \`colSpan\`: 横方向の結合数（1以上）
+    - \`isVisible\`: 結合によって隠れている場合は \`false\`、表示される主セルは \`true\`。**\`false\`の場合、そのセルの\`content\`などの値は無視してください。**
+    - \`textAlign\`: テキストの配置（left/center/right）
+    - \`dataType\`: データの型（string/number/date/time/boolean/any）。**ヘッダセルに定義されている場合は、その列全体のデフォルト型定義として解釈してください。**
+
+## 重要な補足: ボディ(\`tbody\`)の複数行定義について
+もし \`structure.tbody\` に複数の行配列が存在する場合、それは「データが2件ある」という意味**ではありません**。
+それは、**「1つのデータレコードが、縦に複数行にまたがって表示されるレイアウト（段組み明細）」**であることを定義しています。
+コード生成の際は、この複数行の構造を「1レコード分のテンプレート」として扱ってください。
+
+## JSONデータ
+\`\`\`json
+${json}
+\`\`\`
+
+## HTMLイメージ (参考)
+以下は、この構造を標準的なHTMLテーブルとして表現したものです。レイアウト（結合状態）の参考にしてください。
+\`\`\`html
+${html}
+\`\`\`
+
+---
+### 依頼内容
+1. このデータを元に、[ここに希望する出力形式を入力してください: 例 Tailwind CSS Grid / React Component] のコードを生成してください。
+   - ボディの各列の \`content\` をデータのキー（フィールド名）として利用してください。
+   - ボディが複数行ある場合は、1レコードがその行数分を使って表示されるように実装してください。
+
+2. **【評価とフィードバック】**
+   コード生成の後に、この「プロンプト（JSONデータ定義）」自体の品質について以下の観点で簡潔に評価してください。
+   - 構造の分かりやすさ: (5段階評価)
+   - 解釈に迷った点や曖昧な点: (あれば具体的に)
+   - 改善提案: (もしあれば)
+`;
+            };
+
+            useEffect(() => {
+                if (outputTab === 'html' || outputTab === 'preview') setGeneratedCode(generateHTML());
+                else if (outputTab === 'json') setGeneratedCode(generateJSON());
+                else if (outputTab === 'prompt') setGeneratedCode(generatePrompt());
+            }, [headGrid, bodyGrid, outputTab, colWidths, colGroups]);
+
+            const copyToClipboard = () => {
+                if (outputTab === 'preview') return;
+                const textarea = document.createElement('textarea');
+                textarea.value = generatedCode;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                setToast({ message: "Copied to clipboard" });
+            };
+            
+            const currentColCount = currentGrid[0].length;
+            const gridTemplateColumns = colWidths.slice(0, currentColCount).map(w => `${w}px`).join(' ');
+
+            // Type Icon Mapping
+            const getTypeIcon = (type) => {
+                switch(type) {
+                    case 'number': return <Hash className="w-3 h-3 text-blue-500" />;
+                    case 'date': return <Calendar className="w-3 h-3 text-green-500" />;
+                    case 'time': return <Clock className="w-3 h-3 text-orange-500" />;
+                    case 'boolean': return <ToggleLeft className="w-3 h-3 text-purple-500" />;
+                    case 'any': return <HelpCircle className="w-3 h-3 text-gray-500" />;
+                    default: return <Type className="w-3 h-3 text-gray-400" />;
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen bg-gray-50 text-gray-800 font-sans" onMouseUp={handleMouseUp}>
+                {/* Header */}
+                <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm shrink-0">
+                    <div className="flex items-center space-x-2">
+                        <TableIcon className="text-blue-600 w-6 h-6" />
+                        <h1 className="text-xl font-bold text-gray-900">HTML Table Generator</h1>
+                        {currentTableName && <span className="text-sm text-gray-500 ml-2 bg-gray-100 px-2 py-1 rounded">({currentTableName})</span>}
+                    </div>
+                    <div className="flex space-x-3 text-sm">
+                         <button onClick={() => setIsLoadModalOpen(true)} className="flex items-center text-gray-600 hover:text-blue-600 font-medium transition">
+                            <FolderOpen className="w-4 h-4 mr-1.5" /> Load
+                        </button>
+                        <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center text-gray-600 hover:text-blue-600 font-medium transition">
+                            <Save className="w-4 h-4 mr-1.5" /> Save
+                        </button>
+                    </div>
+                </header>
+
+                <div className="flex flex-1 flex-col overflow-hidden">
+                    <div className="flex-1 flex flex-col p-6 overflow-auto min-h-0">
+                    {/* Toolbar & Tabs */}
+                    <div className="bg-white rounded-lg shadow border border-gray-200 p-4 mb-6 shrink-0">
+                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setActiveTab('thead')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'thead' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Header (THEAD)</button>
+                                <button onClick={() => setActiveTab('tbody')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'tbody' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Body (TBODY)</button>
+                            </div>
+                            <button onClick={() => activeTab === 'thead' ? copyGridStructure(headGrid, 'tbody') : copyGridStructure(bodyGrid, 'thead')} className="flex items-center px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200 border border-gray-300">
+                                <Copy className="w-4 h-4 mr-1.5" /> Copy to {activeTab === 'thead' ? 'Body' : 'Header'}
+                            </button>
+                        </div>
+                        
+                        {/* Control Buttons */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                            {/* HISTORY Group */}
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">HISTORY:</span>
+                                <button onClick={undo} disabled={historyIndex <= 0} className="p-2 text-gray-600 hover:bg-gray-100 hover:text-blue-600 rounded disabled:opacity-30 disabled:hover:bg-transparent" title="Undo (Ctrl+Z)">
+                                    <RotateCcw className="w-5 h-5" />
+                                </button>
+                                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-2 text-gray-600 hover:bg-gray-100 hover:text-blue-600 rounded disabled:opacity-30 disabled:hover:bg-transparent" title="Redo (Ctrl+Y)">
+                                    <RotateCw className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">CELLS:</span>
+                                <button onClick={mergeCells} className="p-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded" title="Merge"><Merge className="w-5 h-5" /></button>
+                                <button onClick={unmergeCells} className="p-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded" title="Unmerge"><Split className="w-5 h-5" /></button>
+                            </div>
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">ROWS:</span>
+                                <button onClick={addRow} className="p-2 text-gray-600 hover:bg-green-50 hover:text-green-600 rounded" title="Add Row"><Plus className="w-5 h-5" /></button>
+                                <button onClick={removeRow} className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded" title="Remove Row"><Minus className="w-5 h-5" /></button>
+                            </div>
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">COLS:</span>
+                                <button onClick={addCol} className="p-2 text-gray-600 hover:bg-green-50 hover:text-green-600 rounded" title="Add Col"><Plus className="w-5 h-5" /></button>
+                                <button onClick={removeCol} className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded" title="Remove Col"><Minus className="w-5 h-5" /></button>
+                            </div>
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">GROUP:</span>
+                                <button onClick={() => setIsGroupModalOpen(true)} className="p-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded" title="Group Cols"><Group className="w-5 h-5" /></button>
+                                <button onClick={removeColumnGroup} className="p-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded" title="Ungroup Cols"><Ungroup className="w-5 h-5" /></button>
+                            </div>
+                            <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">ALIGN:</span>
+                                <div className="flex bg-gray-100 rounded p-0.5">
+                                    <button onClick={() => setAlignment('left')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600"><AlignLeft className="w-4 h-4" /></button>
+                                    <button onClick={() => setAlignment('center')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600"><AlignCenter className="w-4 h-4" /></button>
+                                    <button onClick={() => setAlignment('right')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600"><AlignRight className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                            {/* DATA TYPE Group */}
+                            <div className="flex items-center space-x-1">
+                                <span className="text-xs font-semibold text-gray-500 mr-1">TYPE:</span>
+                                <div className="flex bg-gray-100 rounded p-0.5">
+                                    <button onClick={() => setDataType('string')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="String"><Type className="w-4 h-4" /></button>
+                                    <button onClick={() => setDataType('number')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="Number"><Hash className="w-4 h-4" /></button>
+                                    <button onClick={() => setDataType('date')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="Date"><Calendar className="w-4 h-4" /></button>
+                                    <button onClick={() => setDataType('time')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="Time"><Clock className="w-4 h-4" /></button>
+                                    <button onClick={() => setDataType('boolean')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="Boolean"><ToggleLeft className="w-4 h-4" /></button>
+                                    <button onClick={() => setDataType('any')} className="p-1.5 hover:bg-white hover:shadow rounded text-gray-600" title="Any"><HelpCircle className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Grid Editor */}
+                    <div className="flex-1 overflow-auto bg-white rounded-lg shadow border border-gray-300 relative">
+                        {/* Group Indicators */}
+                        <div className="sticky top-0 z-20 bg-gray-50 border-b border-gray-300" style={{ width: 'fit-content', display: 'grid', gridTemplateColumns: gridTemplateColumns, gap: '1px', padding: '1px 1px 0 1px', backgroundColor: '#e5e7eb', height: '24px' }}>
+                             {(() => {
+                                const cells = [];
+                                let c = 0;
+                                const sortedGroups = [...colGroups].sort((a, b) => a.start - b.start);
+                                while (c < currentColCount) {
+                                    const group = sortedGroups.find(g => g.start === c);
+                                    if (group) {
+                                        const span = group.end - group.start + 1;
+                                        cells.push(<div key={`group-${c}`} className="flex items-center justify-center text-[10px] font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 rounded-t-sm" style={{ gridColumn: `span ${span}` }}>{group.label}</div>);
+                                        c += span;
+                                    } else {
+                                        cells.push(<div key={`empty-${c}`} className="bg-gray-50"></div>);
+                                        c++;
+                                    }
+                                }
+                                return cells;
+                            })()}
+                        </div>
+                        {/* Ruler */}
+                        <div className="sticky z-20 bg-gray-100 border-b border-gray-300" style={{ top: '24px', width: 'fit-content', display: 'grid', gridTemplateColumns: gridTemplateColumns, gap: '1px', padding: '1px', backgroundColor: '#e5e7eb' }}>
+                            {colWidths.slice(0, currentColCount).map((w, i) => (
+                                <div key={`ruler-${i}`} className="relative flex items-center justify-center text-[10px] text-gray-500 font-mono bg-gray-100 select-none group" style={{ height: '24px' }}>
+                                    {w}px
+                                    <div className="resize-handle absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 z-30 transition-colors opacity-0 group-hover:opacity-100" style={{ right: '-4px' }} onMouseDown={(e) => handleResizeStartStable(e, i)} />
+                                </div>
+                            ))}
+                        </div>
+                        {/* Cells */}
+                        <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: gridTemplateColumns, gridAutoRows: '50px', gap: '1px', backgroundColor: '#e5e7eb', padding: '1px' }}>
+                            {currentGrid.map((row, r) => row.map((cell, c) => {
+                                if (!cell.isVisible) return null;
+                                const selected = isSelected(r, c);
+                                const isTh = cell.type === 'th';
+                                const alignClass = { 'left': 'text-left', 'center': 'text-center', 'right': 'text-right' }[cell.textAlign] || 'text-center';
+                                return (
+                                    <div key={cell.id} className={`relative bg-white flex items-center justify-center ${selected ? 'ring-2 ring-blue-500 z-10' : ''} ${isTh ? 'bg-gray-50 font-semibold' : ''}`} style={{ gridColumn: `span ${cell.colSpan}`, gridRow: `span ${cell.rowSpan}`, cursor: 'cell' }} onMouseDown={() => handleMouseDown(r, c)} onMouseEnter={() => handleMouseEnter(r, c)}>
+                                        <input 
+                                            type="text" 
+                                            value={cell.content} 
+                                            onChange={(e) => updateCellContent(r, c, e.target.value)} 
+                                            onBlur={handleCellBlur}
+                                            className={`w-full h-full bg-transparent outline-none px-2 text-sm ${alignClass} ${isTh ? 'font-bold text-gray-700' : 'text-gray-600'}`} 
+                                            onPaste={(e) => handlePaste(e, r, c)}
+                                        />
+                                        <div className="absolute top-0 right-0 text-[8px] text-gray-300 p-0.5 pointer-events-none">{cell.type.toUpperCase()}</div>
+                                        {/* Type Icon Indicator */}
+                                        <div className="absolute bottom-0 right-0 p-0.5 pointer-events-none opacity-50">
+                                            {getTypeIcon(cell.dataType)}
+                                        </div>
+                                    </div>
+                                );
+                            }))}
+                        </div>
+                    </div>
+                    </div>
+
+                    {/* Output Panel */}
+                    <div className="h-80 bg-white border-t border-gray-200 flex flex-col shadow-xl z-20 shrink-0">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                        <div className="flex items-center space-x-6">
+                            <h2 className="font-bold text-gray-700">Output</h2>
+                            <div className="flex bg-gray-200 p-1 rounded">
+                                <button onClick={() => setOutputTab('html')} className={`px-3 py-1.5 text-xs font-bold rounded flex items-center transition-all ${outputTab === 'html' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}><Code className="w-3.5 h-3.5 mr-1.5" /> HTML</button>
+                                <button onClick={() => setOutputTab('json')} className={`px-3 py-1.5 text-xs font-bold rounded flex items-center transition-all ${outputTab === 'json' ? 'bg-white shadow text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}><FileJson className="w-3.5 h-3.5 mr-1.5" /> JSON</button>
+                                <button onClick={() => setOutputTab('prompt')} className={`px-3 py-1.5 text-xs font-bold rounded flex items-center transition-all ${outputTab === 'prompt' ? 'bg-white shadow text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}><Sparkles className="w-3.5 h-3.5 mr-1.5" /> AI Prompt</button>
+                                <button onClick={() => setOutputTab('preview')} className={`px-3 py-1.5 text-xs font-bold rounded flex items-center transition-all ${outputTab === 'preview' ? 'bg-white shadow text-green-600' : 'text-gray-500 hover:text-gray-700'}`}><Eye className="w-3.5 h-3.5 mr-1.5" /> Preview</button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {outputTab === 'json' && (
+                                <button onClick={() => setIsImportModalOpen(true)} className="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center transition text-purple-600 font-medium">
+                                    <Upload className="w-3 h-3 mr-1" /> Import JSON
+                                </button>
+                            )}
+                            {outputTab !== 'preview' && (
+                                <button onClick={copyToClipboard} className="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center transition">
+                                    <Copy className="w-3 h-3 mr-1" /> Copy Code
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-hidden relative bg-gray-900">
+                        {outputTab === 'html' && <div className="absolute inset-0 p-4 overflow-auto dark-scroll"><pre className="text-xs font-mono whitespace-pre-wrap font-thin text-green-400">{generatedCode}</pre></div>}
+                        {outputTab === 'json' && <div className="absolute inset-0 p-4 overflow-auto dark-scroll"><pre className="text-xs font-mono whitespace-pre-wrap font-thin text-purple-300">{generatedCode}</pre></div>}
+                        {outputTab === 'prompt' && <div className="absolute inset-0 p-4 overflow-auto dark-scroll"><pre className="text-xs font-mono whitespace-pre-wrap font-thin text-orange-300">{generatedCode}</pre></div>}
+                        {outputTab === 'preview' && (
+                            <div className="absolute inset-0 bg-white p-6 overflow-auto">
+                                <div className="prose max-w-none"><div dangerouslySetInnerHTML={{ __html: generatedCode }} /></div>
+                                <div className="mt-8 text-xs text-gray-400 border-t pt-2">* Preview styles may vary.</div>
+                            </div>
+                        )}
+                    </div>
+                    </div>
+                </div>
+
+                {toast && <Toast message={toast.message} onClose={() => setToast(null)} />}
+                <GroupNameModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} onConfirm={confirmAddColumnGroup} initialValue="Column Group" />
+                <SaveModal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} onSave={saveDataToDB} />
+                <LoadModal isOpen={isLoadModalOpen} onClose={() => setIsLoadModalOpen(false)} onLoad={loadTableFromDB} onDelete={deleteTableFromDB} />
+                <ImportJSONModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onImport={handleImportJSON} />
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<TableGenerator />);
+    </script>
+</body>
+</html>
