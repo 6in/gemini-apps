@@ -1446,11 +1446,35 @@ function renderCodeHighlightInPreview() {
   });
 }
 
+function decorateExternalLinksInPreview() {
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var links = preview.querySelectorAll('a[href]');
+  links.forEach(function(link) {
+    var href = link.getAttribute('href');
+    if (!href) return;
+    if (href.indexOf('#') === 0 || href.indexOf('/') === 0 || href.indexOf('./') === 0 || href.indexOf('../') === 0) return;
+    try {
+      var url = new URL(href, window.location.href);
+      if (!/^https?:$/.test(url.protocol)) return;
+      if (url.origin === window.location.origin) return;
+      link.target = '_blank';
+      var relTokens = (link.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+      ['noopener', 'noreferrer'].forEach(function(token) {
+        if (relTokens.indexOf(token) === -1) relTokens.push(token);
+      });
+      link.setAttribute('rel', relTokens.join(' '));
+    } catch (e) {
+    }
+  });
+}
+
 function renderPreview() {
   var note = getActiveNote();
   var body = note ? note.body || '' : '';
   body = normalizeMermaidFence(body);
   document.getElementById('preview').innerHTML = marked.parse(body, { breaks: true, gfm: true });
+  decorateExternalLinksInPreview();
   renderMermaidInPreview();
   renderCodeHighlightInPreview();
   bindPreviewHeadingNavigation();
