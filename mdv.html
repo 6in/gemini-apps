@@ -97,6 +97,13 @@ body[data-theme="light"] .preview.md-hover-on .md-hover-target {
 .preview li.md-marker-1::marker,
 .preview li.md-marker-2::marker,
 .preview li.md-marker-3::marker { color: var(--text) !important; }
+/* テーブルセルのマーカーは、はみ出す box-shadow を消しセルのパディングを維持 */
+.preview td.md-marker-1, .preview th.md-marker-1,
+.preview td.md-marker-2, .preview th.md-marker-2,
+.preview td.md-marker-3, .preview th.md-marker-3 {
+  box-shadow: none !important;
+  padding: 4px 8px !important;
+}
 /* コピー時のフラッシュ（背景マーカーと衝突しないよう outline で） */
 .preview .md-copy-flash { animation: mdCopyFlash 0.5s ease; }
 @keyframes mdCopyFlash {
@@ -684,7 +691,7 @@ function bindPreviewInteractions() {
   preview.classList.add('md-hover-on');
 
   preview.addEventListener('pointermove', function(event) {
-    var block = event.target.closest(MD_MARK_SELECTOR);
+    var block = event.target.closest('td, th') || event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) {
       if (mdHoverEls.length) clearMdHover();
       return;
@@ -695,14 +702,16 @@ function bindPreviewInteractions() {
 
   preview.addEventListener('pointerleave', clearMdHover);
 
-  // クリック = カラーマーカーを循環。自動コピーONなら同時にMarkdownをコピー
+  // クリック = カラーマーカーを循環（テーブルはセル単位）。自動コピーONなら同時にコピー
   preview.addEventListener('click', function(event) {
     if (event.target.closest('a')) return; // リンクは通常動作
     var sel = window.getSelection && window.getSelection();
     if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 手動選択を優先
 
-    var block = event.target.closest(MD_MARK_SELECTOR);
+    var cell = event.target.closest('td, th');
+    var block = cell || event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) return;
+    if (!cell && block.matches('table')) return; // テーブルはセルをクリックして色付け
     mdCycleMarker(block);
     if (autoCopyEnabled) copyMarkedBlocks(); // 色設定済みブロックを連結してコピー
   });
