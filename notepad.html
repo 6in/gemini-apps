@@ -2046,7 +2046,7 @@ function bindPreviewInteractions() {
     var block = event.target.closest(MD_MARK_SELECTOR); // カーソル下の内側ブロック（セルはtableに解決）
     var span = (block && preview.contains(block)) ? mdInnerBlockSourceSpan(block, preview) : null;
 
-    // テーブルセルなら、テーブルへのコメントとして本文先頭に「行番号：列番号」を付ける
+    // テーブルセルなら、テーブルへのコメントとして本文先頭に「N行M列 セル内テキスト先頭10文字」を付ける
     var cellPrefix = null;
     var cell = event.target.closest('td, th');
     if (cell && preview.contains(cell)) {
@@ -2054,7 +2054,9 @@ function bindPreviewInteractions() {
       var tr = cell.closest('tr');
       if (table && tr) {
         var rowNum = Array.prototype.indexOf.call(table.querySelectorAll('tr'), tr) + 1;
-        cellPrefix = rowNum + '：' + (cell.cellIndex + 1);
+        var colNum = cell.cellIndex + 1;
+        var cellText = (cell.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 10);
+        cellPrefix = rowNum + '行' + colNum + '列' + (cellText ? ' ' + cellText : '');
       }
     }
 
