@@ -360,6 +360,67 @@ body.split-resizing {
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(140, 184, 255, 0.32);
 }
+/* 段落ハイライト（読書補助） + マーカー + コメント */
+.preview.md-hover-on .md-hover-target {
+  cursor: pointer;
+  outline: 1px dashed rgba(140, 184, 255, 0.45);
+  outline-offset: 2px;
+  border-radius: 3px;
+  transition: outline-color 0.08s ease;
+}
+body[data-theme="light"] .preview.md-hover-on .md-hover-target {
+  outline-color: rgba(33, 102, 216, 0.5);
+}
+/* マーカー（3色パステル・トグル / クリックで切替） */
+.preview .md-marker-1,
+.preview .md-marker-2,
+.preview .md-marker-3 {
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 3px transparent;
+  color: #2a2d36 !important;
+}
+.preview .md-marker-1, .preview .md-marker-1 * { color: #2a2d36 !important; }
+.preview .md-marker-2, .preview .md-marker-2 * { color: #2a2d36 !important; }
+.preview .md-marker-3, .preview .md-marker-3 * { color: #2a2d36 !important; }
+.preview .md-marker-1 { background: #fff3a8 !important; box-shadow: 0 0 0 3px #fff3a8; }
+.preview .md-marker-2 { background: #bdeccb !important; box-shadow: 0 0 0 3px #bdeccb; }
+.preview .md-marker-3 { background: #bcd7ff !important; box-shadow: 0 0 0 3px #bcd7ff; }
+/* 箇条書きの●や番号(::marker)は背景ボックスの外（左パディング部の地色の上）に
+   描画されるため、項目テキスト用の濃色を継がせず、テーマの文字色に戻して視認性を確保 */
+.preview li.md-marker-1::marker,
+.preview li.md-marker-2::marker,
+.preview li.md-marker-3::marker {
+  color: var(--text) !important;
+}
+/* コメント追加時のフラッシュ */
+.preview .md-flash { animation: mdFlash 0.5s ease; }
+@keyframes mdFlash {
+  0% { background: rgba(140, 184, 255, 0.5); box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.5); }
+  100% { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+/* コメント入力ダイアログのテキストエリア */
+.prompt-textarea {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  vertical-align: top;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.prompt-textarea:focus { outline: none; border-color: var(--accent); }
+/* コメント用ボディは pre-wrap を解除（textarea 前後のインデント空白が空行になるのを防ぐ） */
+#appPromptBackdrop .dialog-body { white-space: normal; }
+/* エディタ側: 追加コメント形式 <!-- コメント ... --> の領域を背景ピンクに */
+.monaco-editor .md-comment-region { background: rgba(255, 120, 175, 0.18); }
+body[data-theme="light"] .monaco-editor .md-comment-region { background: rgba(255, 110, 170, 0.16); }
 .preview p, .preview ul, .preview ol, .preview pre, .preview blockquote, .preview table { margin: 6px 0; }
 .preview ul, .preview ol {
   padding-left: 1.6em;
@@ -563,6 +624,7 @@ body[data-theme="light"] .toast {
       <button class="btn" id="saveBtn" onclick="saveCurrentNote()" title="保存 (Ctrl/Cmd+S)">保存</button>
       <button class="btn-clear btn" onclick="clearCurrentBody()">本文クリア</button>
       <button class="btn btn-clear" id="copyBtn" onclick="copyMarkdownText()">コピー</button>
+      <button class="btn btn-clear" onclick="removeCommentsAndMarkers()" title="追加コメントと色マーカーを本文から除去">注釈除去</button>
       <button class="btn btn-clear" onclick="toggleTheme()">テーマ</button>
     </div>
     <div class="fmt-toolbar" id="fmtToolbar">
@@ -624,6 +686,18 @@ body[data-theme="light"] .toast {
     <div class="dialog-actions">
       <button class="btn btn-clear" id="appDialogCancelBtn">キャンセル</button>
       <button class="btn" id="appDialogConfirmBtn">OK</button>
+    </div>
+  </div>
+</div>
+<div class="dialog-backdrop" id="appPromptBackdrop" hidden>
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="appPromptTitle">
+    <div class="dialog-head" id="appPromptTitle">コメントを追加</div>
+    <div class="dialog-body">
+      <textarea id="appPromptInput" class="prompt-textarea" rows="4" placeholder="コメントを入力（複数行可）"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-clear" id="appPromptCancelBtn">キャンセル</button>
+      <button class="btn" id="appPromptConfirmBtn">追加</button>
     </div>
   </div>
 </div>
@@ -785,6 +859,52 @@ function setupAppDialog() {
     if (!backdrop.hidden) {
       e.preventDefault();
       closeAppDialog(appDialogHasCancel ? false : true);
+    }
+  });
+}
+
+var appPromptResolve = null;
+
+function closeAppPrompt(result) {
+  var backdrop = document.getElementById('appPromptBackdrop');
+  if (!backdrop || backdrop.hidden) return;
+  backdrop.hidden = true;
+  var resolve = appPromptResolve;
+  appPromptResolve = null;
+  if (resolve) resolve(result);
+}
+
+function appPrompt(title, initialValue) {
+  var backdrop = document.getElementById('appPromptBackdrop');
+  var titleEl = document.getElementById('appPromptTitle');
+  var input = document.getElementById('appPromptInput');
+  if (!backdrop || !input) return Promise.resolve(null);
+  if (titleEl) titleEl.textContent = title || 'コメントを追加';
+  input.value = initialValue || '';
+  backdrop.hidden = false;
+  setTimeout(function() { input.focus(); }, 0);
+  return new Promise(function(resolve) { appPromptResolve = resolve; });
+}
+
+function setupAppPrompt() {
+  var backdrop = document.getElementById('appPromptBackdrop');
+  var okBtn = document.getElementById('appPromptConfirmBtn');
+  var cancelBtn = document.getElementById('appPromptCancelBtn');
+  var input = document.getElementById('appPromptInput');
+  if (!backdrop || !okBtn || !cancelBtn || !input) return;
+
+  okBtn.addEventListener('click', function() { closeAppPrompt(input.value); });
+  cancelBtn.addEventListener('click', function() { closeAppPrompt(null); });
+  backdrop.addEventListener('click', function(e) {
+    if (e.target === backdrop) closeAppPrompt(null);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeAppPrompt(null);
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      closeAppPrompt(input.value); // Ctrl/Cmd+Enter で確定
     }
   });
 }
@@ -1131,6 +1251,8 @@ function bindModelForNote(note) {
     note.model = monaco.editor.createModel(note.body || '', 'markdown');
   }
   editor.setModel(note.model);
+  mdCommentDecorations = []; // モデルが変わると旧デコレーションIDは無効
+  updateCommentDecorations();
 }
 
 async function refreshNotes() {
@@ -1369,26 +1491,27 @@ function bindPreviewHeadingNavigation() {
     seen[key] = count + 1;
     el.dataset.headingKey = key;
     el.dataset.headingOccurrence = String(count);
-    el.title = 'クリックでエディタの該当見出しへ移動';
+    el.title = 'クリックでMarkdownコピー / Alt+クリックでエディタの該当見出しへ移動';
   });
 
-  preview.onclick = function(event) {
-    var target = event.target.closest('h1, h2, h3, h4, h5, h6');
-    if (!target || !preview.contains(target)) return;
-    var note = getActiveNote();
-    if (!note || !note.body) return;
+}
 
-    var lineNumber = findHeadingLineNumber(
-      note.body,
-      target.textContent || '',
-      Number(target.dataset.headingOccurrence || '0')
-    );
+function navigateEditorToHeading(target) {
+  if (!target || !editor) return false;
+  var note = getActiveNote();
+  if (!note || !note.body) return false;
 
-    if (!lineNumber) return;
-    editor.setPosition({ lineNumber: lineNumber, column: 1 });
-    editor.revealLineInCenter(lineNumber);
-    editor.focus();
-  };
+  var lineNumber = findHeadingLineNumber(
+    note.body,
+    target.textContent || '',
+    Number(target.dataset.headingOccurrence || '0')
+  );
+
+  if (!lineNumber) return false;
+  editor.setPosition({ lineNumber: lineNumber, column: 1 });
+  editor.revealLineInCenter(lineNumber);
+  editor.focus();
+  return true;
 }
 
 function normalizeMermaidFence(body) {
@@ -1410,6 +1533,7 @@ function renderMermaidInPreview() {
     mermaidEl.className = 'mermaid';
     mermaidEl.id = 'mermaid-' + Date.now() + '-' + idx;
     mermaidEl.textContent = codeEl.textContent || '';
+    mermaidEl.dataset.mermaidSrc = codeEl.textContent || '';
     pre.replaceWith(mermaidEl);
   });
 
@@ -1469,15 +1593,399 @@ function decorateExternalLinksInPreview() {
   });
 }
 
+/* ============================================================
+ * 段落ハイライト & クリックでMarkdownコピー
+ * ============================================================ */
+var MD_BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, ul, ol, hr, .mermaid';
+var mdHoverEls = [];
+var previewInteractionsBound = false;
+
+function clearMdHover() {
+  for (var i = 0; i < mdHoverEls.length; i++) {
+    mdHoverEls[i].classList.remove('md-hover-target');
+  }
+  mdHoverEls = [];
+}
+
+function setMdHover(targetEl) {
+  clearMdHover();
+  if (!targetEl) return;
+  targetEl.classList.add('md-hover-target');
+  mdHoverEls.push(targetEl);
+}
+
+/* ============================================================
+ * マーカー（3色トグル）& 段落コメント（ソースへ挿入）
+ * ============================================================ */
+var MD_MARK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, .mermaid';
+var MD_MARKER_COLORS = ['', 'yellow', 'green', 'blue']; // 0=なし, 1..3
+var mdLastToggle = null; // 直近のクリック切替（ダブルクリック取り消し用）
+
+/* 段落末尾のインラインコメント <!--color:NAME--> から色番号(0..3)を読む */
+function mdReadMarkerColorNode(el) {
+  for (var i = el.childNodes.length - 1; i >= 0; i--) {
+    var n = el.childNodes[i];
+    if (n.nodeType === 8) { // コメントノード
+      var m = /^\s*color:([A-Za-z]+)\s*$/.exec(n.nodeValue || '');
+      if (m) {
+        var idx = MD_MARKER_COLORS.indexOf(m[1].toLowerCase());
+        if (idx > 0) return idx;
+      }
+    }
+  }
+  return 0;
+}
+
+function mdMarkerIndexFromClass(el) {
+  if (el.classList.contains('md-marker-1')) return 1;
+  if (el.classList.contains('md-marker-2')) return 2;
+  if (el.classList.contains('md-marker-3')) return 3;
+  return 0;
+}
+
+/* ソース埋め込みの <!--color:NAME--> から各ブロックの色を復元する */
+function applyStoredMarkers() {
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var blocks = preview.querySelectorAll(MD_MARK_SELECTOR);
+  blocks.forEach(function(el) {
+    el.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3');
+    var c = mdReadMarkerColorNode(el);
+    if (c) el.classList.add('md-marker-' + c);
+  });
+}
+
+/* 指定行の末尾にあるマーカーコメントを color(0..3) に応じて設定/変更/除去する */
+function mdSetMarkerInSource(line, color) {
+  if (!editor || !window.monaco) return false;
+  var model = editor.getModel();
+  if (!model || line < 1 || line > model.getLineCount()) return false;
+  var lineText = model.getLineContent(line);
+  var stripped = lineText.replace(/\s*<!--\s*color:[A-Za-z]+\s*-->\s*$/, '');
+  var newText = stripped + (color ? '<!--color:' + MD_MARKER_COLORS[color] + '-->' : '');
+  if (newText === lineText) return false;
+  editor.executeEdits('md-marker', [{
+    range: new monaco.Range(line, 1, line, model.getLineMaxColumn(line)),
+    text: newText,
+    forceMoveMarkers: true
+  }]);
+  return true; // onDidChangeModelContent が note.body 同期 + renderPreview を実行
+}
+
+/* エディタ側: 追加コメント形式 <!-- コメント ... --> の領域を背景ピンクで装飾する */
+var mdCommentDecorations = [];
+function updateCommentDecorations() {
+  if (!editor || !window.monaco) return;
+  var model = editor.getModel();
+  if (!model) { mdCommentDecorations = []; return; }
+  var lineCount = model.getLineCount();
+  var decos = [];
+  var i = 1;
+  while (i <= lineCount) {
+    // 追加コメント形式: 「<!-- コメント …」または旧形式の「<!-- YYYY-MM-DD HH:MM…」
+    if (/^<!--\s*(?:コメント(?:\s|$)|\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.test(model.getLineContent(i))) {
+      var start = i;
+      var end = i;
+      while (end <= lineCount && model.getLineContent(end).indexOf('-->') === -1) end++;
+      if (end > lineCount) end = lineCount;
+      decos.push({
+        range: new monaco.Range(start, 1, end, model.getLineMaxColumn(end)),
+        options: { isWholeLine: true, className: 'md-comment-region' }
+      });
+      i = end + 1;
+    } else {
+      i++;
+    }
+  }
+  mdCommentDecorations = editor.deltaDecorations(mdCommentDecorations, decos);
+}
+
+/* 追加コメント（<!-- コメント …/旧 <!-- 日付 …）と色マーカー（<!--color:…-->）を本文から除去 */
+function stripAddedAnnotations(body) {
+  var s = String(body || '');
+  // インラインの色マーカー
+  s = s.replace(/[ \t]*<!--\s*color:[A-Za-z]+\s*-->/g, '');
+  // 追加コメントブロック（行末の改行も1つ取り込み、リストの分割を防ぐ）
+  s = s.replace(/^[ \t]*<!--[ \t]*(?:コメント|\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})[\s\S]*?-->[ \t]*\n?/gm, '');
+  // 余分な空行を整理
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s;
+}
+
+async function removeCommentsAndMarkers() {
+  if (!editor || !window.monaco) { showToast('エディタが利用できません'); return; }
+  var model = editor.getModel();
+  if (!model) return;
+  var current = model.getValue();
+  var stripped = stripAddedAnnotations(current);
+  if (stripped === current) {
+    showToast('除去対象のコメント・色設定はありません');
+    return;
+  }
+  var ok = await appConfirm(
+    '追加コメントと色設定（マーカー）をすべて本文から除去します。よろしいですか?',
+    'コメント・色設定の除去', '除去する', 'キャンセル', true
+  );
+  if (!ok) return;
+  editor.executeEdits('strip-annotations', [{ range: model.getFullModelRange(), text: stripped }]);
+  showToast('コメント・色設定を除去しました');
+}
+
+/* --- コメントをマークダウンソースへ挿入 --- */
+function mdNowStamp() {
+  var d = new Date();
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+    ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+function mdLineOfOffset(body, offset) {
+  var line = 1;
+  for (var c = 0; c < offset && c < body.length; c++) {
+    if (body.charCodeAt(c) === 10) line++;
+  }
+  return line;
+}
+
+/* innerBlock からプレビュー直下までのブロック要素チェーン [top, ..., inner] */
+function mdBlockChain(innerBlock, preview) {
+  var chain = [];
+  var node = innerBlock;
+  while (node && node !== preview) {
+    if (node.matches && node.matches(MD_BLOCK_SELECTOR)) chain.unshift(node);
+    node = node.parentElement;
+  }
+  return chain;
+}
+
+function mdLiIndex(li) {
+  var idx = 0, n = li.previousElementSibling;
+  while (n) {
+    if (n.tagName && n.tagName.toLowerCase() === 'li') idx++;
+    n = n.previousElementSibling;
+  }
+  return idx;
+}
+
+/* raw の内容が占める行数（末尾の空行は除く）。終端行の算出に使う */
+function mdSpanLines(raw) {
+  var s = String(raw || '').replace(/\s+$/, '');
+  return s === '' ? 1 : s.split('\n').length;
+}
+
+/* raw が次の兄弟まで進める行数（末尾空行も含む = 改行数）。先頭オフセット用 */
+function mdRawLineAdvance(raw) {
+  var m = String(raw || '').match(/\n/g);
+  return m ? m.length : 0;
+}
+
+/* トークン種別がDOMタグを生成するか */
+function mdTokenTagMatch(ty, tag) {
+  if (tag === 'ul' || tag === 'ol') return ty === 'list';
+  if (tag === 'p') return ty === 'paragraph' || ty === 'text';
+  if (/^h[1-6]$/.test(tag)) return ty === 'heading';
+  if (tag === 'blockquote') return ty === 'blockquote';
+  if (tag === 'pre') return ty === 'code';
+  if (tag === 'table') return ty === 'table';
+  if (tag === 'hr') return ty === 'hr';
+  if (tag === 'li') return ty === 'list_item';
+  return false;
+}
+
+/* 親トークン内でDOM子に対応するトークンと、その親先頭からの行オフセットを返す */
+function mdMatchChild(parentTok, domChild) {
+  var tag = domChild.tagName.toLowerCase();
+  if (parentTok.type === 'list' && parentTok.items) {
+    var idx = mdLiIndex(domChild);
+    if (idx < 0 || idx >= parentTok.items.length) return null;
+    var off = 0;
+    for (var k = 0; k < idx; k++) { off += mdRawLineAdvance(parentTok.items[k].raw); }
+    return { token: parentTok.items[idx], lineOffset: off };
+  }
+  var toks = parentTok.tokens || [];
+  var acc = 0;
+  for (var i = 0; i < toks.length; i++) {
+    if (mdTokenTagMatch(toks[i].type, tag)) return { token: toks[i], lineOffset: acc };
+    acc += mdRawLineAdvance(toks[i].raw);
+  }
+  return null;
+}
+
+/* カーソル下の内側ブロックを、ソース上のトークンと開始行に解決する。
+ * 文字オフセットではなく「行数」で辿る（marked は入れ子の raw からインデントや
+ * 引用プレフィックスを取り除くため、行数の方が安定して対応する）。 */
+function mdResolveBlockToken(innerBlock, preview) {
+  var note = getActiveNote();
+  if (!note || !innerBlock) return null;
+  var body = normalizeMermaidFence(note.body || '');
+  var chain = mdBlockChain(innerBlock, preview);
+  if (!chain.length) return null;
+
+  var topIndex = Array.prototype.indexOf.call(preview.children, chain[0]);
+  if (topIndex < 0) return null;
+
+  var tokens;
+  try { tokens = marked.lexer(body); } catch (e) { return null; }
+
+  var offset = 0, rIdx = -1, topTok = null, topStart = 0;
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    var raw = t.raw || '';
+    var st = offset;
+    offset += raw.length;
+    if (t.type === 'space' || t.type === 'def') continue;
+    // コメントのみのHTMLブロックは要素を生成せず preview.children に現れないため数えない
+    if (t.type === 'html' && /^\s*(?:<!--[\s\S]*?-->\s*)+$/.test(raw)) continue;
+    rIdx++;
+    if (rIdx === topIndex) { topTok = t; topStart = st; break; }
+  }
+  if (!topTok) return null;
+
+  var tok = topTok;
+  var startLine = mdLineOfOffset(body, topStart);
+  for (var d = 1; d < chain.length; d++) {
+    var match = mdMatchChild(tok, chain[d]);
+    if (!match) break; // 厳密に辿れない場合は確定済みのブロックでフォールバック
+    startLine += match.lineOffset;
+    tok = match.token;
+  }
+
+  var insideList = false;
+  for (var e = 0; e < chain.length; e++) {
+    var tg = chain[e].tagName.toLowerCase();
+    if (tg === 'ul' || tg === 'ol' || tg === 'li') { insideList = true; break; }
+  }
+  return { tok: tok, startLine: startLine, insideList: insideList };
+}
+
+/* コメント用: ブロック全体（入れ子の子も含む）の終端行 */
+function mdInnerBlockSourceSpan(innerBlock, preview) {
+  var r = mdResolveBlockToken(innerBlock, preview);
+  if (!r) return null;
+  return { endLine: r.startLine + mdSpanLines(r.tok.raw) - 1, insideList: r.insideList };
+}
+
+/* マーカー用: ブロック自身のテキスト末尾の行（リスト項目は入れ子の子を含めない） */
+function mdBlockOwnEndLine(innerBlock, preview) {
+  var r = mdResolveBlockToken(innerBlock, preview);
+  if (!r) return null;
+  var tok = r.tok;
+  if (tok.type === 'list_item') {
+    var toks = tok.tokens || [];
+    var lead = null;
+    for (var i = 0; i < toks.length; i++) {
+      if (toks[i].type === 'text' || toks[i].type === 'paragraph') { lead = toks[i]; break; }
+    }
+    return r.startLine + (lead ? mdSpanLines(lead.raw) : 1) - 1;
+  }
+  return r.startLine + mdSpanLines(tok.raw) - 1;
+}
+
+function mdInsertCommentAtSpan(span, commentText) {
+  var text = String(commentText || '').replace(/\r\n/g, '\n').replace(/\s+$/, '');
+  if (!text) return false;
+  if (!editor || !window.monaco) { showToast('エディタが利用できません'); return false; }
+  if (!span || !span.endLine) { showToast('コメント挿入位置を特定できませんでした'); return false; }
+
+  var model = editor.getModel();
+  if (!model) return false;
+  var endLine = span.endLine;
+  var lineCount = model.getLineCount();
+  if (endLine > lineCount) endLine = lineCount;
+  var col = model.getLineMaxColumn(endLine);
+
+  var commentBlock = '<!-- コメント ' + mdNowStamp() + '\n' + text + '\n-->';
+  // リスト内は空行を空けると一覧が分割される/番号が振り直されるため、
+  // 空行なし（遅延継続行）で項目直後に挿入。それ以外は前後を空行で区切る。
+  var insertText = span.insideList ? ('\n' + commentBlock) : ('\n\n' + commentBlock + '\n');
+  var range = new monaco.Range(endLine, col, endLine, col);
+  editor.executeEdits('md-comment', [{ range: range, text: insertText, forceMoveMarkers: true }]);
+  // onDidChangeModelContent が note.body 同期 + renderPreview を実行する
+  showToast('コメントを追加しました');
+  return true;
+}
+
+function bindPreviewInteractions() {
+  if (previewInteractionsBound) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  previewInteractionsBound = true;
+  preview.classList.add('md-hover-on');
+
+  preview.addEventListener('pointermove', function(event) {
+    var block = event.target.closest(MD_BLOCK_SELECTOR);
+    if (!block || !preview.contains(block)) {
+      if (mdHoverEls.length) clearMdHover();
+      return;
+    }
+    if (mdHoverEls.length && mdHoverEls[0] === block) return;
+    setMdHover(block);
+  });
+
+  preview.addEventListener('pointerleave', clearMdHover);
+
+  // シングルクリック = マーカー切替。楽観的に即色付け＋ソースへ <!--color:NAME--> を書込み。
+  // ダブルクリック時は1回目のクリックで付いた切替を取り消してコメントを開く。
+  preview.addEventListener('click', function(event) {
+    if (event.target.closest('a')) return; // リンクは通常動作
+    if (event.detail > 1) return; // 2クリック目以降はダブルクリック側で処理
+    var sel = window.getSelection && window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 手動選択を優先
+
+    var heading = event.target.closest('h1, h2, h3, h4, h5, h6');
+    if (event.altKey && heading) {
+      navigateEditorToHeading(heading);
+      return;
+    }
+
+    var block = event.target.closest(MD_MARK_SELECTOR);
+    if (!block || !preview.contains(block)) return;
+    var line = mdBlockOwnEndLine(block, preview);
+    if (!line) return;
+    var cur = mdMarkerIndexFromClass(block);
+    var next = (cur + 1) % 4; // なし -> 1 -> 2 -> 3 -> なし
+    block.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3'); // 楽観的に即時反映
+    if (next) block.classList.add('md-marker-' + next);
+    mdLastToggle = { line: line, prev: cur }; // 取り消し用に切替前の色を保持
+    mdSetMarkerInSource(line, next); // ソースへ書込み（再描画で確定）
+  });
+
+  // ダブルクリック = コメント入力 → ソースへ挿入
+  preview.addEventListener('dblclick', function(event) {
+    if (event.target.closest('a')) return;
+    // コメント挿入位置は、マーカー取り消しの再描画より前に確定しておく
+    var block = event.target.closest(MD_MARK_SELECTOR); // カーソル下の内側ブロック
+    var span = (block && preview.contains(block)) ? mdInnerBlockSourceSpan(block, preview) : null;
+
+    if (mdLastToggle && typeof mdLastToggle.line === 'number') {
+      mdSetMarkerInSource(mdLastToggle.line, mdLastToggle.prev); // 1回目クリックの切替を取り消す
+    }
+    mdLastToggle = null;
+    if (window.getSelection) {
+      var s = window.getSelection();
+      if (s && s.removeAllRanges) s.removeAllRanges(); // ダブルクリックの単語選択を解除
+    }
+    if (!span) return;
+
+    Promise.resolve(appPrompt('コメントを追加', '')).then(function(value) {
+      if (value == null) return; // キャンセル
+      if (!String(value).trim()) return;
+      mdInsertCommentAtSpan(span, value);
+    });
+  });
+}
 function renderPreview() {
   var note = getActiveNote();
   var body = note ? note.body || '' : '';
   body = normalizeMermaidFence(body);
   document.getElementById('preview').innerHTML = marked.parse(body, { breaks: true, gfm: true });
+  clearMdHover();
   decorateExternalLinksInPreview();
   renderMermaidInPreview();
   renderCodeHighlightInPreview();
   bindPreviewHeadingNavigation();
+  bindPreviewInteractions();
+  applyStoredMarkers();
 }
 
 function applyContentSplitLayout() {
@@ -1705,6 +2213,7 @@ function aiAssistPlaceholder() {
 require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' } });
 require(['vs/editor/editor.main'], async function() {
   setupAppDialog();
+  setupAppPrompt();
   setupFloatingToolbarInteractions();
   setupContentSplitterInteractions();
   monaco.editor.defineTheme('markdown-dark', {
@@ -1812,6 +2321,7 @@ require(['vs/editor/editor.main'], async function() {
     }
     document.getElementById('count').textContent = note.body.length;
     renderPreview();
+    updateCommentDecorations();
     if (!isFileMode) {
       scheduleSave(note.id);
     }

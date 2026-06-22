@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Viewer</title>
+<link id="hljsDarkTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+<link id="hljsLightTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css" disabled>
+<style>
+:root {
+  --font-ui: "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  --bg: #151722;
+  --panel: #1f2233;
+  --panel-2: #272b41;
+  --line: #3a4061;
+  --text: #e8ebff;
+  --muted: #9aa1c3;
+  --accent: #2c7be5;
+  --accent-2: #205fb4;
+  --ok: #2e9d52;
+  --danger: #b14646;
+}
+body[data-theme="light"] {
+  --bg: #f4f7ff;
+  --panel: #ffffff;
+  --panel-2: #eef2ff;
+  --line: #ccd6f0;
+  --text: #1b223d;
+  --muted: #5a668f;
+  --accent: #2166d8;
+  --accent-2: #1952ad;
+  --ok: #248a48;
+  --danger: #b14646;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: radial-gradient(circle at 10% 10%, rgba(94, 121, 246, 0.16), transparent 30%), var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.preview-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--panel);
+}
+.preview {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.preview h1 { font-size: 1.6rem; color: #8cb8ff; }
+.preview h2 { font-size: 1.32rem; color: #a9c8ff; }
+.preview h3 { font-size: 1.12rem; color: #c6d7ff; }
+.preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+  margin: 22px 0 10px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.preview h1 {
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(140, 184, 255, 0.32);
+}
+/* 段落ハイライト（読書補助 / クリックでMarkdownコピー） */
+.preview.md-hover-on .md-hover-ancestor {
+  background: rgba(140, 184, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(140, 184, 255, 0.07);
+  border-radius: 4px;
+  transition: background 0.08s ease, box-shadow 0.08s ease;
+}
+.preview.md-hover-on .md-hover-target {
+  background: rgba(140, 184, 255, 0.16);
+  box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.16);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.08s ease, box-shadow 0.08s ease;
+}
+.preview .md-copy-flash {
+  animation: mdCopyFlash 0.45s ease;
+}
+@keyframes mdCopyFlash {
+  0% { background: rgba(140, 184, 255, 0.42); box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.42); }
+  100% { background: rgba(140, 184, 255, 0.16); box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.16); }
+}
+body[data-theme="light"] .preview.md-hover-on .md-hover-ancestor {
+  background: rgba(33, 102, 216, 0.06);
+  box-shadow: 0 0 0 3px rgba(33, 102, 216, 0.06);
+}
+body[data-theme="light"] .preview.md-hover-on .md-hover-target {
+  background: rgba(33, 102, 216, 0.13);
+  box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.13);
+}
+body[data-theme="light"] .preview .md-copy-flash {
+  animation: mdCopyFlashLight 0.45s ease;
+}
+@keyframes mdCopyFlashLight {
+  0% { background: rgba(33, 102, 216, 0.34); box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.34); }
+  100% { background: rgba(33, 102, 216, 0.13); box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.13); }
+}
+.toast {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 1100;
+  background: rgba(21, 28, 46, 0.96);
+  color: #eaf0ff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+body[data-theme="light"] .toast {
+  background: rgba(27, 40, 72, 0.95);
+  color: #f4f7ff;
+  border-color: rgba(255, 255, 255, 0.26);
+}
+.preview p, .preview ul, .preview ol, .preview pre, .preview blockquote, .preview table { margin: 8px 0; }
+.preview ul, .preview ol {
+  padding-left: 1.6em;
+}
+.preview ul ul, .preview ol ol, .preview ul ol, .preview ol ul {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+.preview li {
+  margin: 0.24em 0;
+  padding-left: 0.2em;
+}
+.preview li > p {
+  margin: 0.18em 0;
+}
+.preview strong {
+  color: #c6a347;
+  font-weight: 700;
+}
+.preview em {
+  color: #ff7ab8;
+  font-style: italic;
+}
+.preview pre {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px 12px;
+  border-radius: 7px;
+  overflow: auto;
+  font-family: "SFMono-Regular", Consolas, Menlo, Monaco, monospace;
+}
+.preview code {
+  color: #ff9aa9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+.preview pre code {
+  display: block;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+}
+.preview a { color: #8cb8ff; }
+.preview blockquote {
+  padding-left: 12px;
+  border-left: 3px solid rgba(140, 184, 255, 0.32);
+  color: var(--muted);
+}
+.preview table { border-collapse: collapse; }
+.preview th, .preview td { border: 1px solid var(--line); padding: 4px 8px; }
+.preview th {
+  background: rgba(140, 184, 255, 0.16);
+}
+.preview tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.04);
+}
+.preview img { max-width: 100%; height: auto; }
+.preview hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 18px 0;
+}
+body[data-theme="light"] .preview pre {
+  background: #edf3ff;
+  color: #243252;
+  border: 1px solid rgba(33, 102, 216, 0.14);
+  font-family: "SFMono-Regular", Consolas, Menlo, Monaco, monospace;
+}
+body[data-theme="light"] .preview h1 {
+  color: #174ea6;
+  border-bottom-color: rgba(23, 78, 166, 0.22);
+}
+body[data-theme="light"] .preview h2 {
+  color: #2458b8;
+}
+body[data-theme="light"] .preview h3 {
+  color: #355f9b;
+}
+body[data-theme="light"] .preview strong {
+  color: #8a6a12;
+}
+body[data-theme="light"] .preview em {
+  color: #c23678;
+}
+body[data-theme="light"] .preview code {
+  color: #a12849;
+}
+body[data-theme="light"] .preview pre code {
+  color: inherit;
+  font-family: inherit;
+}
+body[data-theme="light"] .preview tr:nth-child(even) td {
+  background: rgba(33, 102, 216, 0.06);
+}
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-state h2 {
+  color: var(--text);
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+}
+.empty-state code {
+  background: rgba(140, 184, 255, 0.12);
+  color: #ff9aa9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, Menlo, Monaco, monospace;
+  font-size: 0.85em;
+}
+body[data-theme="light"] .empty-state code {
+  background: rgba(33, 102, 216, 0.1);
+  color: #a12849;
+}
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body data-theme="dark">
+<div class="app">
+  <div class="preview-wrap">
+    <article class="preview" id="preview"></article>
+  </div>
+</div>
+<div class="toast" id="appToast" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+var CORS_PROXY = 'https://corsproxy.io/?';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, function(ch) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch];
+  });
+}
+
+function getQueryParam(name) {
+  var sp = new URLSearchParams(window.location.search);
+  return sp.get(name);
+}
+
+function applyCodeHighlightTheme(theme) {
+  var dark = document.getElementById('hljsDarkTheme');
+  var light = document.getElementById('hljsLightTheme');
+  if (!dark || !light) return;
+  var isLight = theme === 'light';
+  dark.disabled = isLight;
+  light.disabled = !isLight;
+}
+
+function normalizeMermaidFence(body) {
+  return String(body || '').replace(/^```\s*mermaid\.js\s*$/gmi, '```mermaid');
+}
+
+function renderMermaidInPreview() {
+  if (!window.mermaid) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var blocks = preview.querySelectorAll('pre > code[class*="language-mermaid"]');
+  if (!blocks.length) return;
+  blocks.forEach(function(codeEl, idx) {
+    var pre = codeEl.parentElement;
+    if (!pre) return;
+    var mermaidEl = document.createElement('div');
+    mermaidEl.className = 'mermaid';
+    mermaidEl.id = 'mermaid-' + Date.now() + '-' + idx;
+    mermaidEl.textContent = codeEl.textContent || '';
+    mermaidEl.dataset.mermaidSrc = codeEl.textContent || '';
+    pre.replaceWith(mermaidEl);
+  });
+  try {
+    var theme = document.body.getAttribute('data-theme') === 'light' ? 'default' : 'dark';
+    mermaid.initialize({ startOnLoad: false, theme: theme });
+    var nodes = preview.querySelectorAll('.mermaid');
+    if (mermaid.run) {
+      mermaid.run({ nodes: nodes });
+    } else if (mermaid.init) {
+      mermaid.init(undefined, nodes);
+    }
+  } catch (e) {
+    console.error('mermaid render failed', e);
+  }
+}
+
+function renderCodeHighlightInPreview() {
+  if (!window.hljs) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var blocks = preview.querySelectorAll('pre > code');
+  blocks.forEach(function(codeEl) {
+    if ((codeEl.className || '').indexOf('language-mermaid') >= 0) return;
+    try { hljs.highlightElement(codeEl); } catch (e) {}
+  });
+}
+
+function rewriteRelativeUrls(html, baseUri) {
+  if (!baseUri) return html;
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  function resolve(url) {
+    if (!url) return url;
+    var trimmed = url.trim();
+    if (/^(https?:|data:|mailto:|tel:|javascript:|#|\/\/)/i.test(trimmed)) return url;
+    try { return new URL(trimmed, baseUri).href; } catch (e) { return url; }
+  }
+  tmp.querySelectorAll('a[href]').forEach(function(a) {
+    a.setAttribute('href', resolve(a.getAttribute('href')));
+    if (!a.getAttribute('target') && /^https?:/i.test(a.getAttribute('href') || '')) {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  tmp.querySelectorAll('img[src]').forEach(function(img) {
+    img.setAttribute('src', resolve(img.getAttribute('src')));
+  });
+  return tmp.innerHTML;
+}
+
+/* ============================================================
+ * 段落ハイライト & クリックでMarkdownコピー（notepad.html から移植）
+ * ============================================================ */
+var appToastTimer = null;
+function showToast(message) {
+  var el = document.getElementById('appToast');
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.add('show');
+  clearTimeout(appToastTimer);
+  appToastTimer = setTimeout(function() { el.classList.remove('show'); }, 1300);
+}
+
+var MD_BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, ul, ol, hr, .mermaid';
+var mdHoverEls = [];
+var previewInteractionsBound = false;
+
+function clearMdHover() {
+  for (var i = 0; i < mdHoverEls.length; i++) {
+    mdHoverEls[i].classList.remove('md-hover-target', 'md-hover-ancestor');
+  }
+  mdHoverEls = [];
+}
+
+function setMdHover(targetEl, preview) {
+  clearMdHover();
+  if (!targetEl) return;
+  targetEl.classList.add('md-hover-target');
+  mdHoverEls.push(targetEl);
+  var node = targetEl.parentElement;
+  while (node && node !== preview) {
+    if (node.matches && node.matches(MD_BLOCK_SELECTOR)) {
+      node.classList.add('md-hover-ancestor');
+      mdHoverEls.push(node);
+    }
+    node = node.parentElement;
+  }
+}
+
+/* クリック要素を内包する最も外側のブロック（＝ハイライトされる範囲全体）を返す */
+function mdOutermostBlock(el, preview) {
+  var top = null;
+  var node = el && el.closest ? el.closest(MD_BLOCK_SELECTOR) : null;
+  while (node && node !== preview && preview.contains(node)) {
+    top = node;
+    node = node.parentElement ? node.parentElement.closest(MD_BLOCK_SELECTOR) : null;
+  }
+  return top;
+}
+
+/* --- DOM要素 → Markdown 復元 --- */
+function mdSerializeInlineNode(node) {
+  if (node.nodeType === 3) {
+    return (node.nodeValue || '').replace(/\s+/g, ' ');
+  }
+  if (node.nodeType !== 1) return '';
+  var tag = node.tagName.toLowerCase();
+  switch (tag) {
+    case 'strong': case 'b': return '**' + mdSerializeInlineChildren(node) + '**';
+    case 'em': case 'i': return '*' + mdSerializeInlineChildren(node) + '*';
+    case 'del': case 's': case 'strike': return '~~' + mdSerializeInlineChildren(node) + '~~';
+    case 'code': return '`' + (node.textContent || '') + '`';
+    case 'br': return '  \n';
+    case 'a': {
+      var href = node.getAttribute('href') || '';
+      var txt = mdSerializeInlineChildren(node);
+      return href ? '[' + txt + '](' + href + ')' : txt;
+    }
+    case 'img': {
+      var src = node.getAttribute('src') || '';
+      var alt = node.getAttribute('alt') || '';
+      return '![' + alt + '](' + src + ')';
+    }
+    case 'input':
+      return ''; // タスクリストのチェックボックスは別途処理
+    default:
+      return mdSerializeInlineChildren(node);
+  }
+}
+
+function mdSerializeInlineChildren(el) {
+  var out = '';
+  for (var i = 0; i < el.childNodes.length; i++) {
+    out += mdSerializeInlineNode(el.childNodes[i]);
+  }
+  return out;
+}
+
+function mdIsBlockChild(node) {
+  if (node.nodeType !== 1) return false;
+  return /^(ul|ol|p|pre|blockquote|table|h[1-6]|hr)$/.test(node.tagName.toLowerCase())
+    || (node.classList && node.classList.contains('mermaid'));
+}
+
+function mdSerializeListItem(li, indent, marker) {
+  var pad = indent + new Array(marker.length + 2).join(' ');
+  var inline = '';
+  var blocks = [];
+  var checkbox = '';
+  for (var i = 0; i < li.childNodes.length; i++) {
+    var n = li.childNodes[i];
+    if (n.nodeType === 1 && n.tagName.toLowerCase() === 'input' &&
+        (n.getAttribute('type') || '') === 'checkbox') {
+      checkbox = n.checked ? '[x] ' : '[ ] ';
+      continue;
+    }
+    if (mdIsBlockChild(n)) {
+      blocks.push(n);
+    } else {
+      inline += mdSerializeInlineNode(n);
+    }
+  }
+  var firstLine = indent + marker + ' ' + checkbox + inline.replace(/\s+/g, ' ').trim();
+  var rest = [];
+  for (var b = 0; b < blocks.length; b++) {
+    rest.push(mdSerializeBlock(blocks[b], pad));
+  }
+  return rest.length ? firstLine + '\n' + rest.join('\n') : firstLine;
+}
+
+function mdSerializeList(listEl, indent) {
+  var ordered = listEl.tagName.toLowerCase() === 'ol';
+  var idx = parseInt(listEl.getAttribute('start') || '1', 10) || 1;
+  var lines = [];
+  for (var i = 0; i < listEl.children.length; i++) {
+    var li = listEl.children[i];
+    if (li.tagName.toLowerCase() !== 'li') continue;
+    var marker = ordered ? (idx + '.') : '-';
+    lines.push(mdSerializeListItem(li, indent, marker));
+    idx++;
+  }
+  return lines.join('\n');
+}
+
+function mdSerializeTable(tableEl, indent) {
+  var rows = [];
+  var headRow = tableEl.querySelector('thead tr');
+  var bodyRows = tableEl.querySelectorAll('tbody tr');
+  function cells(tr, sel) {
+    var out = [];
+    tr.querySelectorAll(sel).forEach(function(c) {
+      out.push(mdSerializeInlineChildren(c).replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|'));
+    });
+    return out;
+  }
+  var header = headRow ? cells(headRow, 'th, td') : [];
+  if (!header.length) return mdSerializeInlineChildren(tableEl).trim();
+  rows.push(indent + '| ' + header.join(' | ') + ' |');
+  rows.push(indent + '| ' + header.map(function() { return '---'; }).join(' | ') + ' |');
+  bodyRows.forEach(function(tr) {
+    rows.push(indent + '| ' + cells(tr, 'td, th').join(' | ') + ' |');
+  });
+  return rows.join('\n');
+}
+
+function mdSerializeBlock(el, indent) {
+  indent = indent || '';
+  if (el.classList && el.classList.contains('mermaid')) {
+    var msrc = (el.dataset.mermaidSrc || el.textContent || '').replace(/\n+$/, '');
+    return indent + '```mermaid\n' + msrc + '\n' + indent + '```';
+  }
+  var tag = el.tagName.toLowerCase();
+  var hm = tag.match(/^h([1-6])$/);
+  if (hm) {
+    return indent + new Array(Number(hm[1]) + 1).join('#') + ' ' +
+      mdSerializeInlineChildren(el).replace(/\s+/g, ' ').trim();
+  }
+  if (tag === 'p') {
+    return indent + mdSerializeInlineChildren(el).replace(/[ \t]+/g, ' ').trim();
+  }
+  if (tag === 'hr') {
+    return indent + '---';
+  }
+  if (tag === 'pre') {
+    var codeEl = el.querySelector('code');
+    var lang = '';
+    if (codeEl) {
+      var m = (codeEl.className || '').match(/language-([\w+.-]+)/);
+      if (m) lang = m[1];
+    }
+    var code = ((codeEl ? codeEl.textContent : el.textContent) || '').replace(/\n$/, '');
+    return indent + '```' + lang + '\n' + code + '\n' + indent + '```';
+  }
+  if (tag === 'blockquote') {
+    var parts = [];
+    for (var i = 0; i < el.children.length; i++) {
+      if (mdIsBlockChild(el.children[i])) parts.push(mdSerializeBlock(el.children[i], ''));
+    }
+    var inner = parts.length ? parts.join('\n\n') : mdSerializeInlineChildren(el).trim();
+    return inner.split('\n').map(function(l) {
+      return indent + (l ? '> ' + l : '>');
+    }).join('\n');
+  }
+  if (tag === 'ul' || tag === 'ol') {
+    return mdSerializeList(el, indent);
+  }
+  if (tag === 'li') {
+    var liParent = el.parentElement;
+    var liMarker = '-';
+    if (liParent && liParent.tagName.toLowerCase() === 'ol') {
+      var pos = parseInt(liParent.getAttribute('start') || '1', 10) || 1;
+      for (var s = 0; s < liParent.children.length; s++) {
+        if (liParent.children[s] === el) break;
+        if (liParent.children[s].tagName.toLowerCase() === 'li') pos++;
+      }
+      liMarker = pos + '.';
+    }
+    return mdSerializeListItem(el, indent, liMarker);
+  }
+  if (tag === 'table') {
+    return mdSerializeTable(el, indent);
+  }
+  return indent + mdSerializeInlineChildren(el).replace(/\s+/g, ' ').trim();
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {}
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function copyBlockAsMarkdown(blockEl) {
+  if (!blockEl) return;
+  var md = mdSerializeBlock(blockEl, '').replace(/[ \t]+$/gm, '').trim();
+  if (!md) return;
+  var ok = await copyTextToClipboard(md);
+  if (ok) {
+    blockEl.classList.remove('md-copy-flash');
+    void blockEl.offsetWidth; // reflowでアニメーション再生
+    blockEl.classList.add('md-copy-flash');
+    setTimeout(function() { blockEl.classList.remove('md-copy-flash'); }, 500);
+    showToast('段落をMarkdownでコピーしました');
+  } else {
+    showToast('コピーに失敗しました');
+  }
+}
+
+function bindPreviewInteractions() {
+  if (previewInteractionsBound) return;
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  previewInteractionsBound = true;
+  preview.classList.add('md-hover-on');
+
+  preview.addEventListener('pointermove', function(event) {
+    var block = event.target.closest(MD_BLOCK_SELECTOR);
+    if (!block || !preview.contains(block)) {
+      if (mdHoverEls.length) clearMdHover();
+      return;
+    }
+    if (mdHoverEls.length && mdHoverEls[0] === block) return;
+    setMdHover(block, preview);
+  });
+
+  preview.addEventListener('pointerleave', clearMdHover);
+
+  preview.addEventListener('click', function(event) {
+    if (event.target.closest('a')) return; // リンクは通常動作
+    var sel = window.getSelection && window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 手動選択コピーを優先
+
+    var block = mdOutermostBlock(event.target, preview);
+    if (block && preview.contains(block)) {
+      copyBlockAsMarkdown(block);
+    }
+  });
+}
+
+function renderPreview(markdownText, baseUri) {
+  var body = normalizeMermaidFence(markdownText || '');
+  var html = marked.parse(body, { breaks: true, gfm: true });
+  html = rewriteRelativeUrls(html, baseUri);
+  document.getElementById('preview').innerHTML = html;
+  clearMdHover();
+  renderMermaidInPreview();
+  renderCodeHighlightInPreview();
+  bindPreviewInteractions();
+}
+
+function showEmptyState() {
+  var html =
+    '<div class="empty-state">' +
+    '<h2>Markdown Viewer</h2>' +
+    '<p>クエリパラメータ <code>?uri=&lt;マークダウンのURL&gt;</code> でURIを指定してください。</p>' +
+    '<p style="margin-top:8px;font-size:0.82rem;">例: <code>md-fetch-viewer.html?uri=./README.md</code></p>' +
+    '<p style="margin-top:8px;font-size:0.82rem;">クロスオリジン取得時にCORSがブロックされる場合は <code>&amp;proxy=1</code> を付与してください。</p>' +
+    '</div>';
+  document.getElementById('preview').innerHTML = html;
+}
+
+function isLikelySameOrigin(uri) {
+  try {
+    var u = new URL(uri, window.location.href);
+    return u.origin === window.location.origin || window.location.protocol === 'file:';
+  } catch (e) {
+    return true;
+  }
+}
+
+async function fetchMarkdown(uri, useProxy) {
+  var target = uri;
+  if (useProxy && /^https?:/i.test(uri)) {
+    target = CORS_PROXY + encodeURIComponent(uri);
+  }
+  var res = await fetch(target, {
+    redirect: 'follow',
+    headers: { 'Accept': 'text/markdown, text/plain, text/*;q=0.9, */*;q=0.5' }
+  });
+  if (!res.ok) {
+    throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+  }
+  return await res.text();
+}
+
+async function loadFromUri(uri, useProxy) {
+  if (!uri) {
+    showEmptyState();
+    return;
+  }
+  var resolved;
+  try {
+    resolved = new URL(uri, window.location.href).href;
+  } catch (e) {
+    resolved = uri;
+  }
+  document.title = 'Markdown Viewer';
+  document.getElementById('preview').innerHTML =
+    '<div class="empty-state"><h2><span class="spinner"></span>読み込み中</h2>' +
+    '<p><code>' + escapeHtml(resolved) + '</code></p></div>';
+
+  try {
+    var text = await fetchMarkdown(uri, useProxy);
+    renderPreview(text, resolved);
+
+    var firstHeading = text.match(/^\s*#\s+(.+?)\s*$/m);
+    if (firstHeading) {
+      document.title = firstHeading[1].trim();
+    } else {
+      try {
+        var parts = new URL(resolved).pathname.split('/').filter(Boolean);
+        if (parts.length) document.title = decodeURIComponent(parts[parts.length - 1]);
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.error(err);
+    var msg = err && err.message ? err.message : String(err);
+    var isCorsLikely = /Failed to fetch|NetworkError|CORS|Load failed/i.test(msg);
+    var hint = '';
+    if (isCorsLikely && !useProxy && /^https?:/i.test(uri) && !isLikelySameOrigin(uri)) {
+      hint = 'CORSが原因の可能性があります。URLに &proxy=1 を付与して再読込してください。';
+    }
+    document.getElementById('preview').innerHTML =
+      '<div class="empty-state">' +
+      '<h2>読み込みエラー</h2>' +
+      '<p>URI: <code>' + escapeHtml(resolved) + '</code></p>' +
+      '<p style="margin-top:8px;">' + escapeHtml(msg) + '</p>' +
+      (hint ? '<p style="margin-top:8px;">' + escapeHtml(hint) + '</p>' : '') +
+      '</div>';
+  }
+}
+
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  applyCodeHighlightTheme(theme);
+}
+
+function init() {
+  var themeParam = getQueryParam('theme');
+  var theme = themeParam === 'light' ? 'light' : 'dark';
+  applyTheme(theme);
+
+  var uriParam = getQueryParam('uri') || '';
+  var proxyParam = getQueryParam('proxy');
+  var useProxy = proxyParam === '1' || proxyParam === 'true';
+
+  if (uriParam) {
+    loadFromUri(uriParam, useProxy);
+  } else {
+    showEmptyState();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
