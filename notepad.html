@@ -1940,6 +1940,11 @@ function bindPreviewInteractions() {
 
     var block = event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) return;
+    // コードブロック等（```フェンス）は末尾に色コメントを足すとフェンスが壊れるためスキップ
+    if (block.matches('pre') || (block.classList && block.classList.contains('mermaid'))) {
+      showToast('コードブロックには色を付けられません');
+      return;
+    }
     var line = mdBlockOwnEndLine(block, preview);
     if (!line) return;
     var cur = mdMarkerIndexFromClass(block);

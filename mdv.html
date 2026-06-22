@@ -73,41 +73,62 @@ body {
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(140, 184, 255, 0.32);
 }
-/* 段落ハイライト（読書補助 / クリックでMarkdownコピー） */
-.preview.md-hover-on .md-hover-ancestor {
-  background: rgba(140, 184, 255, 0.07);
-  box-shadow: 0 0 0 3px rgba(140, 184, 255, 0.07);
-  border-radius: 4px;
-  transition: background 0.08s ease, box-shadow 0.08s ease;
-}
+/* 段落ハイライト（読書補助 / クリック対象の目印） */
 .preview.md-hover-on .md-hover-target {
-  background: rgba(140, 184, 255, 0.16);
-  box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.16);
-  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.08s ease, box-shadow 0.08s ease;
-}
-.preview .md-copy-flash {
-  animation: mdCopyFlash 0.45s ease;
-}
-@keyframes mdCopyFlash {
-  0% { background: rgba(140, 184, 255, 0.42); box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.42); }
-  100% { background: rgba(140, 184, 255, 0.16); box-shadow: 0 0 0 4px rgba(140, 184, 255, 0.16); }
-}
-body[data-theme="light"] .preview.md-hover-on .md-hover-ancestor {
-  background: rgba(33, 102, 216, 0.06);
-  box-shadow: 0 0 0 3px rgba(33, 102, 216, 0.06);
+  outline: 1px dashed rgba(140, 184, 255, 0.45);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 body[data-theme="light"] .preview.md-hover-on .md-hover-target {
-  background: rgba(33, 102, 216, 0.13);
-  box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.13);
+  outline-color: rgba(33, 102, 216, 0.5);
 }
-body[data-theme="light"] .preview .md-copy-flash {
-  animation: mdCopyFlashLight 0.45s ease;
+/* マーカー（3色パステル・クリックでトグル） */
+.preview .md-marker-1, .preview .md-marker-2, .preview .md-marker-3 {
+  border-radius: 4px;
+  padding: 1px 3px;
+  color: #2a2d36 !important;
 }
-@keyframes mdCopyFlashLight {
-  0% { background: rgba(33, 102, 216, 0.34); box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.34); }
-  100% { background: rgba(33, 102, 216, 0.13); box-shadow: 0 0 0 4px rgba(33, 102, 216, 0.13); }
+.preview .md-marker-1 *, .preview .md-marker-2 *, .preview .md-marker-3 * { color: #2a2d36 !important; }
+.preview .md-marker-1 { background: #fff3a8 !important; box-shadow: 0 0 0 3px #fff3a8; }
+.preview .md-marker-2 { background: #bdeccb !important; box-shadow: 0 0 0 3px #bdeccb; }
+.preview .md-marker-3 { background: #bcd7ff !important; box-shadow: 0 0 0 3px #bcd7ff; }
+/* 箇条書きの●/番号は背景外なのでテーマ文字色に戻して視認性確保 */
+.preview li.md-marker-1::marker,
+.preview li.md-marker-2::marker,
+.preview li.md-marker-3::marker { color: var(--text) !important; }
+/* コピー時のフラッシュ（背景マーカーと衝突しないよう outline で） */
+.preview .md-copy-flash { animation: mdCopyFlash 0.5s ease; }
+@keyframes mdCopyFlash {
+  0%   { outline: 2px solid rgba(140, 184, 255, 0.85); outline-offset: 2px; }
+  100% { outline: 2px solid transparent; outline-offset: 2px; }
+}
+/* ヘッダ + 自動コピートグル */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: none;
+}
+.app-title { font-size: 0.9rem; font-weight: 700; color: var(--muted); }
+.toggle-btn {
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.toggle-btn:hover { border-color: var(--accent); }
+.toggle-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 .toast {
   position: fixed;
@@ -269,6 +290,11 @@ body[data-theme="light"] .empty-state code {
 </head>
 <body data-theme="dark">
 <div class="app">
+  <header class="app-header">
+    <span class="app-title">Markdown Viewer</span>
+    <span style="flex:1"></span>
+    <button id="autoCopyToggle" class="toggle-btn" type="button" aria-pressed="false" onclick="toggleAutoCopy()" title="ONにすると、クリックした段落を自動でクリップボードにコピーします">📋 自動コピー: OFF</button>
+  </header>
   <div class="preview-wrap">
     <article class="preview" id="preview"></article>
   </div>
@@ -383,40 +409,43 @@ function showToast(message) {
 }
 
 var MD_BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, ul, ol, hr, .mermaid';
+var MD_MARK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, .mermaid';
 var mdHoverEls = [];
 var previewInteractionsBound = false;
+var autoCopyEnabled = false;
+
+function toggleAutoCopy() {
+  autoCopyEnabled = !autoCopyEnabled;
+  var btn = document.getElementById('autoCopyToggle');
+  if (btn) {
+    btn.setAttribute('aria-pressed', autoCopyEnabled ? 'true' : 'false');
+    btn.textContent = '📋 自動コピー: ' + (autoCopyEnabled ? 'ON' : 'OFF');
+  }
+  showToast(autoCopyEnabled ? '自動コピー: ON' : '自動コピー: OFF');
+}
+
+/* クリックした段落のマーカー色を循環（なし→1→2→3→なし）。ビューア表示のみ（再取得で消える） */
+function mdCycleMarker(block) {
+  var cur = block.classList.contains('md-marker-1') ? 1 :
+            block.classList.contains('md-marker-2') ? 2 :
+            block.classList.contains('md-marker-3') ? 3 : 0;
+  block.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3');
+  var next = (cur + 1) % 4;
+  if (next) block.classList.add('md-marker-' + next);
+}
 
 function clearMdHover() {
   for (var i = 0; i < mdHoverEls.length; i++) {
-    mdHoverEls[i].classList.remove('md-hover-target', 'md-hover-ancestor');
+    mdHoverEls[i].classList.remove('md-hover-target');
   }
   mdHoverEls = [];
 }
 
-function setMdHover(targetEl, preview) {
+function setMdHover(targetEl) {
   clearMdHover();
   if (!targetEl) return;
   targetEl.classList.add('md-hover-target');
   mdHoverEls.push(targetEl);
-  var node = targetEl.parentElement;
-  while (node && node !== preview) {
-    if (node.matches && node.matches(MD_BLOCK_SELECTOR)) {
-      node.classList.add('md-hover-ancestor');
-      mdHoverEls.push(node);
-    }
-    node = node.parentElement;
-  }
-}
-
-/* クリック要素を内包する最も外側のブロック（＝ハイライトされる範囲全体）を返す */
-function mdOutermostBlock(el, preview) {
-  var top = null;
-  var node = el && el.closest ? el.closest(MD_BLOCK_SELECTOR) : null;
-  while (node && node !== preview && preview.contains(node)) {
-    top = node;
-    node = node.parentElement ? node.parentElement.closest(MD_BLOCK_SELECTOR) : null;
-  }
-  return top;
 }
 
 /* --- DOM要素 → Markdown 復元 --- */
@@ -631,26 +660,27 @@ function bindPreviewInteractions() {
   preview.classList.add('md-hover-on');
 
   preview.addEventListener('pointermove', function(event) {
-    var block = event.target.closest(MD_BLOCK_SELECTOR);
+    var block = event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) {
       if (mdHoverEls.length) clearMdHover();
       return;
     }
     if (mdHoverEls.length && mdHoverEls[0] === block) return;
-    setMdHover(block, preview);
+    setMdHover(block);
   });
 
   preview.addEventListener('pointerleave', clearMdHover);
 
+  // クリック = カラーマーカーを循環。自動コピーONなら同時にMarkdownをコピー
   preview.addEventListener('click', function(event) {
     if (event.target.closest('a')) return; // リンクは通常動作
     var sel = window.getSelection && window.getSelection();
-    if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 手動選択コピーを優先
+    if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 手動選択を優先
 
-    var block = mdOutermostBlock(event.target, preview);
-    if (block && preview.contains(block)) {
-      copyBlockAsMarkdown(block);
-    }
+    var block = event.target.closest(MD_MARK_SELECTOR);
+    if (!block || !preview.contains(block)) return;
+    mdCycleMarker(block);
+    if (autoCopyEnabled) copyBlockAsMarkdown(block);
   });
 }
 
