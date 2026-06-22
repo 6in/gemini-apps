@@ -293,6 +293,7 @@ body[data-theme="light"] .empty-state code {
   <header class="app-header">
     <span class="app-title">Markdown Viewer</span>
     <span style="flex:1"></span>
+    <button id="markerOffBtn" class="toggle-btn" type="button" onclick="clearAllMarkers()" title="すべての色付き段落を解除します">マーカーOFF</button>
     <button id="autoCopyToggle" class="toggle-btn" type="button" aria-pressed="false" onclick="toggleAutoCopy()" title="ONにすると、クリックした段落を自動でクリップボードにコピーします">📋 自動コピー: OFF</button>
   </header>
   <div class="preview-wrap">
@@ -432,6 +433,18 @@ function mdCycleMarker(block) {
   block.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3');
   var next = (cur + 1) % 4;
   if (next) block.classList.add('md-marker-' + next);
+}
+
+/* すべての色付き段落を解除 */
+function clearAllMarkers() {
+  var preview = document.getElementById('preview');
+  if (!preview) return;
+  var marked = preview.querySelectorAll('.md-marker-1, .md-marker-2, .md-marker-3');
+  marked.forEach(function(el) {
+    el.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3');
+  });
+  if (autoCopyEnabled) copyMarkedBlocks(); // 自動コピーONなら空に更新
+  showToast(marked.length ? 'すべての色付けを解除しました' : '色付きはありません');
 }
 
 function clearMdHover() {
@@ -636,20 +649,31 @@ async function copyTextToClipboard(text) {
   }
 }
 
-async function copyBlockAsMarkdown(blockEl) {
-  if (!blockEl) return;
-  var md = mdSerializeBlock(blockEl, '').replace(/[ \t]+$/gm, '').trim();
-  if (!md) return;
-  var ok = await copyTextToClipboard(md);
-  if (ok) {
-    blockEl.classList.remove('md-copy-flash');
-    void blockEl.offsetWidth; // reflowでアニメーション再生
-    blockEl.classList.add('md-copy-flash');
-    setTimeout(function() { blockEl.classList.remove('md-copy-flash'); }, 500);
-    showToast('段落をMarkdownでコピーしました');
-  } else {
-    showToast('コピーに失敗しました');
-  }
+/* 先頭から色設定済みのブロックを文書順に集めて Markdown を連結（末尾に改行付与） */
+function collectMarkedMarkdown() {
+  var preview = document.getElementById('preview');
+  if (!preview) return '';
+  var all = Array.prototype.slice.call(
+    preview.querySelectorAll('.md-marker-1, .md-marker-2, .md-marker-3')
+  );
+  // 入れ子（別のマーク済みブロックの子孫）は親に含まれるため除外して重複を防ぐ
+  var tops = all.filter(function(el) {
+    return !all.some(function(other) { return other !== el && other.contains(el); });
+  });
+  var parts = [];
+  tops.forEach(function(el) {
+    var md = mdSerializeBlock(el, '').replace(/[ \t]+$/gm, '').trim();
+    if (md) parts.push(md);
+  });
+  return parts.length ? parts.join('\n') + '\n' : '';
+}
+
+async function copyMarkedBlocks() {
+  // 常に現在の色付き集合でクリップボードを更新（色なしに戻した段落は除外。0件なら空にする）
+  var text = collectMarkedMarkdown();
+  var ok = await copyTextToClipboard(text);
+  if (!ok) { showToast('コピーに失敗しました'); return; }
+  showToast(text ? '色付きブロックをコピーしました' : '色付きなし（クリップボードを空にしました）');
 }
 
 function bindPreviewInteractions() {
@@ -680,7 +704,7 @@ function bindPreviewInteractions() {
     var block = event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) return;
     mdCycleMarker(block);
-    if (autoCopyEnabled) copyBlockAsMarkdown(block);
+    if (autoCopyEnabled) copyMarkedBlocks(); // 色設定済みブロックを連結してコピー
   });
 }
 
