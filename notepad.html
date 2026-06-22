@@ -393,6 +393,13 @@ body[data-theme="light"] .preview.md-hover-on .md-hover-target {
 .preview li.md-marker-3::marker {
   color: var(--text) !important;
 }
+/* テーブルセルのマーカーは、はみ出す box-shadow を消しセルのパディングを維持 */
+.preview td.md-marker-1, .preview th.md-marker-1,
+.preview td.md-marker-2, .preview th.md-marker-2,
+.preview td.md-marker-3, .preview th.md-marker-3 {
+  box-shadow: none !important;
+  padding: 4px 6px !important;
+}
 /* コメント追加時のフラッシュ */
 .preview .md-flash { animation: mdFlash 0.5s ease; }
 @keyframes mdFlash {
@@ -1643,11 +1650,11 @@ function mdMarkerIndexFromClass(el) {
   return 0;
 }
 
-/* ソース埋め込みの <!--color:NAME--> から各ブロックの色を復元する */
+/* ソース埋め込みの <!--color:NAME--> から各ブロック/テーブルセルの色を復元する */
 function applyStoredMarkers() {
   var preview = document.getElementById('preview');
   if (!preview) return;
-  var blocks = preview.querySelectorAll(MD_MARK_SELECTOR);
+  var blocks = preview.querySelectorAll(MD_MARK_SELECTOR + ', td, th');
   blocks.forEach(function(el) {
     el.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3');
     var c = mdReadMarkerColorNode(el);
@@ -1670,6 +1677,69 @@ function mdSetMarkerInSource(line, color) {
     forceMoveMarkers: true
   }]);
   return true; // onDidChangeModelContent が note.body 同期 + renderPreview を実行
+}
+
+/* テーブル行のソース文字列を、エスケープされていない | 区切りでセル範囲に分解する */
+function mdTableRowCellRanges(line) {
+  var pipes = [];
+  for (var i = 0; i < line.length; i++) {
+    if (line.charAt(i) === '|' && (i === 0 || line.charAt(i - 1) !== '\\')) pipes.push(i);
+  }
+  var ranges = [];
+  if (pipes.length >= 2) { // 先頭/末尾に | のある一般的な形を想定
+    for (var k = 0; k < pipes.length - 1; k++) {
+      ranges.push({ start: pipes[k] + 1, end: pipes[k + 1] });
+    }
+  }
+  return ranges;
+}
+
+/* クリックされたセルの、ソース上の行番号と列インデックスを返す */
+function mdCellSource(cell, preview) {
+  var table = cell.closest('table');
+  if (!table) return null;
+  var r = mdResolveBlockToken(cell, preview); // チェーンは [.. , table] に解決
+  if (!r || !r.tok || r.tok.type !== 'table') return null;
+  var col = cell.cellIndex;
+  if (col < 0) return null;
+  var isHeader = cell.tagName.toLowerCase() === 'th' || !!cell.closest('thead');
+  var line;
+  if (isHeader) {
+    line = r.startLine; // ヘッダ行
+  } else {
+    var tr = cell.closest('tr');
+    var tbody = cell.closest('tbody');
+    if (!tr || !tbody) return null;
+    var rows = Array.prototype.indexOf.call(tbody.querySelectorAll(':scope > tr'), tr);
+    if (rows < 0) return null;
+    line = r.startLine + 2 + rows; // ヘッダ + 区切り行 + 本文行
+  }
+  return { line: line, col: col };
+}
+
+/* セルのソース内の色コメントを color(0..3) に設定/変更/除去する */
+function mdSetCellMarkerInSource(line, col, color) {
+  if (!editor || !window.monaco) return false;
+  var model = editor.getModel();
+  if (!model || line < 1 || line > model.getLineCount()) return false;
+  var lineText = model.getLineContent(line);
+  var ranges = mdTableRowCellRanges(lineText);
+  if (col < 0 || col >= ranges.length) return false;
+  var rg = ranges[col];
+  var seg = lineText.slice(rg.start, rg.end);
+  var segStripped = seg.replace(/<!--\s*color:[A-Za-z]+\s*-->/g, '');
+  var tm = segStripped.match(/(\s*)$/);
+  var trail = tm ? tm[1] : '';
+  var head = segStripped.slice(0, segStripped.length - trail.length);
+  var newSeg = head + (color ? '<!--color:' + MD_MARKER_COLORS[color] + '-->' : '') + (trail || ' ');
+  var newLine = lineText.slice(0, rg.start) + newSeg + lineText.slice(rg.end);
+  if (newLine === lineText) return false;
+  editor.executeEdits('md-cell-marker', [{
+    range: new monaco.Range(line, 1, line, model.getLineMaxColumn(line)),
+    text: newLine,
+    forceMoveMarkers: true
+  }]);
+  return true;
 }
 
 /* エディタ側: 追加コメント形式 <!-- コメント ... --> の領域を背景ピンクで装飾する */
@@ -1913,7 +1983,7 @@ function bindPreviewInteractions() {
   preview.classList.add('md-hover-on');
 
   preview.addEventListener('pointermove', function(event) {
-    var block = event.target.closest(MD_BLOCK_SELECTOR);
+    var block = event.target.closest('td, th') || event.target.closest(MD_BLOCK_SELECTOR);
     if (!block || !preview.contains(block)) {
       if (mdHoverEls.length) clearMdHover();
       return;
@@ -1938,11 +2008,25 @@ function bindPreviewInteractions() {
       return;
     }
 
+    // テーブルはセル単位で着色する
+    var cell = event.target.closest('td, th');
+    if (cell && preview.contains(cell)) {
+      var pos = mdCellSource(cell, preview);
+      if (!pos) { showToast('セルの位置を特定できませんでした'); return; }
+      var curC = mdMarkerIndexFromClass(cell);
+      var nextC = (curC + 1) % 4;
+      cell.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3'); // 楽観的に即時反映
+      if (nextC) cell.classList.add('md-marker-' + nextC);
+      mdLastToggle = { revert: function() { mdSetCellMarkerInSource(pos.line, pos.col, curC); } };
+      mdSetCellMarkerInSource(pos.line, pos.col, nextC);
+      return;
+    }
+
     var block = event.target.closest(MD_MARK_SELECTOR);
     if (!block || !preview.contains(block)) return;
-    // コードブロック等（```フェンス）は末尾に色コメントを足すとフェンスが壊れるためスキップ
-    if (block.matches('pre') || (block.classList && block.classList.contains('mermaid'))) {
-      showToast('コードブロックには色を付けられません');
+    // コードブロック等（```フェンス）/ テーブル全体は色コメントで壊れる・検出できないためスキップ
+    if (block.matches('pre') || block.matches('table') || (block.classList && block.classList.contains('mermaid'))) {
+      showToast(block.matches('table') ? 'テーブルはセルをクリックして色付けします' : 'コードブロックには色を付けられません');
       return;
     }
     var line = mdBlockOwnEndLine(block, preview);
@@ -1951,7 +2035,7 @@ function bindPreviewInteractions() {
     var next = (cur + 1) % 4; // なし -> 1 -> 2 -> 3 -> なし
     block.classList.remove('md-marker-1', 'md-marker-2', 'md-marker-3'); // 楽観的に即時反映
     if (next) block.classList.add('md-marker-' + next);
-    mdLastToggle = { line: line, prev: cur }; // 取り消し用に切替前の色を保持
+    mdLastToggle = { revert: function() { mdSetMarkerInSource(line, cur); } }; // 取り消し用
     mdSetMarkerInSource(line, next); // ソースへ書込み（再描画で確定）
   });
 
@@ -1959,11 +2043,23 @@ function bindPreviewInteractions() {
   preview.addEventListener('dblclick', function(event) {
     if (event.target.closest('a')) return;
     // コメント挿入位置は、マーカー取り消しの再描画より前に確定しておく
-    var block = event.target.closest(MD_MARK_SELECTOR); // カーソル下の内側ブロック
+    var block = event.target.closest(MD_MARK_SELECTOR); // カーソル下の内側ブロック（セルはtableに解決）
     var span = (block && preview.contains(block)) ? mdInnerBlockSourceSpan(block, preview) : null;
 
-    if (mdLastToggle && typeof mdLastToggle.line === 'number') {
-      mdSetMarkerInSource(mdLastToggle.line, mdLastToggle.prev); // 1回目クリックの切替を取り消す
+    // テーブルセルなら、テーブルへのコメントとして本文先頭に「行番号：列番号」を付ける
+    var cellPrefix = null;
+    var cell = event.target.closest('td, th');
+    if (cell && preview.contains(cell)) {
+      var table = cell.closest('table');
+      var tr = cell.closest('tr');
+      if (table && tr) {
+        var rowNum = Array.prototype.indexOf.call(table.querySelectorAll('tr'), tr) + 1;
+        cellPrefix = rowNum + '：' + (cell.cellIndex + 1);
+      }
+    }
+
+    if (mdLastToggle && mdLastToggle.revert) {
+      mdLastToggle.revert(); // 1回目クリックの切替を取り消す
     }
     mdLastToggle = null;
     if (window.getSelection) {
@@ -1975,7 +2071,8 @@ function bindPreviewInteractions() {
     Promise.resolve(appPrompt('コメントを追加', '')).then(function(value) {
       if (value == null) return; // キャンセル
       if (!String(value).trim()) return;
-      mdInsertCommentAtSpan(span, value);
+      var text = cellPrefix ? (cellPrefix + '\n\n' + value) : value;
+      mdInsertCommentAtSpan(span, text);
     });
   });
 }
