@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSD Core Command Cheat Sheet v1.8.0</title>
+<style>
+:root{--bg:#0b1020;--panel:#121933;--panel2:#0f1530;--text:#eef2ff;--muted:#b7c0e0;--line:#2a355f;--accent:#86efac;--accent2:#fbbf24;--blue:#93c5fd;--red:#fca5a5;--purple:#c4b5fd;--shadow:0 20px 50px rgba(0,0,0,.25);--sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media(prefers-color-scheme:light){:root{--bg:#f5f7ff;--panel:#fff;--panel2:#f8faff;--text:#111827;--muted:#4b5563;--line:#d9e0f2;--accent:#166534;--accent2:#b45309;--blue:#1d4ed8;--red:#dc2626;--purple:#7c3aed;--shadow:0 20px 50px rgba(15,23,42,.08)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55}a{color:var(--blue)}.wrap{max-width:1200px;margin:0 auto;padding:24px}.hero,.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}.hero{padding:28px}.card{padding:20px;margin-top:20px}.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid3{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}h1{font-size:clamp(28px,5vw,44px);margin:8px 0 10px}h2{font-size:24px;margin:0 0 12px}h3{margin:0 0 8px;color:var(--accent)}.muted,.small{color:var(--muted)}.small{font-size:13px}code,pre{font-family:var(--mono)}code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.9em}pre{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);white-space:pre;overflow:auto;font-size:.85em;font-family:var(--mono);line-height:1.4}.table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:.9em}.table th,.table td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.table th{background:rgba(255,255,255,.04);color:var(--muted);font-size:.83em;text-transform:uppercase;letter-spacing:.5px}.table tr:last-child td{border-bottom:0}.decision{border-left:4px solid var(--blue);padding-left:12px;margin:10px 0}.kbd{border:1px solid var(--line);border-bottom-width:3px;border-radius:8px;padding:1px 7px;font-family:var(--mono);font-size:12px;white-space:nowrap}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;transition:background .15s}button:hover{background:var(--line)}.note{padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(147,197,253,.08);margin:10px 0}.warn{padding:14px;border:1px solid var(--red);border-radius:14px;background:rgba(252,165,165,.06);margin:10px 0}.info{padding:14px;border:1px solid var(--purple);border-radius:14px;background:rgba(196,181,253,.06);margin:10px 0}nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}nav .wrap{display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}.nav{padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);text-decoration:none;color:var(--text);font-size:.85em;transition:background .15s}.nav:hover{background:rgba(255,255,255,.08)}section{margin-top:24px}.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;margin-right:4px;font-weight:600}.tag-core{background:rgba(134,239,172,.15);color:var(--accent)}.tag-phase{background:rgba(147,197,253,.15);color:var(--blue)}.tag-util{background:rgba(251,191,36,.15);color:var(--accent2)}.tag-session{background:rgba(252,165,165,.15);color:var(--red)}.tag-ai{background:rgba(196,181,253,.15);color:var(--purple)}.tag-new{display:inline-block;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(134,239,172,.2);color:var(--accent);font-weight:700;vertical-align:middle;margin-left:4px}.tag-beta{display:inline-block;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(251,191,36,.2);color:var(--accent2);font-weight:700;vertical-align:middle;margin-left:4px}.tag-redux{display:inline-block;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(196,181,253,.2);color:var(--purple);font-weight:700;vertical-align:middle;margin-left:4px}
+@media print{nav{display:none}.hero,.card{box-shadow:none;break-inside:avoid}body{background:#fff;color:#111}}
+</style>
+<script>
+function copyText(id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(()=>{const s=document.getElementById(id+'-status');if(s){s.textContent='コピーしました';setTimeout(()=>s.textContent='',1400)}})}
+</script>
+</head>
+<body>
+
+<nav><div class="wrap">
+<a class="nav" href="#judge">判定フロー</a>
+<a class="nav" href="#whatsnew180">1.8 変更</a>
+<a class="nav" href="#whatsnew170">1.7 変更</a>
+<a class="nav" href="#hotfix161">1.6.1 変更</a>
+<a class="nav" href="#whatsnew">1.6/1.5 新機能</a>
+<a class="nav" href="#namespaces">Namespace</a>
+<a class="nav" href="#commands">全コマンド</a>
+<a class="nav" href="#workflow">ワークフロー</a>
+<a class="nav" href="#examples">実例</a>
+<a class="nav" href="#config">設定</a>
+<a class="nav" href="#migration">v1.38→redux</a>
+<a class="nav" href="#prompts">プロンプト</a>
+<a class="nav" href="#notes">注意点</a>
+<a class="nav" href="#sources">出典</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- Hero -->
+<section class="hero">
+<div class="small">GSD Core / <code>@opengsd/gsd-core</code> v1.8.0 • Single HTML Cheat Sheet</div>
+<h1>GSD Core コマンド チートシート</h1>
+<p class="muted">meta-prompting &amp; context engineering による spec-driven 開発システム。<br>
+<strong>71 コマンド</strong>（v1.8.0 での増減なし。v1.7.0 で <code>/gsd:next</code> と <code>/gsd:onboard</code> が追加され 69 → 71）。<br>
+<strong>v1.8.0 の目玉</strong>（2026-07-22、v1.7.0 pin から 93 コミット）: 新コマンドなしで<strong>「実行の規律」を強化するリリース</strong>。<strong><code>gsd-debugger</code> 大幅強化</strong>（bug taxonomy 分類 → 手法ルーティング、Ochiai SBFL による容疑箇所ランキング、fishbone + AND-gate の分岐 RCA、5 シグナルの fix 受け入れゲート（mutation check / no-op 検出 / held-out テスト / revert-and-reconfirm — 通らなければ <code>FIX REJECTED BY GUARDRAIL</code>）、PBT shrinking + oracle 分類の回帰テスト強化、blameless postmortem Prevention block、MemPalace 意味検索 recall）、<strong>tracer-first 計画</strong>（全プランが検証済み E2E スライスで開始、<code>--no-tracer</code> で従来動作）、<strong>reversibility tagging</strong>（one-way 決定に <code>checkpoint:decision</code>）、<strong><code>&lt;precondition&gt;</code> タスク要素</strong>（Design by Contract）、<strong>broken-windows ledger</strong>（<code>.planning/WINDOWS.md</code> が open のままでは ship をブロック、opt-in）、<strong>provider escalation</strong>（quota 超過時に別プロバイダへ自動切替、opt-in）。1.7 で inert だった <strong>Claude orchestration（BETA）が実際に動作するように</strong>。詳細は <a href="#whatsnew180">v1.8.0 変更</a>。<br>
+<strong>v1.7.0 の目玉</strong>（2026-07-15、前バージョン pin から 623 コミットの大型リリース）:<strong><code>/gsd:next</code> smart-entry</strong>（プロジェクト状態を自動判別して次アクションのメニューを提示・dispatch する state-aware な入口）、<strong><code>/gsd:onboard</code></strong>（既存コードベースの brownfield オンボーディングを map → ingest → init → summary の安全な順序でガイド）、<strong>Host-Integration Interface（ADR-1239 / EoS）</strong>で全 16 ランタイムを宣言的 descriptor 駆動化（pi・ZCode 新対応、VS Code 拡張、<code>gsd-mcp-server</code> companion MCP サーバ）、<strong>Claude orchestration capability</strong> <span class="tag-beta">BETA</span>（Claude Code の Workflow ツールを wave 並列実行バックエンドに、default-off）、<strong>api-coverage gate</strong>（外部 API 統合フェーズは <code>COVERAGE.md</code> なしで verify を通れない、default-on）、MemPalace <code>memory_mode</code> の <code>kg_backend</code>/<code>replace</code> が実装済みに、<strong>Gemini CLI ランタイム廃止</strong>（→ Antigravity CLI）。詳細は <a href="#whatsnew170">v1.7.0 変更</a>。<br>
+<strong>v1.6 の目玉</strong>: <strong>Capability エコシステム正式版</strong>（<code>gsd capability install/update/remove/list/outdated/disable/enable</code> CLI、ADR-1244：サードパーティ overlay を registry/git/npm/tarball/local から導入。trust gate + copy-only staging）、<strong>read-injection スキャナ</strong>（<code>security.injection_blocking</code>、Read/WebFetch/WebSearch の PostToolUse circuit-breaker、ADR-1577）、<strong>クロスプラットフォーム portability</strong>（host-integration capability matrix、ADR-1703）、<code>/gsd:capture --list-seeds</code>（seed 監査）、<code>workflow.plan_drift_precheck</code>（plan 前の drift advisory）。1.6.1 ホットフィックスは <a href="#hotfix161">こちら</a>。<br>
+<strong>v1.5 の目玉</strong>: <strong>MemPalace メモリ機能</strong>（クロスセッション/クロスプロジェクト recall、opt-in）、<strong>spec-phase の二重 probe</strong>（prohibition = NEGATIVE SPEC / edge-coverage = 8 カテゴリ）、<strong>Capability システム</strong>（ADR-857: tdd/drift/gap-analysis 等を宣言的 capability 化）、<code>progress --next --converge</code>、<code>anthropic-fable</code>（Claude Fable 5）プリセット、Kimi CLI 対応。<br>
+v1.38/redux からの移行は <a href="#migration">移行表</a>、v1.3〜1.6 の差分は <a href="#whatsnew">新機能</a> を参照。</p>
+<div class="info" style="margin-top:14px">
+<strong>Project Continuity Notice</strong> — 2026-04 以降、旧アップストリーム <code>gsd-build/get-shit-done</code>（メンテナ TÂCHES）が連絡不能となり、<code>$GSD</code> トークン絡みの rug-pull 疑惑も公表されました。コミュニティが立ち上げたフォーク <code>open-gsd/get-shit-done-redux</code>（メンテナ trek-e）が後継として開発を継続。さらに 2026-05-29 に <code>open-gsd/gsd-core</code> へ改名され、npm パッケージ・install binary も <code>gsd-core</code> 系に切替（改名コミット <code>#518</code>）。<br>
+パッケージ名の変遷: <code>get-shit-done-cc</code> → <code>@opengsd/get-shit-done-redux</code> → <code>@opengsd/gsd-core</code>。install binary: <code>get-shit-done-cc</code> → <code>get-shit-done-redux</code> → <code>gsd-core</code>。SDK <code>@gsd-build/sdk</code> → <code>@opengsd/gsd-sdk</code> は ADR-0174 により本体に統合・廃止。
+</div>
+<div class="toolbar">
+<button onclick="window.print()">印刷 / PDF化</button>
+<button onclick="copyText('prompt-judge')">判定プロンプトをコピー</button>
+<button onclick="copyText('prompt-regen')">再生成プロンプトをコピー</button>
+</div>
+</section>
+
+<!-- v1.8.0 -->
+<section id="whatsnew180" class="card">
+<h2>v1.7.0 → v1.8.0 の主な変更 <span class="tag-new">NEW</span></h2>
+<p class="small">v1.8.0（2026-07-22）は v1.7.0 pin から <strong>93 コミット</strong>。<strong>スラッシュコマンドの追加・削除はなく 71 のまま</strong>、コアワークフロー（discuss→plan→execute→verify）の使い方も不変。中心テーマは<strong>「実行の規律」</strong> — デバッガーの科学的手法を 7 項目で強化し、計画に tracer-first / reversibility / precondition の 3 つの規律を導入、broken-windows ledger で「後で直す」の放置を ship でゲートできるようにした。加えて 1.7 の大型リリースで shipped-but-inert だった機能の実働化（Claude orchestration、model_policy の defaults.json 永続化など）と大量の修正・セキュリティ強化。</p>
+
+<h3>v1.8.0 — 新機能ハイライト</h3>
+<table class="table">
+<thead><tr><th>領域</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>デバッグ <span class="tag-new">目玉</span></td><td><code>gsd-debugger</code> 総合強化（#1958〜#1964）</td><td>7 項目の連動アップグレード: <strong>① bug taxonomy 分類</strong>（Phase 1.75 で <code>bug_class</code> を Bohrbug / Heisenbug-Mandelbug / Concurrency に分類し調査手法をルーティング — Bohrbug は決定的再現 + SBFL + git bisect、Heisenbug は record-replay（<code>rr</code>）+ 統計サンプリングで <strong>SBFL は明示 skip</strong>、Concurrency は atomicity/order/deadlock チェックリスト優先。flat な 11 手法メニューを置換、#1961）、<strong>② Ochiai SBFL</strong>（失敗/成功テストの per-test カバレッジがあるとき spectrum-based fault localization で容疑箇所を top-N ランキングし、LLM 推論の前に探索空間を決定的に絞る。無い場合は logged degrade、#1959）、<strong>③ 分岐 RCA</strong>（単線の 5-Whys でなく Ishikawa ≥2 カテゴリ（code/config/environment/data）で候補原因を列挙し、AND-gate 質問「複数条件の同時成立が必要か」に明示回答。複数原因 fix の再発を防ぐ、#1960）、<strong>④ fix 受け入れゲート</strong>（target テスト green だけでは受理せず、mutation check（Stryker）/ no-op・behavior-deleting diff 検出 / 隣接 held-out テスト / revert-and-reconfirm の 5 シグナルで検証。不合格は <code>FIX REJECTED BY GUARDRAIL</code> → revise / 文書化された負債として受理 / 放棄を選択、#1958）、<strong>⑤ 回帰テスト強化</strong>（PBT（fast-check / Hypothesis）の shrinker で counterexample を最小化して回帰 seed に、oracle を specified/derived/metamorphic/implicit に分類記録、equivalence class の boundary neighbors を生成、#1962）、<strong>⑥ Prevention block</strong>（archive 時に blame-free の分岐 5-Whys + 「なぜ既存ゲートで捕捉できなかったか」+ 具体的再発ガードを記録。knowledge-base に <code>why_not_caught</code> / <code>recurrence_guard</code> フィールド追加、#1963）、<strong>⑦ MemPalace 意味検索 recall</strong>（Phase 0 で過去の解決済みセッションを keyword overlap でなく意味類似で top-k recall。「requests hang under load」が「API times out when many users connect」にヒット。MemPalace 不在時は keyword フォールバック、#1964）。ルール詳細は <code>gsd-core/references/debugger-*.md</code></td></tr>
+<tr><td>計画 <span class="tag-new">目玉</span></td><td>tracer-first 計画がデフォルトに（#1945 / #2294）</td><td>全プランが「全レイヤーを貫通する production-quality の thin slice」1 本で始まり、executor がそれを検証してから残りタスクを構築 — アーキテクチャの行き止まりが 10 コミット後でなく 1 コミット後に露見する。<code>/gsd:plan-phase --no-tracer</code> で従来の horizontal-layer 順に戻せる。<code>--mvp</code> は tracer-first の上に user-story framing + Walking Skeleton を重ねる形に</td></tr>
+<tr><td>計画</td><td>reversibility tagging（#1951 / #2471）</td><td>計画の決定を undo コストで <code>reversible</code> / <code>costly</code> / <code>one-way</code> に格付け。<code>one-way</code>（undo にデータ移行が要る・公開契約を壊す・不可能）な決定は実装タスクの前に <code>checkpoint:decision</code> が入り、無人実行でも承認なしに「一方通行のドア」を通らない。<code>costly</code> はフラグのみ（非ブロック）。無人運転前提なら <code>/gsd:plan-phase --no-reversibility-gates</code> で checkpoint を抑止（格付けは記録される）</td></tr>
+<tr><td>計画 / 実行</td><td><code>&lt;precondition&gt;</code> タスク要素 — Design by Contract（#1949 / #2422）</td><td>プラン順序では保証できない前提（env var 設定済み・前フェーズ成果物の存在・外部セットアップ完了）を runnable/checkable な事実としてタスクに宣言可能に。executor が実行前に assert し、不成立なら壊れた前提の上に構築する代わりに checkpoint で停止。<code>&lt;precondition&gt;</code> を書かないプランは従来と完全同一動作</td></tr>
+<tr><td>品質ゲート</td><td>broken-windows ledger（#1950 / #2441）</td><td>executor が作業中の stub・skip したテスト・未実行 verify を <code>.planning/WINDOWS.md</code> に自動記録し、<code>workflow.windows_enforce: true</code>（opt-in）のとき <code>open</code> エントリが残る限り <code>/gsd:ship</code> をブロック。window は理由記録付きの <code>waived</code>（監査可能）か <code>fixed</code> でのみ解消。<code>/gsd:progress</code> が open + waived 件数を表示。ledger の無いプロジェクトは従来どおり ship 可能（enforcement は default off なので「まず記録だけ」から始められる）。有効化: <code>gsd config-set workflow.windows_enforce true</code></td></tr>
+<tr><td>モデル</td><td>provider escalation（quota 対応、#2296 / #2458）</td><td>provider の throttle で executor が落ちるとフェーズ停止 → 手動再開待ちだった（tier を上げても同じプロバイダなので無意味）。<code>dynamic_routing.provider_escalation</code> にフォールバックモデル ID の順序付きリストを設定すると、quota-exceeded 失敗時にプロバイダを切替（swap をログ、<code>Retry-After</code> を尊重、<code>max_escalations</code> で上限、リスト枯渇時は試行モデルを列挙）。opt-in — 未設定なら従来の手動リカバリのまま</td></tr>
+<tr><td>モデル</td><td>dynamic routing がモデルもエスカレート（#2068 / #2334）</td><td><code>dynamic_routing.enabled</code> でのリトライは reasoning effort だけ上がりモデルは default tier に固定されたままだった問題を修正 — <code>resolve-execution</code> が attempt ごとに tier ladder（例 standard→heavy）でモデルを解決。dynamic routing 無効時は従来と同一</td></tr>
+<tr><td>実行 <span class="tag-beta">BETA</span></td><td>Claude orchestration が実際に動くように（#2285 / #2314）</td><td>1.7.0 の capability は registered-but-inert だった — <code>/gsd:execute-phase</code> がバックエンド検出を一度も呼ばず、必要な <code>execute:wave:pre</code> hook も宣言のみで未レンダリング。1.8 で wave ごとに hook をレンダリングし、有効 + 全ゲート通過時に独立プランを生成 Workflow スクリプト経由で dispatch（ゲート未達・無効時は byte-identical にインライン動作）</td></tr>
+<tr><td>Todo</td><td>severity の end-to-end 捕捉（#2337 / #2381）</td><td><code>/gsd:capture</code>（add-todo）が書き込み前に severity（blocker / major / minor / cosmetic）を確認するようになり、<code>gsd-tools list-todos</code> / <code>init todos</code> の JSON 出力にも <code>severity</code> フィールドが追加（旧 todo は省略）— バックログを全ファイル再読なしに severity でトリアージ可能に</td></tr>
+<tr><td>可視性</td><td>deferred-items.md の surfacing（#2287 / #2318）</td><td>executor の SCOPE BOUNDARY 規約はスコープ外発見を <code>deferred-items.md</code> に書くが誰も読み返さず永久に不可視だった。<code>/gsd:progress</code> の forensic 監査と <code>/gsd:audit-uat</code> が <code>.planning/phases/*/deferred-items.md</code> を glob して未解決エントリを表示</td></tr>
+<tr><td>statusline</td><td><code>statusline.state_format: compact</code>（#2162 / #2175）</td><td>opt-in の新 enum（default <code>full</code> = 従来表示）。<code>compact</code> は「&lt;version&gt; · P&lt;phase&gt;/&lt;total&gt; · &lt;status&gt;」（例 「v1.12 · P7/12 · executing」）を描画 — マイルストーン名とプログレスバーを落とし、自由文ステータスを正規語彙に collapse（<code>paused</code> は大文字 <code>PAUSED</code>）。自由文がコンテキストメーターを行外に押し出す unbounded-width 問題を解決</td></tr>
+<tr><td>i18n</td><td><code>response_language</code> が orchestrator プロンプトにも（#2402 / #2457）</td><td>従来 subagent プロンプトのみ設定言語を尊重し、orchestrator 自身の質問（verify-work / new-project / new-milestone / quick / manager 等）とハードコードされた英語の UAT checkpoint banner は英語のままだった。両方とも設定言語で描画（未設定時は従来と byte-identical）</td></tr>
+<tr><td>インストール</td><td>Claude Code の permission 事前承認が実際に効くように（#2278 / #2302）</td><td>installer は <code>Write(.planning/*)</code> 等のルールを書いていたが Claude Code に standalone の Write ゲートは無く（ファイル編集は <code>Edit(pattern)</code> でゲート）、一度もマッチせず毎回初回承認プロンプトが出ていた。<code>Edit(...)</code> ルールを書き、stale な <code>Write(...)</code> エントリは次回実行時に移行。あわせて意図的な symlink configHome レイアウトは <code>GSD_ALLOW_SYMLINKED_DEST=1</code> で install/update 可能に（#2393 / #2445）</td></tr>
+<tr><td>エコシステム</td><td>pi 統合の実働化 + Oh My Pi（#2470 / #2478 / #2448）</td><td>pi の拡張が <code>gsd.js</code> としてインストールされ pi が実際に発見できるように（<code>/gsd</code> が pi に登録される）。EoS Registry に Oh My Pi 向け gsd-omp 統合が掲載</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">Security / 主な Fixed</h3>
+<table class="table">
+<thead><tr><th>種別</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>Security</td><td><code>query config-get</code> の secret 漏洩 / prototype chain（#2256 / #2299）</td><td><code>--default</code> フォールバック経路が secret 名のキー（例 <code>brave_search</code>）を平文表示し、dotted-key 走査が raw property access のため <code>config-get __proto__</code>/<code>constructor</code> が JS 内部を exit 0 で返していた。absent-key 解決も走査も masked + own-property-gated に</td></tr>
+<tr><td>Security</td><td>version ラベルの path traversal 拒否（#2288 / #2323）</td><td><code>phases.clear --archive-version</code> と <code>milestone complete &lt;version&gt;</code> はバージョン値をディレクトリ名に使うため、未検証値で phase 履歴を <code>.planning/milestones/</code> 外へ移動できた。strict な version-token パターンで検証し fail loud</td></tr>
+<tr><td>Security</td><td>依存 advisory の一掃（#2496 / #2497 他）</td><td>body-parser advisory、transitive DoS advisory、新規開示 5 件を含め production 依存ツリーから既知 advisory をゼロに</td></tr>
+<tr><td>Fixed</td><td>progress / STATE の進捗凍結・誤カウント一掃（#2440 / #2468 他多数）</td><td><code>total_plans</code> が初期値で凍結し「Phase 3/8 · plan 12/4」のような矛盾表示になる問題を per-counter progress ratchet で修正（derived 値を常に採用）。milestone-grouped ROADMAP の progress 表更新、別フェーズの checkbox を誤って tick する問題、superseded プラン持ちフェーズが 100% にならない問題、phase key 衝突時の <code>/gsd:stats</code> 誤報も修正</td></tr>
+<tr><td>Fixed</td><td><code>/gsd:verify-work</code> の無言終了（#2325 他）</td><td>残り UAT テストが全部 blocked のとき silent terminate していた問題を修正。<code>audit-uat</code> の false-clean（実項目があるのに <code>total_items: 0</code>）も修正</td></tr>
+<tr><td>Fixed</td><td><code>/gsd:debug</code> の自動再開（#2352 他）</td><td>調査途中で停止せず auto-resume するように。phantom background handoff での stall も解消。<code>/gsd:mempalace-capture</code> の初回起動クラッシュ、headless MemPalace capture の silent 失敗も修正</td></tr>
+<tr><td>Fixed</td><td>フェーズアーカイブの end-to-end 配線（#2447 他）</td><td><code>phases.clear</code> がフェーズディレクトリを破壊せずアーカイブするように。アーカイブ先も切替後でなく outgoing マイルストーンのバージョン配下に。<code>milestone complete --ws</code> は root でなくワークストリーム内へアーカイブ。<code>close_phase_todos</code> が phantom unstaged deletion を残す問題も修正</td></tr>
+<tr><td>Fixed</td><td>worktree 実行時のパス解決（#2376 / #2428）</td><td>orchestrator 相対の planning パスを埋め込んだ subagent プロンプトが、git worktree など作業ディレクトリの異なる subagent で解決できなかった問題を、init/state が絶対パスを emit する形で修正</td></tr>
+<tr><td>Fixed</td><td>環境まわり（#2225 / #2261 他）</td><td>volta の node upgrade/prune 後に管理 hook が全滅する問題、stock macOS で test/build gate が「command not found」で誤失敗する問題（portable run-with-timeout へ置換、#2426）、CRLF STATE.md での <code>state record-session</code> フィールド欠落、CRLF TDD プランの <code>tdd.review-checkpoint</code> skip、非 Claude インストールで全出力が Claude ブランドになる問題を修正</td></tr>
+<tr><td>Fixed</td><td><code>/gsd:next</code> / <code>/gsd:ship</code> / レビュー系（#2466 / #2467 / #2451 他）</td><td><code>/gsd:next</code> が未完了フェーズを残したまま complete と誤報する問題（ROADMAP 由来カウントで grounding）、<code>/gsd:ship</code> の 100%-missing TDD Audit ノイズ表の自己抑制、<code>/gsd:plan-review-convergence</code> が設定済みレビュアーを Codex で silent 上書きする問題（<code>review.default_reviewers</code> を尊重）+ Antigravity CLI レビュアー対応、大プロンプトで OpenCode / Antigravity レビュアーが空レビューを silent 返しする問題を修正</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>1.8 の設定キー・フラグ追加まとめ:</strong> <code>workflow.windows_enforce</code>（off・broken-windows ledger の ship ゲート）/ <code>statusline.state_format</code>（<code>full</code>|<code>compact</code>、default full）/ <code>dynamic_routing.provider_escalation</code> + <code>max_escalations</code>（未設定 = 従来動作）/ <code>/gsd:plan-phase</code> の <code>--no-tracer</code>・<code>--no-reversibility-gates</code> フラグ / PLAN.md の <code>&lt;precondition&gt;</code> タスク要素 / env: <code>GSD_ALLOW_SYMLINKED_DEST=1</code>。→ <a href="#config">設定リファレンス</a>
+</div>
+</section>
+
+<!-- v1.7.0 -->
+<section id="whatsnew170" class="card">
+<h2>v1.6.1 → v1.7.0 の主な変更</h2>
+<p class="small">v1.7.0（2026-07-15）は前バージョン pin から <strong>623 コミット</strong>の大型リリース。スラッシュコマンドは <strong>+2 で計 71</strong>（<code>/gsd:next</code> smart-entry と <code>/gsd:onboard</code> brownfield オンボーディング）。中心テーマは <strong>Host-Integration Interface（ADR-1239 / EoS = Embeddable Orchestration System）</strong> — 全 16 ランタイムのインストール・hook・dispatch を hardcoded 分岐から宣言的 capability descriptor 駆動へ移行（golden-parity で byte-identical を保証）。コア GSD ワークフロー（discuss→plan→execute→verify）の使い方は v1.6 から不変。</p>
+
+<h3>新コマンド（69 → 71）</h3>
+<table class="table">
+<thead><tr><th>コマンド</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:next</code> <span class="tag-new">1.7</span></td><td><strong>state-aware smart-entry launcher</strong>（#1798）。<code>gsd-tools smart-entry --json</code> でプロジェクト状態（no-project / blocked / verify-failed / planning / executing / verify-pending / complete 等）を分類し、状況に応じた次アクションの短いメニューを提示して既存コマンドへ dispatch する「入口」コマンド。自身では作業しない（launcher/router のみ）。decimal phase ID も扱える。<strong>注意:</strong> redux で廃止された旧 <code>next</code>（workflow-advance、→ <code>progress --next</code> に統合）とは別物 — 名前が再利用された</td></tr>
+<tr><td><code>/gsd:onboard</code> <span class="tag-new">1.7</span></td><td><strong>brownfield オンボーディングのガイド</strong>（#1994）。既存コードベースに対し codebase map（<code>/gsd:map-codebase</code>）→ docs ingest（<code>/gsd:ingest-docs</code>）→ プロジェクト初期化（<code>/gsd:new-project</code>）→ <code>.planning/onboarding/SUMMARY.md</code> の安全な順序でルーティング。既存 planning ファイルを明示ゲートなしに上書きしない。フラグ: <code>[--fast]</code>（map-codebase --fast を優先）<code>[--text]</code>（TUI メニューの代わりにプレーンテキスト）</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.7.0 — 新機能ハイライト</h3>
+<table class="table">
+<thead><tr><th>領域</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>アーキテクチャ <span class="tag-new">目玉</span></td><td>Host-Integration Interface（ADR-1239 / EoS、#1690 他多数）</td><td>6 つの host-integration point（command / dispatch / model / hooks / state / artifact）を versioned・negotiated な capability contract（<code>runtime.hostIntegration</code>）として定義。<code>negotiateHostCapabilities</code> handshake は fail-closed（<code>effective ⊆ host-declared ∩ engine-known</code>）。Claude Code / OpenCode / Codex / Cursor / Cline / Hermes / Qwen / Kilo / Trae / CodeBuddy / Copilot / Windsurf / Antigravity / Augment / Kimi / ZCode の <strong>16 ランタイム全部が descriptor 駆動</strong>に移行し、install 出力は golden-parity で byte-identical を保証。副産物として各ランタイムの hook カバレッジ・background/nested dispatch が一斉強化（OpenCode は background dispatch 解禁で wave flatten 廃止、Cursor は depth-2 nested + background、Codex は skill root が <code>~/.agents/skills</code> に移行 + 6 hook イベント追加）</td></tr>
+<tr><td>ランタイム</td><td>新規対応: pi / ZCode、VS Code 拡張（#2205 / #2039 / #2210）</td><td><code>--pi</code> で pi に拡張としてインストール（<code>/gsd &lt;family&gt; &lt;subcommand&gt;</code> で実コマンド dispatch）。<code>--zcode</code> で ZCode（Z.ai の GLM-5.2 デスクトップ ADE）対応 — ゼロ hardcoded 分岐の純宣言的 descriptor。repo-local VS Code 拡張は <code>vscode.lm</code> のアクティブモデル・Language Model Tools（<code>#gsd-*</code>）・<code>#runSubagent</code> dispatch で駆動（Web Extension、Marketplace 未公開）。Kimi は native hook bus + background subagent 対応に</td></tr>
+<tr><td>MCP</td><td><code>gsd-mcp-server</code> companion MCP サーバ（#1810）</td><td><code>npx @opengsd/gsd-core gsd-mcp-server</code> で stdio JSON-RPC 2.0 の MCP サーバを起動。<code>gsd_invoke_command</code>（コマンドルーティングハブへ）+ <code>gsd_read_state</code> / <code>gsd_write_state</code>（<code>.planning/</code> 状態）を expose し、MCP を話せる任意のホスト（Claude Code / Codex / OpenCode / VS Code / Cursor / Cline / Hermes …）が bespoke プラグインなしで GSD を駆動可能。依存ゼロ（hand-rolled JSON-RPC）。OpenCode インストール時は <code>opencode.json</code> に <code>mcp.gsd</code> が自動登録される（idempotent・非 clobbering）</td></tr>
+<tr><td>実行 <span class="tag-beta">BETA</span></td><td>Claude orchestration capability（#1143 / #2044）</td><td><strong>default-off・BETA・Claude 専用</strong>。Claude Code の Workflow ツール（<code>/effort ultracode</code>、Agent SDK ≥ 0.3.149）を GSD ループの並列実行バックエンドとして採用するオプション。<code>claude_orchestration.enabled</code> が on かつランタイムが Claude かつ Workflow ツール検出かつ SDK 下限（<code>claude_orchestration.min_agent_sdk_version</code>）を満たすとき、<code>execute-phase</code> が waves → <code>parallel()</code> barriers / plans → <code>agent({agentType:'gsd-executor', isolation:'worktree'})</code> の Workflow スクリプトを生成 — #853 の backgrounded-agent nesting 制限で Claude Code ではインライン化されていた wave 並列 + plan-checker + verifier を復元。<code>gsd-ultraplan-phase</code> の plan-offload も同じゲート配下に。検出は pure・fail-closed（1 つでも欠けたらインライン、Workflow の無いランタイムでは byte-identical に従来動作）</td></tr>
+<tr><td>品質ゲート</td><td>api-coverage gate（#1562 / #2065）</td><td>外部 API/SDK/サービスを統合するフェーズは、API の全 capability surface を列挙した <strong><code>COVERAGE.md</code>（coverage matrix）</strong>を生成するまで <code>/gsd:verify-work</code> でシールできない。full coverage がデフォルトで、統合しない capability は明示的・理由付きの opt-out として記録 —「API を統合した」が「最初のユースケースが触った分だけ統合した」を黙って意味できなくなる。<code>workflow.api_coverage_gate</code>（default on）でトグル</td></tr>
+<tr><td>メモリ</td><td>MemPalace <code>memory_mode</code> の <code>kg_backend</code> / <code>replace</code> が実装済みに（#2010）</td><td>1.5〜1.6 では宣言のみ（<code>augment</code> 相当で動作）だった 2 モードが機能するように: <code>kg_backend</code> は KG fact について palace の temporal KG を第一ソースに（<code>.planning/graphs/</code> はフォールバック）、<code>replace</code> は recall を palace 経由で解決（native はフォールバック）。どのモードでも palace 到達不能時は native メモリに degrade し recall はブロックしない。headless capture の <code>mine --room</code> 不存在フラグ問題も修正（room はフォルダ構造 + <code>mempalace.yaml</code> の <code>detect_room()</code> で割当、#2220）</td></tr>
+<tr><td>状態管理</td><td><code>gsd-tools state rebuild</code>（#1830）</td><td>STATE.md の本文構造を canonical ソース（frontmatter + <code>.planning/phases/</code> ディスクスキャン）から再導出する新サブコマンド。drift した <code>## Current Position</code> の整合、<code>**By Phase:**</code> 表の orphan 行削除、テンプレートプレースホルダのクリア、Session Continuity Archive の重複除去。全変更は <code>## Rebuild Log</code> に監査記録。冪等・<code>--dry-run</code>（プレビュー）・<code>--verbose</code> 対応。軽量な自動 <code>state sync</code> の重量級・手動版</td></tr>
+<tr><td>ナレッジ</td><td><code>graphify.graph_path</code>（#1825 / #2013）</td><td>知識グラフの場所を設定可能に（プロジェクトルート相対 or 絶対パス）。1 つの umbrella graph を複数プロジェクトで共有でき、サブプロジェクトごとに ~5MB のミラーコピーが drift する問題を解消。<code>query|status|diff</code> が configured graph を読む（build はプロジェクトスコープのまま）。未設定なら従来と byte-identical</td></tr>
+<tr><td>レビュー</td><td><code>review.default_reviewers</code> / <code>review.reviewer_instances</code>（#1517 / #1766）</td><td><code>/gsd:review</code> をフラグなしで実行したとき、<code>review.default_reviewers</code> が設定されていればその検出済みレビュアーのみ、なければ利用可能な全 CLI でレビュー。<code>review.reviewer_instances</code> で 1 つのアダプタ（例 OpenCode）を複数の独立レビュアー identity（別モデル）として走らせ、config 手動切替や REVIEWS.md 手動マージなしに 1 パスで 2 モデルレビューが可能に</td></tr>
+<tr><td>検証</td><td>honest verifier — backstop truth の abstention（#1154 / #1738）</td><td>spec の edge-probe が non-inferable とマークした truth（<code>verification: backstop</code>）を verifier が明示的証拠なしに確認できないとき、黙って <code>passed</code> にせず <code>human_needed</code>（reason: <code>insufficient_spec</code>、"unverified — held-out test recommended"）として報告。autonomous 実行は「N unverified non-inferable checks」で完了し、interactive はフェーズ末の human checkpoint にルーティング。inferable truth は abstain しない（over-abstention ガード）</td></tr>
+<tr><td>計画</td><td>spec-less フェーズの probe フォールバック（#1835）</td><td>フェーズ SPEC が <code>## Edge Coverage</code> / <code>## Prohibitions</code> を持たない（spec-phase を飛ばした）場合でも、plan-phase が edge / prohibition predicate を PLAN.md <code>must_haves</code> に著述し、goal-backward 検証にチェック対象を残す（ADR-857 Phase 6）。<code>workflow.specless_probe_fallback</code>（default on）でトグル — off にした skip は plan に可視記録</td></tr>
+<tr><td>計画</td><td>assumption-delta checkpoint（#1561 / #1767）</td><td>フェーズが従来 singular / required / derived だったものを plural / optional / chosen に変えるとき、planner に「primary key / identity model はまだ正しいものを指しているか」を再確認させる advisory（非ブロッキング）checkpoint。シグナル検出時のみ発火。<code>workflow.assumption_delta</code> でトグル</td></tr>
+<tr><td>UI</td><td>ui-consideration-probe（#1979）</td><td><code>/gsd:ui-phase</code> が UI-SPEC の解決すべき shape-rooted UI 状態（empty / loading / error / populated / partial / overflow / zero-one-many / long-text）を列挙する第 3 の probe-core アダプタを獲得。UI checker 承認後に各要素の該当 consideration を surface し <code>## UI Considerations</code> を UI-SPEC に記録、plan-phase が解決済み consideration を <code>must_haves</code> に昇格 — テストの無い純視覚状態は verify で silent pass せず <code>insufficient_spec → human_needed</code> にルーティング</td></tr>
+<tr><td>statusline</td><td><code>statusline.show_context_tokens</code> / <code>statusline.show_git</code>（#2174 / #2183）</td><td>どちらも opt-in（default false）。前者はコンテキストメーターにパーセントに加え絶対トークン数を表示（例 「████░░░░░░ 46% (156k)」。合算基準が広いため % と僅かに乖離しうる）。後者はディレクトリセグメントの後にブランチ名 + staged/unstaged/untracked/ahead/behind マーカー（clean なら ✓）を表示。無効時は git サブプロセスも起動しない。長コンテキストモデル名は「(1M context)」→「(1M)」に自動短縮（#2173）</td></tr>
+<tr><td>実行</td><td>外部 async ジョブの producer 側（SLURM、#1105 / #1998）</td><td>default-off の external-job capability。executor が SLURM ジョブを submit し <code>.planning/async-jobs/</code> manifest を commit、SUMMARY.md を遅延して <code>external_job_waiting</code> を返す（1.5 の reconcile 側 #1165 に producer 半分が揃った）。<code>external_job.submit_timeout_ms</code> / <code>poll_timeout_ms</code> / <code>artifact_dir</code> が config から効くように修正（#2006）</td></tr>
+<tr><td>信頼性</td><td>CLI の runtime build 自己修復（#2036）</td><td>コンパイル済み <code>gsd-core/bin/lib/*.cjs</code> は npm tarball には同梱されるが plugin-marketplace / git-clone インストールには無く、全コマンドが <code>Cannot find module</code> で死んでいた。<code>gsd-tools</code> エントリポイントが欠落を検出し、オンデマンドで一度だけコンパイル（lock-guarded で並列レース回避）してから続行。TypeScript が無い場合は actionable なメッセージを表示</td></tr>
+<tr><td>信頼性</td><td>test gate の watch-mode ハング解消（#2060）</td><td>vitest はインタラクティブ端末で watch mode がデフォルトのため、<code>npm test</code> 解決先が vitest だと test gate が永遠にハングしていた。全 test gate（regression / post-merge / audit-fix / verify-phase）が共有 <code>normalize-test-command</code> ヘルパーで one-shot 形式に書き換え（vitest → <code>vitest run</code>、jest <code>--watch</code> → <code>--watchAll=false</code>、watch-vitest 裏の pm test script → <code>CI=true</code> prefix）。加えて <code>workflow.test_gate_timeout</code>（default 600s）で実行を bound</td></tr>
+<tr><td>モデル</td><td>Codex/OpenAI デフォルトが GPT-5.6 世代へ（#2122 / #2146）</td><td>Codex ランタイムの tier デフォルトと <code>openai</code> プリセットが GPT-5.6 ファミリー（Sol / Terra / Luna）に更新（旧 GPT-5.4/5.5 系を置換）。設定変更なしで agentic coding 向上（Sol）と低コスト化（Terra/Luna）</td></tr>
+<tr><td>エコシステム</td><td>Community Capability Registry / EoS Registry（#2188 / #2193）</td><td>サードパーティの GSD Capability と EoS host-integration を documentation PR で登録できる non-endorsing な discoverability カタログが 2 つ新設。各エントリに latest-release badge と GitHub Discussion（ranking / comments）。あわせて <code>.claude-plugin/marketplace.json</code> を同梱し Claude-plugin 互換ランタイム（ZCode 等）がカスタム marketplace ソースとして発見・インストール可能に（#1861）</td></tr>
+<tr><td>設定</td><td>static-frontmatter ランタイムの model config 変更警告（#1692）</td><td><code>codex</code> / <code>opencode</code> では <code>model_overrides</code> 等の変更が <code>gsd install</code> 再実行まで無効なのに沈黙していた問題に、変更ファイル名と正確な修復コマンドを示す 1 行 stderr 警告を追加（read-only・warning-only・セッション毎 dedup。Claude Code は spawn 時解決のためスキップ）</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">Removed / 主な Fixed / Security</h3>
+<table class="table">
+<thead><tr><th>種別</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>Removed <span class="tag-new">重要</span></td><td>Gemini CLI ランタイム廃止（#1928 / #1996）</td><td>Google が 2026-06-18 に Gemini CLI を打ち切ったため、<code>npx gsd-core --gemini</code> は deprecation notice を表示し <strong>Antigravity CLI</strong>（公式後継、GSD は first-class 対応済み）を案内する</td></tr>
+<tr><td>Security</td><td><code>gate="blocking-human"</code> checkpoint の auto-approve 穴（#2107 / #2113）</td><td>package-legitimacy gate（slopsquatting 防御）の checkpoint が <code>--auto</code>/<code>--chain</code> 下で orchestrator により即 auto-approve されていた — 誰も見ていない unattended モードでこそ防御が inert だった。<code>checkpoint_handling</code> が <code>gate="blocking-human"</code> を全 auto-mode 分岐より先に carve out し、必ず present-to-user フローへ</td></tr>
+<tr><td>Security</td><td>markdown パーサの ReDoS 対策（#2128 / #2141）</td><td>細工された ROADMAP/STATE/PLAN.md（大量の未クローズ <code>(</code>/<code>[</code>/<code>&lt;tag&gt;</code> 等）が phase-header / Plans-count / files_modified パーサを O(n²) に追い込めた問題を全 regex 線形化で解消</td></tr>
+<tr><td>Fixed</td><td>verify-work の gap-closure 状態保持（#1921 / #2025）</td><td><code>execute-phase --gaps-only</code> 後の resume で検証状態が失われ、修正済み gap を fresh blocker として再診断していた。<code>gap_id</code>（<code>G-{phase}-{N}</code>）と fix plan の <code>gap_ids</code> frontmatter による state contract + resume 時 <code>reconcile_gaps</code> で解消。「later / next version」系の deferred follow-up は blocking gap でなく <code>## Deferred Follow-Ups</code> へ</td></tr>
+<tr><td>Fixed</td><td>ROADMAP/STATE 表エディットの構造的バウンド（#2250 / #2253 他）</td><td>phase 完了時の checkbox flip・plan count・progress 行の更新が whole-document regex で隣接フェーズ・decoy 表・backtick 内リテラルに bleed していた一連の問題を <code>withSection</code>/<code>withPhaseSection</code> seam と markdown-table seam で構造的に修正。<code>phase remove</code> が最終フェーズ削除時に Progress 表を破壊する問題も解消</td></tr>
+<tr><td>Fixed</td><td><code>model_overrides</code> が実際に適用されるように（#2074 / #2048）</td><td>assumptions-analyzer / code-reviewer / code-fixer への <code>model_overrides</code> と per-phase-type models が受理されつつ silently drop されていた問題を修正（全 spawn が解決済みモデルを thread）。Claude runtime ではフル model ID（例 <code>claude-sonnet-5</code>）を Agent ツールの tier alias（<code>sonnet</code>/<code>opus</code>/<code>haiku</code>/<code>fable</code>）へマップ</td></tr>
+<tr><td>Fixed</td><td><code>milestone complete --dry-run</code>（#2118 / #2155）</td><td>従来 <code>--dry-run</code> は無視され full destructive mutation が走っていた。今は <code>would_archive</code> / <code>would_update</code> を列挙する JSON プランを返しファイル変更ゼロ</td></tr>
+<tr><td>Fixed</td><td>context7 が plugin-marketplace インストールで動作（#2017 / #2029）</td><td>8 エージェント（researcher 系 + planner + executor）の grant が standalone MCP 形式（<code>mcp__context7__*</code>）のみで plugin 形式（<code>mcp__plugin_context7_context7__*</code>）にマッチせず、doc lookup が silent に WebSearch へフォールバックしていた。両形式を grant</td></tr>
+<tr><td>Fixed</td><td>Windows / クロスプラットフォーム多数</td><td>PowerShell hook runner 対応（<code>&amp;</code> call operator、#2261）、CRLF <code>## Session</code> 見出し（#2253）、CRLF .gitignore での <code>commit_docs</code> 誤無効化（#2235）、antivirus/indexer の transient file lock リトライ（#1742）、SDK 残骸参照による Windows <code>find.exe</code> ストーム（14h+ / 4M+ handles）解消（#2020 / #2027）、Linuxbrew の node バンプで hook が全滅する問題（#2225）</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>1.7 の設定キー追加まとめ:</strong> <code>workflow.api_coverage_gate</code>（on）/ <code>workflow.specless_probe_fallback</code>（on）/ <code>workflow.assumption_delta</code> / <code>workflow.test_gate_timeout</code>（600s）/ <code>claude_orchestration.enabled</code>（off・BETA）+ <code>claude_orchestration.min_agent_sdk_version</code>（0.3.149）/ <code>graphify.graph_path</code> / <code>review.default_reviewers</code> + <code>review.reviewer_instances</code> / <code>statusline.show_context_tokens</code> + <code>statusline.show_git</code>（いずれも off）/ <code>external_job.*</code>（SLURM、capability default-off）。→ <a href="#config">設定リファレンス</a>
+</div>
+</section>
+
+<!-- v1.6.1 ホットフィックス -->
+<section id="hotfix161" class="card">
+<h2>v1.6.0 → v1.6.1 の変更（ホットフィックス）</h2>
+<p class="small">v1.6.1（2026-07-01）は <strong>ホットフィックスリリース</strong>。スラッシュコマンド・フラグ・設定キーの追加はなく <strong>69 コマンドのまま</strong>、ワークフローの使い方も v1.6.0 から不変。変更は既定モデルの更新（Sonnet 5）と 3 件のバグ修正のみ。</p>
+<table class="table">
+<thead><tr><th>種別</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>Added <span class="tag-new">目玉</span></td><td>Claude Sonnet 5 が standard（sonnet）ティアの既定モデルに（#1847 / #1848）</td><td>モデルカタログと各プロバイダプリセットが sonnet／standard ティアを <code>claude-sonnet-5</code>（GA 2026-06-30）に解決するよう更新。Anthropic 系ランタイム（<code>claude</code>・<code>copilot</code>、および <code>anthropic</code>/<code>anthropic-fable</code> プリセット）と、<code>opencode</code>/<code>hermes</code> 向けの OpenRouter 形式 <code>anthropic/claude-sonnet-5</code> の両方で、旧 <code>claude-sonnet-4-6</code> を置換。<strong>Opus・Haiku ティアは変更なし</strong>。→ 設定リファレンスのモデルプロファイル表も参照</td></tr>
+<tr><td>Fixed</td><td><code>milestone complete</code> / <code>roadmap analyze</code> が Phase 0 / 999 sentinel を除外（#1691）</td><td>唯一のディレクトリなし ROADMAP 見出しが backlog sentinel（Phase 0 / Phase 999）だけのマイルストーンを <code>--force</code> なしで完了できるように。<code>roadmap analyze</code> も sentinel を <code>phase_count</code> に数えず、<code>next_phase</code> をそこへルーティングしない。#1445 が progress 分母に入れた <code>^999</code> 除外を完成させる修正</td></tr>
+<tr><td>Fixed</td><td><code>phase.complete</code> の <code>&lt;details&gt;</code> 内チェックボックス phase 誤判定（#1591 / #1752 / #1819）</td><td>アクティブマイルストーンの phase チェックリストが <code>&lt;details&gt;</code> ブロック内の <code>- [ ] Phase N:</code> チェックボックスで書かれ、次 phase がまだディスク上にディレクトリを持たない（計画中）とき、<code>phase.complete</code> の <code>isLastPhase</code> フォールバックが見出し専用パターン（<code>/#{2,4}\s*Phase…/</code>）でチェックボックスにマッチせず、中間 phase で <code>is_last_phase: true, next_phase: null</code> を返していた。これが milestone-complete カスケードで STATE.md を誤って <code>Milestone complete</code> に反転させ <code>progress.total_phases</code> を減算（例 8→7）していた。パターンを見出し式（<code>### Phase N:</code>）とチェックボックス式（<code>- [ ] / - [x] Phase N:</code>）の両方にマッチするよう修正</td></tr>
+<tr><td>Fixed</td><td>Windows: 管理 node hook の <code>$CLAUDE_PROJECT_DIR</code> path 二重クオート（#1746）</td><td>#2979 レガシー rewrite 時、<code>$CLAUDE_PROJECT_DIR</code> アンカーの管理 node hook パスを二重クオートして <code>"$CLAUDE_PROJECT_DIR"/...</code> を生成し、全 node 管理 hook が <code>MODULE_NOT_FOUND</code>（PreToolUse-guard デッドロック）で壊れていた問題を修正</td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- v1.3 / v1.4 / v1.5 / v1.6 新機能 -->
+<section id="whatsnew" class="card">
+<h2>v1.5.0 → v1.6.0 の主な変更</h2>
+<p class="small">v1.6.0（2026-06-25）は <strong>221 コミット</strong>のリリース。スラッシュコマンド数は 69 のまま（<code>/gsd:capture</code> に <code>--list-seeds</code> フラグ追加のみ）。目玉は <strong>Capability エコシステムの user-facing CLI 化</strong>（サードパーティ overlay の install/update/remove）、<strong>untrusted-input boundary（read-injection スキャナ）</strong>、<strong>クロスプラットフォーム portability の強制アーキテクチャ</strong>。コア GSD ワークフロー（discuss→plan→execute→verify）の使い方は v1.5 から不変。</p>
+
+<h3>v1.6.0 — 新機能ハイライト</h3>
+<table class="table">
+<thead><tr><th>領域</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>Capability <span class="tag-new">目玉</span></td><td><code>gsd capability</code> CLI（ADR-1244 / #1244）</td><td>ADR-857 の宣言的 capability に続き、<strong>サードパーティ capability overlay</strong> を扱う user-facing CLI が登場。<code>gsd capability install | update | remove | list | outdated | disable | enable</code>。registry / git / npm / tarball / local をソースに、first-party（同梱）と third-party overlay を統一管理。<code>install</code> は <strong>コードを実行しない（copy-only staging）</strong>／実行可能サーフェスには明示 consent／ソースは <code>capabilities.strict_known_registries</code> でゲート（fail-closed）。<code>outdated</code> は git <code>ls-remote</code>・npm <code>view</code> で軽量 remote peek し outdated/current/pinned/manual/unknown を報告</td></tr>
+<tr><td>Capability</td><td>installed overlay レジストリ（ADR-1244）</td><td>third-party の <code>capability.json</code> を <code>$GSD_HOME/.gsd/capabilities/&lt;id&gt;/</code>（global）と <code>&lt;projectRoot&gt;/.gsd/capabilities/&lt;id&gt;/</code>（project）から discover し、first-party レジストリと <code>buildRegistry</code> で合成。<strong>first-party always wins</strong>（id/skill/agent/config-key 衝突や予約 prefix <code>gsd-</code>/<code>gsd-core-</code>/<code>anthropic-</code> は load 時 reject）。<code>engines.gsd</code> semver で非互換 overlay は skip（<code>gate</code> hook 持ちは fail-closed で blocking gate 注入）。overlay の config キーは Federated Config 経由で federate</td></tr>
+<tr><td>セキュリティ <span class="tag-new">目玉</span></td><td>read-injection スキャナ（ADR-1577 / #1582）</td><td>外部入力の prompt-injection 対策。<code>gsd-read-injection-scanner.js</code> が <strong>Read / WebFetch / WebSearch の PostToolUse</strong> で発火。top-level <code>security.injection_blocking</code>（デフォルト <code>false</code>＝advisory：HIGH 検知をログのみ）。<code>true</code> で HIGH 検知時に <code>decision:"block"</code> を出しエージェントの次手を停止。fetch <em>後</em>の hook なので既存トランスクリプトは遡及 redact されない（<strong>circuit-breaker であって redactor ではない</strong>）。あわせて WebFetch/WebSearch injection isolation + opt-in blocking（ADR-1585/#1585）</td></tr>
+<tr><td>portability</td><td>host-integration capability matrix（ADR-1703 / #1703）</td><td>各ランタイム（Claude Code / Codex / Gemini / Cursor / Copilot …）の hook・コマンド面のサポート状況を <strong>capability マトリクスとして宣言的に定義</strong>し、cross-platform portability rules でずれを強制。host integration の追加・更新が how-to 化（<code>docs/how-to/add-or-update-a-host-integration.md</code>）。markdown sectionizer seam（ADR-1372）と resolution provenance（ADR-1411）で変換の決定論性を担保</td></tr>
+<tr><td>キャプチャ</td><td><code>/gsd:capture --list-seeds [status]</code>（#... REQ-SEED-03）</td><td>parked seed を <strong>read-only で監査</strong>する新フラグ。ID / status / scope / trigger / title の表とステータス別サマリを描画（seed を変更しない）。<code>dormant</code> / <code>active</code> / <code>triggered</code> でフィルタ可。次マイルストーンを待たず全 seed を棚卸しできる</td></tr>
+<tr><td>計画</td><td><code>workflow.plan_drift_precheck</code>（#1592）</td><td><code>plan:pre</code>（planner spawn 前）の<strong>非ブロッキング codebase-drift プリチェック</strong>。STRUCTURE.md の drift が閾値超過なら <code>/gsd:map-codebase</code> を促す warn-only advisory を出す（計画はブロックしない・mapper は spawn しない）。<code>execute:wave:post</code> の drift gate とは独立なので、autonomous/CI では plan 時 advisory だけ黙らせて execute 時検出は維持できる。デフォルト <code>true</code></td></tr>
+<tr><td>計画</td><td><code>workflow.mvp_mode</code> 設定化</td><td>MVP モードを config で永続化し、<code>--mvp</code> なしで全フェーズを MVP framing に。優先順位は <code>--mvp</code> CLI → ROADMAP.md <code>**Mode:** mvp</code> → この config 値 → <code>false</code></td></tr>
+<tr><td>埋め込み</td><td>embeddable orchestration engine（ADR-1239 / #1724）</td><td>GSD の install を write-confinement（realpath-confined）化し、オーケストレーションエンジンとして他ツールへ埋め込み可能にする基盤整備。<code>copyWithPathReplacement</code> / <code>installCodexConfig</code> の書き込み境界を厳格化</td></tr>
+<tr><td>診断</td><td>DispatchEvent（#1646）</td><td>Command Routing Hub が dispatch ごとに構造化 <code>DispatchEvent</code> を emit（capability コマンド <code>graphify</code>/<code>intel</code>/<code>audit-uat</code>/<code>audit-open</code> 含む）。成功時はサイレント、エラー時のみ stderr に JSON 1 行</td></tr>
+</tbody>
+</table>
+
+<h2 style="margin-top:26px">v1.4.3 → v1.5.0 の主な変更</h2>
+<p class="small">v1.5.0（2026-06-17）は <strong>361 コミット</strong>の大型リリース。コマンドは +2（MemPalace 系、計 69）。メモリ機能・spec-phase の品質ゲート・Capability アーキテクチャが中心。</p>
+
+<h3>v1.5.0 — 新機能ハイライト</h3>
+<table class="table">
+<thead><tr><th>領域</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>メモリ <span class="tag-new">目玉</span></td><td>MemPalace メモリ機能（opt-in、#1201）</td><td>MCP サーバ + CLI 経由でクロスセッション/クロスプロジェクトの recall と、GSD ループ境界での verbatim + 時系列 KG capture を提供。新コマンド <code>/gsd:mempalace-recall</code>（plan 前に過去の決定・パターン・驚きを <code>MEMORY-RECALL.md</code> へ）と <code>/gsd:mempalace-capture</code>（CONTEXT/PLAN/SUMMARY を MemPalace へ filing）。<strong>デフォルト無効・エラー時 skip</strong>（ループを止めない）。<code>pip install mempalace</code> + <code>mempalace.enabled: true</code> で有効化</td></tr>
+<tr><td>仕様精査</td><td>spec-phase: prohibition probe（#1149）</td><td>機能が「黙って何になってしまいうるか」という未記述の <strong>must-NOT 制約</strong>（価値・安全・倫理）を炙り出す Step 5.6。確認された prohibition は <strong>NEGATIVE SPEC</strong> 受け入れ基準になり、plan-phase が <code>must_haves.prohibitions</code> ブロックへ昇格。test-tier は fail-closed、judgment-tier は verify 時に soft-gate。OWASP/GDPR 等は <code>/gsd:secure-phase</code> へ委譲</td></tr>
+<tr><td>仕様精査</td><td>spec-phase: edge-coverage probe（#584）</td><td>各 SPEC 要件を <strong>閉じた 8 カテゴリの edge taxonomy</strong>（boundary / adjacency / empty・degenerate / encoding / ordering / precision / idempotency / concurrency）で走査し、covered/dismissed/backstop/unresolved に解決。covered は <code>must_haves.truths</code> へ昇格、unresolved は soft gate。どちらの probe も既存 SPEC は後方互換</td></tr>
+<tr><td>計画</td><td>plan-review convergence の primary 化（#1237）</td><td><code>/gsd:progress --next --auto --converge</code>（別名 <code>--cross-ai</code>）で計画を plan-review convergence 経由にルーティング（従来は <code>autonomous --converge</code> のみ。<code>workflow.plan_review_convergence</code> で gating）</td></tr>
+<tr><td>計画</td><td>drift-guard の決定論化（ADR-22 / #1242）</td><td>plan-review の source-grounding パスが、cited-symbol drift を 5 段階の authority ladder + severity マッピング + rung≥3 ハードブロックという<strong>テスト可能なシーム</strong>で分類（毎回プロンプトから再導出しない）</td></tr>
+<tr><td>計画</td><td>agent-teams 検出（#1371）</td><td>Claude Code の実験的 agent-teams 下では GSD のマルチエージェント協調が stall しうるため、<code>gsd-tools query teams-status</code> を追加し、<code>/gsd:plan-phase</code> が検出時に非致命的な警告（GSD 利用時は無効化推奨）を表示</td></tr>
+<tr><td>モデル</td><td><code>anthropic-fable</code> プリセット（#1015 / #1133）</td><td>Claude Fable 5 の high-budget ルーティング用 model policy provider を追加。Anthropic Opus 4.8 デフォルトと <code>anthropic</code> プリセットは維持。default <code>claude</code> ランタイムでも <code>model_policy</code> が honored に（<code>claude-fable-5</code> → <code>fable</code> エイリアス）。<code>context_window: 1000000</code> で 1M コンテキスト + adaptive enrichment</td></tr>
+<tr><td>ランタイム</td><td>Kimi CLI 対応（#743）</td><td><code>--kimi --global</code> でインストール、<code>/skill:gsd-*</code> で起動。新しい Kimi Code は <code>--skills-dir</code> 経由で同じ skill を利用</td></tr>
+<tr><td>スキル</td><td>plugin 提供スキルの参照（#1261）</td><td><code>agent_skills</code> が <code>global:&lt;plugin&gt;:&lt;skill&gt;</code> 形式で Claude Code プラグイン提供スキル（例 <code>global:coderabbit:code-review</code>）を参照可能に。22 の consumer エージェントが <code>Skill</code> ツールを携行</td></tr>
+<tr><td>実行</td><td>async 外部ジョブの正当な遅延（#1221）</td><td>長時間の外部ジョブを dispatch し <code>.planning/async-jobs/&lt;job&gt;.json</code> を commit して SUMMARY を遅延する Execute ステップを <strong>合法な deferred 状態</strong>（<code>external_job_waiting</code>）として認識。resume が再 dispatch（外部計算の二重実行）を回避</td></tr>
+<tr><td>テンプレート</td><td>PROJECT.md の Business Context（#756）</td><td>収益化・顧客向けプロジェクト用に Customer / Revenue model / Success metric / Strategy notes の 4 フィールドを任意追加。<code>/gsd:complete-milestone</code> がマイルストーン毎にレビュー</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.5.0 — Capability システム（ADR-857、内部アーキテクチャの大転換）</h3>
+<table class="table">
+<thead><tr><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>optional 機能の capability 化（#1183）</td><td><code>tdd</code> / <code>schema-gate</code> / <code>drift</code> / <code>gap-analysis</code> / <code>profile-pipeline</code> を 5 ステップの host loop から <strong>宣言的 Capability</strong>（loop hook + コマンドファミリ）へ移行。plan-phase/execute-phase のワークフロー本体が縮小。security ship-time gate（<code>ship:pre</code>）と UI safety gate（<code>execute:wave:post</code>）も実発火に</td></tr>
+<tr><td><code>gsd-tools capability set</code>（#1225）</td><td>capability の on/off と hook の gating を 1 コマンドで。<code>capability set &lt;id&gt; --on|--off</code>、<code>--gate &lt;key&gt;=&lt;true|false&gt;</code>。<code>/gsd:settings</code> の capability hook-gate もここを経由（「off means off」の write-time 不変条件）</td></tr>
+<tr><td>tri-state <code>active</code>（#1311）</td><td><code>gsd-tools capability state</code> が <code>active</code>（installed &amp;&amp; surfaced &amp;&amp; config-enabled）を報告。loop-hook レンダリングが単一の解決済み on/off を honor（fail-closed）</td></tr>
+<tr><td>test-tier prohibition の機械的証明（ADR-550 / #1279）</td><td>test-tier prohibition の <code>regression-must-fail-first</code> 性質を<strong>機械的に証明</strong>。<code>check prohibition-enforcement</code> が wired check を既知の違反 fixture（<code>violationFixture</code>）に対して実行し RED を確認してからでないと green 不可。caller の attestation には依存しない</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.3.0 / v1.3.1（2026-06-04）</h3>
+<table class="table">
+<thead><tr><th>種別</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>機能</td><td>Vertical MVP Slice モード正式化（#78）</td><td><code>/gsd:plan-phase --mvp</code> で水平レイヤー分解 → 縦切り機能スライス分解（UI→API→DB を 1 タスク列に）。新規プロジェクトの Phase 1 では Walking Skeleton モードが自動発火し <code>SKELETON.md</code> を生成。<code>--mvp --tdd</code> で「失敗するテストから始まる縦切りスライス」に合成可。ROADMAP.md に <code>**Mode:** mvp</code> と書けばフラグ無しで自動適用</td></tr>
+<tr><td>機能</td><td>guided MVP 計画（#78）</td><td><code>/gsd:mvp-phase &lt;N&gt;</code> がユーザーストーリー（As a / I want to / So that）を対話収集 → SPIDR 分割チェック → ROADMAP.md へ <code>**Mode:** mvp</code> 書き込み → plan-phase へ委譲、という一連のフローとして整備。<code>--force</code> で in_progress/completed フェーズも変換可</td></tr>
+<tr><td>機能</td><td>MVP 対応 UAT / 進捗表示（#78）</td><td><code>mode: mvp</code> のフェーズでは verifier がユーザーフロー優先の UAT スクリプトを生成。<code>progress</code> / <code>stats</code> が Walking Skeleton 完了状況と機能スライス別ステータスを表示</td></tr>
+<tr><td>機能</td><td>milestone-prefixed フェーズ ID（#39）</td><td><code>phase_id_convention: "milestone-prefixed"</code> で <code>Phase 1-01</code> 形式のグローバル一意 ID を採用可能。<code>gsd-tools roadmap validate</code>（準拠チェック）と <code>roadmap upgrade --convention milestone-prefixed</code>（移行、dry-run デフォルト）を追加。W021 検証ルール追加。デフォルト <code>null</code>（従来動作、破壊的変更なし）</td></tr>
+<tr><td>修正</td><td>checksum 自己修復（1.3.1 #670）</td><td>インストーラマイグレーションの checksum ドリフトでアップグレードが止まる問題を自己修復化。<code>hono</code> の npm advisory も解消</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.4.0（2026-06-08）— 大型リリース</h3>
+<table class="table">
+<thead><tr><th>領域</th><th>変更</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>リサーチ</td><td>Research Store（#664）</td><td>リサーチ結果を content-addressed store にキャッシュ（ソース別 TTL）。provider waterfall + confidence tier（HIGH は ground-truth 裏付け必須、authority のみは MEDIUM 止まり、SLOP は LOW 上限）。パッケージの正当性確認は registry API ベースに</td></tr>
+<tr><td>計画</td><td><code>--granularity</code> フラグ（#703）</td><td><code>/gsd:plan-phase --granularity &lt;coarse|standard|fine&gt;</code> で単発実行の計画粒度を config より優先して上書き</td></tr>
+<tr><td>インストール</td><td>Claude Code ネイティブプラグイン（#797）</td><td><code>claude plugin install</code> または <code>~/.claude/skills/</code> 自動ロードで導入可能に。スラッシュコマンドは <code>/gsd-core:&lt;command&gt;</code> 名前空間（npm インストーラの <code>/gsd:</code> と衝突しない）。<code>claude plugin enable|disable|update</code> でライフサイクル管理。従来の npm インストールも継続</td></tr>
+<tr><td>インストール</td><td>permissions 事前設定（#768）</td><td>Claude Code 新規インストール時に既知安全パターン（<code>Bash(npx gsd-core *)</code>、<code>.planning/</code> の Read/Write 等）を <code>permissions.allow</code> へ、認証情報ファイル（<code>.env</code> 等）を <code>deny</code> へ自動登録。初回承認プロンプトを排除</td></tr>
+<tr><td>インストール</td><td>Gemini CLI 拡張（#775）</td><td><code>gemini extensions install https://github.com/open-gsd/gsd-core</code> で Gemini 拡張としても導入可能に（<code>gemini-extension.json</code> + <code>GEMINI.md</code>）</td></tr>
+<tr><td>ランタイム</td><td>15 ランタイム hook / コマンド整備（#770 他多数）</td><td>Claude Code（SubagentStop/Stop/PreCompact/FileChanged hot-reload）、Gemini、Codex、Qwen、Cursor（<code>.cursor/commands/</code> + hooks.json）、Copilot（AGENTS.md + sessionStart hook）、Cline（<code>.clinerules/</code> ディレクトリ + skills）、CodeBuddy / Augment スラッシュコマンド、OpenCode / Kilo ネイティブ skill 出力など、各ランタイムの hook・コマンド面を一斉強化</td></tr>
+<tr><td>更新</td><td><code>/gsd:update --next</code>（#815、ADR #660）</td><td>RC チャンネル（<code>@next</code> dist-tag）からインストール / 更新可能に。エイリアス <code>--rc</code>。省略時は従来通り <code>@latest</code></td></tr>
+<tr><td>実行</td><td>skill ランタイム指定（#769→#921 で調整）</td><td>重量級 skill（plan-phase / execute-phase / autonomous）は <code>effort: xhigh</code>、軽量 skill（progress / stats）は <code>effort: low</code> を宣言。<code>context: fork</code> は 1.4.2 で撤回（fork するとサブエージェントを spawn できないため）</td></tr>
+<tr><td>実行</td><td>worktree base 不一致の自動回避（#683 / #749）</td><td>デフォルトブランチから分岐したブランチ上での <code>exit 42</code>（worktree base mismatch）を事前検出し、順次実行へ自動縮退。恒久対策として <code>worktree.baseRef: "head"</code> を <code>.claude/settings.local.json</code> へ自動設定</td></tr>
+<tr><td>設定</td><td><code>agent_skills_security.trusted_global_roots</code>（#754）</td><td>デフォルト skills dir 外を指す symlink skill を許可するオプトイン許可リスト。デフォルト <code>[]</code>（ガード維持）</td></tr>
+<tr><td>レビュー</td><td>外部 AI レビュー修正（#686/#689）</td><td><code>/gsd:review --cursor</code> が cursor-agent を正しく起動、<code>--agy</code>（Antigravity）の大型プロンプトでのハング解消</td></tr>
+<tr><td>セキュリティ</td><td>ReDoS / prototype pollution 対策（#665/#751）</td><td>フェーズ見出し regex の ReDoS 解消、<code>config-set</code> の dotted key 経由 prototype pollution をブロック、<code>qs >= 6.15.2</code> へピン</td></tr>
+</tbody>
+</table>
+
+<h3 style="margin-top:18px">v1.4.1 〜 v1.4.3（2026-06-09）— 安定化</h3>
+<table class="table">
+<thead><tr><th>Ver</th><th>修正</th></tr></thead>
+<tbody>
+<tr><td>1.4.1</td><td>Claude Code トップレベルの <code>/gsd:plan-phase</code> が researcher/planner/plan-checker を確実に spawn（#913）。<code>/gsd:manager</code> / <code>autonomous --interactive</code> が worktree 分離と独立検証を黙ってスキップする問題を解消（#863）。<code>project_code</code> 設定時のブランチ名生成修正（#904）。STATE.md frontmatter の <code>current_phase</code> 等が消える問題修正（#905）。temp ディレクトリリーク 2 件解消（#866/#862）。checklist 形式 ROADMAP での W007 誤検知解消（#892）</td></tr>
+<tr><td>1.4.2</td><td><code>plan-phase</code> / <code>execute-phase</code> / <code>autonomous</code> から <code>context: fork</code> を撤回 — fork されたコンテキストには Agent ツールが無くサブエージェントを spawn できないため（1.4.1 で <code>/gsd:autonomous</code> が停止するバグ #921 を修正）。context-monitor hook が実際の hook イベント名をエコーするよう修正（#925）</td></tr>
+<tr><td>1.4.3</td><td><code>--reapply</code> verifier の誤検知 2 件修正（#934/#937: pristine baseline 欠落時は advisory 扱い + 旧 <code>gsd-pristine/get-shit-done/</code> スナップショットを掃除する migration 004 追加）。<code>/gsd:update</code> の changelog プレビュー復旧（#938）。<code>plan-review-convergence</code> の replan ループが Claude Code で機能しない問題修正 — <code>gsd-plan-phase</code> を Agent() でラップせず depth 0 でインライン実行（#936）</td></tr>
+</tbody>
+</table>
+
+<div class="warn">
+<strong>ランタイムディレクトリ改名（#604）:</strong> 実行時ファイルの配置が <code>~/.claude/get-shit-done/</code> → <code>~/.claude/gsd-core/</code> に変わりました。コマンド定義の参照パスもすべて <code>@~/.claude/gsd-core/...</code> 形式に更新済み。古いインストールから更新すると migration が旧ファイルを掃除します（1.4.3 で orphan スナップショットの掃除も追加）。
+</div>
+</section>
+
+<!-- 判定フロー -->
+<section id="judge" class="grid">
+<div class="card">
+<h2>まずはこれで判定</h2>
+<div class="decision"><strong>今すぐ実装しない</strong> → <span class="kbd">/gsd:capture</span>（note/backlog/seed 統合）</div>
+<div class="decision"><strong>超小さい修正（計画不要）</strong> → <span class="kbd">/gsd:fast</span></div>
+<div class="decision"><strong>今やる小変更</strong> → <span class="kbd">/gsd:quick</span></div>
+<div class="decision"><strong>小さいが先に仕様確認したい</strong> → <span class="kbd">/gsd:quick --discuss</span></div>
+<div class="decision"><strong>小さいが品質保証もほしい</strong> → <span class="kbd">/gsd:quick --full</span></div>
+<div class="decision"><strong>どのコマンドか迷っている</strong> → <span class="kbd">/gsd:progress --do "..."</span> <span class="tag-redux">REDUX</span></div>
+<div class="decision"><strong>アイデアを練りたい・方向性を確認したい</strong> → <span class="kbd">/gsd:explore</span></div>
+<div class="decision"><strong>技術的実現性を先に確認したい</strong> → <span class="kbd">/gsd:spike [idea]</span></div>
+<div class="decision"><strong>UI デザインをラフに探索したい</strong> → <span class="kbd">/gsd:sketch [idea]</span></div>
+<div class="decision"><strong>フェーズ要件が曖昧・仕様を固めてから計画したい</strong> → <span class="kbd">/gsd:spec-phase [N]</span></div>
+<div class="decision"><strong>MVP の縦切りスライスで進めたい</strong> → <span class="kbd">/gsd:mvp-phase [N]</span> <span class="tag-redux">REDUX</span></div>
+<div class="decision"><strong>新フェーズを追加・差し込み・編集・削除</strong> → <span class="kbd">/gsd:phase [--insert|--remove|--edit]</span> <span class="tag-redux">REDUX</span></div>
+<div class="decision"><strong>phase の方針が曖昧</strong> → <span class="kbd">/gsd:discuss-phase [N]</span> → <span class="kbd">/gsd:plan-phase [N]</span></div>
+<div class="decision"><strong>他 AI とプランをすり合わせたい</strong> → <span class="kbd">/gsd:plan-review-convergence [N]</span> <span class="tag-redux">REDUX</span></div>
+<div class="decision"><strong>何かが壊れた</strong> → <span class="kbd">/gsd:debug [desc]</span></div>
+<div class="decision"><strong>次に何をすべきか不明・状況ごと判断してほしい</strong> → <span class="kbd">/gsd:next</span> <span class="tag-new">1.7</span>（メニュー提示）or <span class="kbd">/gsd:progress --next</span>（次ステップ自動実行）</div>
+<div class="decision"><strong>既存コードベースで初めて GSD を使う</strong> → <span class="kbd">/gsd:onboard</span> <span class="tag-new">1.7</span></div>
+</div>
+<div class="card">
+<h2>3つの見分け方</h2>
+<ul>
+<li><strong>いま着手するか？</strong> しないなら <span class="kbd">/gsd:capture</span>。</li>
+<li><strong>局所修正か、独立機能か？</strong> 局所修正なら <span class="kbd">quick</span>（または <span class="kbd">fast</span>）、独立機能なら <span class="kbd">phase</span>。</li>
+<li><strong>順番を壊す必要があるか？</strong> 途中差し込みなら <span class="kbd">phase --insert</span>。</li>
+</ul>
+<div class="note">
+<strong>quick のフラグ使い分け:</strong><br>
+• フラグなし — 最速で実装（バグ修正・設定変更向き）<br>
+• <code>--discuss</code> — 事前に仕様確認してから実装<br>
+• <code>--research</code> — 実装アプローチを事前調査<br>
+• <code>--validate</code> — plan-check + verification のみ有効（discussion なし）<br>
+• <code>--full</code> — discussion + research + plan-check + verification すべて有効<br>
+• フラグは組み合わせ可: <code>--discuss --research --validate</code> = <code>--full</code>
+</div>
+<div class="note">
+<strong>fast vs quick:</strong><br>
+• <code>fast</code> — サブエージェントなし・計画なし。コメント追加・変数名変更レベルの trivial な修正に。<br>
+• <code>quick</code> — planner + executor を起動。小〜中規模の実際の変更に。
+</div>
+<div class="note">
+<strong>spike vs sketch (redux: wrap-up はフラグ化):</strong><br>
+• <code>spike</code> — 技術的実現性を確認する使い捨て実験。「これは動くか？」を検証。<br>
+• <code>sketch</code> — UI デザインの方向性を探索する使い捨てモックアップ。「これは見えるか？」を探索。<br>
+• 完了したら <code>spike --wrap-up</code> / <code>sketch --wrap-up</code> で findings をプロジェクトスキルに永続化（旧 <code>-wrap-up</code> サブコマンドは削除）。
+</div>
+<div class="note">
+<strong>phase コマンドの使い分け（redux 統合）:</strong><br>
+• <code>phase &lt;desc&gt;</code> — 末尾追加（旧 add-phase）<br>
+• <code>phase --insert &lt;after&gt; &lt;desc&gt;</code> — 途中差し込み（旧 insert-phase）<br>
+• <code>phase --remove &lt;N&gt;</code> — 削除＋リナンバー（旧 remove-phase）<br>
+• <code>phase --edit &lt;N&gt;</code> — フィールドのみ修正（番号据え置き）
+</div>
+</div>
+</section>
+
+<!-- Namespace meta-skills -->
+<section id="namespaces" class="card">
+<h2>Namespace メタスキル <span class="tag-redux">REDUX 新機構</span></h2>
+<p>redux では 67 個の skill を直接列挙する代わりに、<strong>6 個の namespace router</strong> をモデルに見せて 2 段階で sub-skill にルーティングします。cold-start system-prompt を ~2,150t → ~120t に削減（#2792）。各 sub-skill は引き続き <code>/gsd:&lt;name&gt;</code> で直接呼び出せます。</p>
+<table class="table">
+<thead><tr><th>Namespace</th><th>キーワード タグ</th><th>内包するコマンド</th></tr></thead>
+<tbody>
+<tr><td><code>gsd:workflow</code></td><td>workflow | discuss plan execute verify phase progress</td><td>discuss-phase, spec-phase, plan-phase, execute-phase, verify-work, phase, progress, <strong>next</strong> <span class="tag-new">1.7</span>, ultraplan-phase, plan-review-convergence, add-tests, ai-integration-phase, autonomous, fast, mvp-phase, quick</td></tr>
+<tr><td><code>gsd:project</code></td><td>project lifecycle | milestones audits summary</td><td>new-project, <strong>onboard</strong> <span class="tag-new">1.7</span>, new-milestone, complete-milestone, audit-milestone, milestone-summary, import, ingest-docs, profile-user, review-backlog</td></tr>
+<tr><td><code>gsd:quality</code></td><td>quality gates | code review debug audit security eval ui</td><td>code-review, audit-uat, audit-fix, secure-phase, eval-review, ui-review, validate-phase, debug, forensics</td></tr>
+<tr><td><code>gsd:context</code></td><td>codebase intelligence | map graphify docs learnings</td><td>map-codebase, graphify, docs-update, extract-learnings</td></tr>
+<tr><td><code>gsd:manage</code></td><td>config workspace | workstreams thread update ship inbox</td><td>config, workspace, workstreams, thread, pause-work, resume-work, update, ship, inbox, pr-branch, undo</td></tr>
+<tr><td><code>gsd:ideate</code></td><td>exploration capture | explore sketch spike spec capture</td><td>capture, explore, sketch, spike, spec-phase</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>surface で表示制御:</strong> <code>/gsd:surface profile core</code> でコア skill のみ surface（cold-start ~12k → ~700t）、<code>/gsd:surface disable &lt;cluster&gt;</code> で再インストールなしにクラスター単位で off にできる（インストール時の <code>--profile=core</code> と相補。旧 <code>--minimal</code> はエイリアスとして存続）。
+</div>
+</section>
+
+<!-- 全コマンド一覧 -->
+<section id="commands">
+
+<div class="card">
+<h2>コアワークフロー</h2>
+<span class="tag tag-core">CORE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数・フラグ</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:new-project</code></td><td>プロジェクト初期化: 質問 → リサーチ → 要件 → ロードマップ</td><td><code>[--auto]</code> ドキュメントから自動生成</td></tr>
+<tr><td><code>/gsd:onboard</code> <span class="tag-new">1.7</span></td><td>既存コードベースの brownfield オンボーディングをガイド: codebase map → docs ingest → プロジェクト初期化 → <code>.planning/onboarding/SUMMARY.md</code>。既存 planning ファイルを明示ゲートなしに上書きしない</td><td><code>[--fast] [--text]</code></td></tr>
+<tr><td><code>/gsd:ingest-docs</code></td><td>既存 ADR・PRD・SPEC・DOC を取り込んで .planning/ を自動生成またはマージ</td><td><code>[path] [--mode new|merge] [--manifest &lt;file&gt;] [--resolve auto]</code></td></tr>
+<tr><td><code>/gsd:spec-phase</code></td><td>ソクラテス式対話でフェーズ要件を精査・曖昧度スコアリングして SPEC.md を作成（discuss-phase の前に実行）。<span class="tag-new">1.5</span> edge-coverage probe（8 カテゴリ）+ prohibition probe（NEGATIVE SPEC）を追加</td><td><code>&lt;N&gt; [--auto] [--text]</code></td></tr>
+<tr><td><code>/gsd:discuss-phase</code></td><td>実装方針・前提・好みを固定する（CONTEXT.md 作成）</td><td><code>&lt;N&gt; [--auto] [--chain] [--batch] [--analyze] [--text] [--power] [--all]</code></td></tr>
+<tr><td><code>/gsd:plan-phase</code></td><td>リサーチ + プラン作成 + 検証ループ。<span class="tag-new">1.3</span> <code>--mvp</code> 縦切りモード、<span class="tag-new">1.4</span> <code>--granularity</code> 単発粒度上書き。<span class="tag-new">1.8</span> <strong>tracer-first がデフォルト</strong>（全プランが検証済み E2E スライスで開始、<code>--no-tracer</code> で従来の horizontal 順）+ <strong>reversibility tagging</strong>（one-way 決定に <code>checkpoint:decision</code>、<code>--no-reversibility-gates</code> で抑止）+ <code>&lt;precondition&gt;</code> タスク要素（DbC）</td><td><code>[N] [--auto] [--research] [--skip-research] [--research-phase &lt;N&gt;] [--view] [--gaps] [--skip-verify] [--prd &lt;file&gt;] [--ingest &lt;path&gt;] [--ingest-format &lt;auto|nygard|madr|narrative&gt;] [--reviews] [--text] [--tdd] [--mvp] [--granularity &lt;coarse|standard|fine&gt;] [--no-tracer] [--no-reversibility-gates]</code></td></tr>
+<tr><td><code>/gsd:mvp-phase</code> <span class="tag-redux">REDUX</span></td><td>guided MVP 計画: user story 対話収集 → SPIDR splitting → <code>**Mode:** mvp</code> 書き込み → plan-phase 委譲。<span class="tag-new">1.3</span> で正式化</td><td><code>&lt;N&gt; [--force]</code>（in_progress/completed の変換許可）</td></tr>
+<tr><td><code>/gsd:execute-phase</code></td><td>全プランをウェーブ並列実行 → atomic commit</td><td><code>&lt;N&gt; [--wave N] [--gaps-only] [--interactive] [--tdd]</code></td></tr>
+<tr><td><code>/gsd:verify-work</code></td><td>手動 UAT（受け入れテスト）+ 自動診断。ブラウザ UAT は <code>gsd-browser</code> MCP 推奨</td><td><code>[N] [--ws &lt;name&gt;]</code></td></tr>
+<tr><td><code>/gsd:audit-milestone</code></td><td>マイルストーン完了前の達成度監査</td><td><code>[version]</code></td></tr>
+<tr><td><code>/gsd:complete-milestone</code></td><td>マイルストーンをアーカイブ + タグ付け</td><td><code>&lt;version&gt;</code> 例: "1.0"</td></tr>
+<tr><td><code>/gsd:new-milestone</code></td><td>次のバージョンサイクル開始</td><td><code>[name]</code> 例: "v1.1 Notifications"</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>フェーズ管理</h2>
+<span class="tag tag-phase">PHASE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:phase</code> <span class="tag-redux">REDUX 統合</span></td><td>ROADMAP.md のフェーズ CRUD。add / insert / remove / edit を 1 コマンドに統合</td><td><code>[--insert | --remove | --edit] &lt;phase-name-or-number&gt;</code></td></tr>
+<tr><td><code>/gsd:ultraplan-phase</code> <span class="tag-beta">BETA</span></td><td>クラウドに計画作業をオフロード。ブラウザでレビュー・コメント後に <code>/gsd:import</code> で取り込む（Claude Code 専用）</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:plan-review-convergence</code> <span class="tag-redux">REDUX</span></td><td>外部 AI レビューと replan を HIGH 懸念が無くなるまで自動収束させるループ</td><td><code>&lt;phase&gt; [--codex] [--gemini] [--claude] [--opencode] [--ollama] [--lm-studio] [--llama-cpp] [--ws &lt;name&gt;] [--all] [--max-cycles N]</code></td></tr>
+<tr><td><code>/gsd:validate-phase</code></td><td>完了フェーズの Nyquist バリデーション監査</td><td><code>[N]</code></td></tr>
+<tr><td><code>/gsd:add-tests</code></td><td>完了フェーズのテスト生成（unit + E2E）</td><td><code>&lt;phase&gt; [instructions]</code></td></tr>
+<tr><td><code>/gsd:undo</code></td><td>フェーズ/プランのコミットを安全にロールバック（依存チェック付き）</td><td><code>&lt;phase&gt; [plan]</code></td></tr>
+<tr><td><code>/gsd:autonomous</code></td><td>残り全フェーズを自動実行（discuss→plan→execute を繰り返す）。<span class="tag-new">1.4</span> <code>--only</code>、<span class="tag-new">1.5</span> <code>--converge</code>（計画を plan-review convergence 経由に）</td><td><code>[--from N] [--to N] [--only N] [--interactive] [--converge]</code></td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>削除済み（→ <code>phase</code> に統合）:</strong> <code>add-phase</code>, <code>insert-phase</code>, <code>remove-phase</code>。<br>
+<strong>削除済み（→ <code>progress --next</code>）:</strong> 旧 <code>next</code>（workflow-advance）。<span class="tag-new">1.7</span> で <code>/gsd:next</code> の名前は smart-entry launcher として再利用された（別機能）。<br>
+<strong>削除済み:</strong> <code>analyze-dependencies</code>, <code>plan-milestone-gaps</code>, <code>research-phase</code>（plan-phase に内包）, <code>list-phase-assumptions</code>。
+</div>
+</div>
+
+<div class="card">
+<h2>スパイク &amp; スケッチ &amp; アイデア</h2>
+<span class="tag tag-util">IDEATE</span> <span class="tag-redux">REDUX で wrap-up はフラグ化</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:spike</code></td><td>技術的実現性を確認する使い捨て実験。<code>--wrap-up</code> で findings をスキルへ永続化、<code>frontier</code> モードで「次に何を spike すべきか」も提案</td><td><code>[idea] [--quick] [--text] [--wrap-up]</code> or <code>frontier</code></td></tr>
+<tr><td><code>/gsd:sketch</code></td><td>使い捨て HTML モックアップで UI デザインの方向性を探索。<code>--wrap-up</code> で sketch findings をスキルへ永続化</td><td><code>[design idea] [--quick] [--text] [--wrap-up]</code> or <code>frontier</code></td></tr>
+<tr><td><code>/gsd:explore</code></td><td>ソクラテス式対話でアイデアを練る（プラン確定前の探索）</td><td><code>[idea]</code></td></tr>
+<tr><td><code>/gsd:capture</code> <span class="tag-redux">REDUX 統合</span></td><td>アイデア・タスク・ノート・seed を行き先別にキャプチャ（旧 add-todo / note / plant-seed / add-backlog を統合）。<span class="tag-new">1.6</span> <code>--list-seeds [status]</code> で parked seed を read-only 監査（dormant/active/triggered でフィルタ）。<span class="tag-new">1.8</span> todo 書き込み前に severity（blocker/major/minor/cosmetic）を確認し、<code>list-todos</code> JSON にも <code>severity</code> を出力 — severity でトリアージ可能に</td><td><code>[--note | --backlog | --seed | --list | --list-seeds] [text]</code></td></tr>
+<tr><td><code>/gsd:review-backlog</code></td><td>バックログアイテムをレビューし、アクティブマイルストーンに昇格</td><td>—</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>使い方の流れ:</strong><br>
+<code>spike "idea"</code> → 実験 → <code>spike --wrap-up</code> → findings がスキル化 → 本実装時に自動ロード<br>
+<code>sketch "ui idea"</code> → モックアップ → <code>sketch --wrap-up</code> → デザイン決定がスキル化 → UI 実装時に自動ロード<br>
+旧 <code>-wrap-up</code> サブコマンド（spike-wrap-up / sketch-wrap-up）は削除されフラグに統合。
+</div>
+</div>
+
+<div class="card">
+<h2>コードレビュー &amp; 品質</h2>
+<span class="tag tag-phase">QUALITY</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:code-review</code></td><td>フェーズで変更されたファイルのバグ・セキュリティ・品質レビュー → REVIEW.md</td><td><code>[phase]</code></td></tr>
+<tr><td><code>/gsd:audit-fix</code></td><td>監査 → 分類 → 修正 → テスト → コミットの全自動パイプライン</td><td>—</td></tr>
+<tr><td><code>/gsd:audit-uat</code></td><td>全フェーズの UAT・検証残項目をクロス監査</td><td>—</td></tr>
+<tr><td><code>/gsd:secure-phase</code></td><td>完了フェーズの脅威対策が実装されているか事後検証</td><td><code>[phase]</code></td></tr>
+<tr><td><code>/gsd:review</code></td><td>外部 AI CLI（他モデル）にフェーズプランのピアレビューを依頼。<span class="tag-new">1.7</span> フラグなしなら <code>review.default_reviewers</code>（設定時）→ 検出済み全 CLI の順で選択。<code>review.reviewer_instances</code> で 1 アダプタを複数レビュアー identity（別モデル）として利用可</td><td><code>&lt;phase&gt; [--codex] [--gemini] [--claude] [--opencode] [--cursor] [--agy] [--all]</code></td></tr>
+<tr><td><code>/gsd:eval-review</code></td><td>AI フェーズの評価カバレッジを事後監査（COVERED/PARTIAL/MISSING スコア）</td><td><code>[phase]</code></td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>削除済み:</strong> <code>code-review-fix</code> は redux で削除（<code>audit-fix</code> に統合 / <code>code-review</code> 結果を手動で修正する想定）。
+</div>
+</div>
+
+<div class="card">
+<h2>AI 統合 &amp; UI フェーズ</h2>
+<span class="tag tag-ai">AI / UI</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:ai-integration-phase</code></td><td>AI 機能を含むフェーズ向け設計コントラクト生成（AI-SPEC.md）。フレームワーク選定・実装ガイダンス・評価戦略を含む</td></tr>
+<tr><td><code>/gsd:ui-phase</code></td><td>フロントエンドフェーズ向け UI 設計コントラクト生成（UI-SPEC.md）</td></tr>
+<tr><td><code>/gsd:ui-review</code></td><td>実装済みフロントエンドの 6 軸ビジュアル監査 → UI-REVIEW.md</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>ワークスペース &amp; ワークストリーム</h2>
+<span class="tag tag-util">WORKSPACE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:workspace</code> <span class="tag-redux">REDUX 統合</span></td><td>ワークスペース管理（作成・一覧・削除）を 1 コマンドに統合</td><td><code>[--new | --list | --remove] [name]</code></td></tr>
+<tr><td><code>/gsd:workstreams</code></td><td>並行ワークストリームの管理（list / create / switch / status / progress / complete / resume）</td><td>—</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>削除済み（→ <code>workspace</code> に統合）:</strong> <code>new-workspace</code>, <code>list-workspaces</code>, <code>remove-workspace</code>。
+</div>
+</div>
+
+<div class="card">
+<h2>ナレッジ &amp; ドキュメント</h2>
+<span class="tag tag-util">KNOWLEDGE</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:graphify</code></td><td>プロジェクト知識グラフ（.planning/graphs/）の構築・照会・検査</td></tr>
+<tr><td><code>/gsd:docs-update</code></td><td>コードベースと照合して検証済みのプロジェクトドキュメントを生成・更新</td></tr>
+<tr><td><code>/gsd:milestone-summary</code></td><td>マイルストーンアーティファクトからチームオンボーディング用サマリーを生成</td></tr>
+<tr><td><code>/gsd:extract-learnings</code></td><td>完了フェーズから決定事項・教訓・パターン・驚きを抽出（旧 <code>extract_learnings</code>、ハイフン形へ改名）</td></tr>
+<tr><td><code>/gsd:stats</code></td><td>フェーズ数・プラン数・要件数・Git メトリクス・タイムラインを表示</td></tr>
+<tr><td><code>/gsd:thread</code></td><td>クロスセッション作業用の永続コンテキストスレッドを管理</td></tr>
+<tr><td><code>/gsd:profile-user</code></td><td>開発者の行動プロファイルを生成し Claude が発見できるアーティファクトとして保存</td></tr>
+<tr><td><code>/gsd:mempalace-recall</code> <span class="tag-new">1.5</span></td><td>plan 前に MemPalace から過去の決定・パターン・驚きを recall し <code>MEMORY-RECALL.md</code> を生成（<code>mempalace.enabled</code> + <code>recall_on_plan</code> が条件、無効なら no-op）。<span class="tag-new">1.7</span> <code>memory_mode</code> の <code>kg_backend</code>（palace KG を第一ソース）/ <code>replace</code>（palace を source of truth）が実装済みに — palace 到達不能時はどのモードでも native メモリ（<code>.planning/graphs/</code>、STATE）へ degrade。引数 <code>[phase-slug]</code></td></tr>
+<tr><td><code>/gsd:mempalace-capture</code> <span class="tag-new">1.5</span></td><td>フェーズ成果物（CONTEXT.md / PLAN.md / SUMMARY.md）を MemPalace へ filing し、決定事実を時系列 KG にミラー（<code>capture_artifacts</code> が条件、エラー時 skip でフェーズを止めない）。<span class="tag-new">1.7</span> headless capture の <code>mine --room</code> 問題を修正 — room はフォルダ構造 + <code>mempalace.yaml</code> の <code>detect_room()</code> で割当（#2220）。引数 <code>[CONTEXT.md|PLAN.md|SUMMARY.md]</code></td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>MemPalace（1.5 新規・opt-in）:</strong> recall/capture は GSD ループ境界（discuss/plan/execute-wave/verify/ship）の hook として自動発火するが、すべて <code>onError: skip</code>。<code>mempalace.enabled: true</code> で初めて作動し、デフォルトはループ完全不変。手動でも上記 2 コマンドで呼べる。<br>
+<strong>削除済み:</strong> <code>intel</code>（.planning/intel/ は手動管理）, <code>session-report</code>。
+</div>
+</div>
+
+<div class="card">
+<h2>セッション &amp; 状況把握</h2>
+<span class="tag tag-session">SESSION</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:progress</code> <span class="tag-redux">REDUX 統合</span></td><td>状況把握 + 次のアクション提案 + フリーフォーム dispatch を統合した「situational command」。<span class="tag-new">1.5</span> <code>--next --auto --converge</code>（別名 <code>--cross-ai</code>）で plan-review convergence にルーティング。<span class="tag-new">1.8</span> broken-windows の open + waived 件数を表示、forensic 監査が <code>deferred-items.md</code> の未解決エントリも surface</td><td><code>[--forensic | --next [--auto] [--converge] | --do "task description"]</code></td></tr>
+<tr><td><code>/gsd:next</code> <span class="tag-new">1.7</span></td><td>state-aware smart-entry launcher。プロジェクト状態（no-project / blocked / verify-failed / planning / executing / verify-pending / complete 等）を自動分類し、状況に応じた次アクションのメニューを提示して 1 コマンドに dispatch（launcher のみ・自身では作業しない）。旧 <code>next</code>（→ <code>progress --next</code>）とは別物</td><td>—</td></tr>
+<tr><td><code>/gsd:resume-work</code></td><td>前回セッションからコンテキスト復元</td></tr>
+<tr><td><code>/gsd:pause-work</code></td><td>中断ハンドオフ（.continue-here.md 作成）</td></tr>
+<tr><td><code>/gsd:manager</code></td><td>複数フェーズを 1 つのターミナルから管理するインタラクティブコマンドセンター</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>削除済み（→ <code>progress --next</code> / <code>--do</code>）:</strong> 旧 <code>next</code>（workflow-advance）, <code>do</code>。<span class="tag-new">1.7</span> の新 <code>/gsd:next</code> は state-aware smart-entry launcher で、廃止された旧 <code>next</code> とは別機能（名前の再利用）。<br>
+<code>progress --forensic</code> は v1.37 から続く 6 軸インテグリティ監査。
+</div>
+</div>
+
+<div class="card">
+<h2>設定 &amp; メンテナンス</h2>
+<span class="tag tag-util">CONFIG</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:config</code> <span class="tag-redux">REDUX 統合</span></td><td>GSD 設定を統合管理。ワークフロートグル・高度なノブ・統合先・モデルプロファイルを 1 コマンドで（旧 <code>settings</code> + <code>set-profile</code>）</td><td><code>[--advanced | --integrations | --profile &lt;name&gt;]</code></td></tr>
+<tr><td><code>/gsd:surface</code> <span class="tag-redux">REDUX</span></td><td>どの skill を surface するか切替。プロファイル適用・クラスター単位の disable/enable・reset</td><td><code>[list|status|profile &lt;name&gt;|disable &lt;cluster&gt;|enable &lt;cluster&gt;|reset]</code></td></tr>
+<tr><td><code>/gsd:health</code></td><td>.planning/ ディレクトリ整合性チェック。<code>--context</code> でコンテキスト利用率も警告</td><td><code>[--repair] [--context]</code></td></tr>
+<tr><td><code>/gsd:cleanup</code></td><td>完了マイルストーンのフェーズディレクトリをアーカイブ + upstream 消滅ブランチの prune <span class="tag-new">1.4</span>（dry-run 表示 → 確認後に実行）</td><td>（対話式）</td></tr>
+<tr><td><code>/gsd:update</code></td><td>GSD を最新版に更新（changelog 表示）。<span class="tag-new">1.4</span> <code>--next</code>（別名 <code>--rc</code>）で RC チャンネル（<code>@next</code>）から更新</td><td><code>[--sync | --reapply | --next | --rc]</code></td></tr>
+<tr><td><code>/gsd:help</code></td><td>コマンドリファレンス表示</td><td>—</td></tr>
+</tbody>
+</table>
+<div class="note">
+<strong>削除済み（→ <code>config</code>）:</strong> <code>settings</code>, <code>set-profile</code>。<br>
+<strong>削除済み:</strong> <code>reapply-patches</code>, <code>join-discord</code>, <code>from-gsd2</code>, <code>scan</code>。
+</div>
+<div class="info" style="margin-top:12px">
+<strong><code>gsd capability</code> CLI <span class="tag-new">1.6</span></strong> — スラッシュコマンドではなく <strong>ターミナル CLI</strong>（<code>gsd capability &lt;subcommand&gt;</code>）。サードパーティ capability overlay の install / update / remove / list / outdated / disable / enable。<code>install</code> はコードを実行せず copy-only staging、実行可能サーフェスには明示 consent。ソースは registry / git / npm / tarball / local。詳細は <code>docs/reference/gsd-capability-command.md</code> と ADR-1244。
+</div>
+</div>
+
+<div class="card">
+<h2>ユーティリティ</h2>
+<span class="tag tag-util">UTILITY</span>
+<table class="table">
+<thead><tr><th>コマンド</th><th>用途</th><th>主な引数</th></tr></thead>
+<tbody>
+<tr><td><code>/gsd:inbox</code></td><td>GitHub の open issues と PR をテンプレートに照合してトリアージ。ラベル付けやクローズも可能</td><td><code>[--issues] [--prs] [--label] [--close-incomplete] [--repo owner/repo]</code></td></tr>
+<tr><td><code>/gsd:quick</code></td><td>アドホックタスクを GSD 保証付きで実行</td><td><code>[--full] [--discuss] [--research] [--validate] [list|status|resume|close]</code></td></tr>
+<tr><td><code>/gsd:fast</code></td><td>サブエージェントなし・計画なしで trivial タスクを即時実行</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd:debug</code></td><td>科学的手法によるデバッグ（サブエージェント分離）。<span class="tag-new">1.8</span> 大幅強化: bug taxonomy 分類 → 手法ルーティング、Ochiai SBFL ランキング、分岐 RCA（AND-gate）、5 シグナル fix 受け入れゲート、PBT 回帰テスト強化、Prevention block、MemPalace 意味検索 recall。調査途中で停止せず auto-resume するように</td><td><code>[description]</code></td></tr>
+<tr><td><code>/gsd:forensics</code></td><td>失敗した GSD ワークフローのポストモーテム調査（git 履歴・アーティファクト・状態を解析）</td><td>—</td></tr>
+<tr><td><code>/gsd:map-codebase</code></td><td>既存コードベースを並列エージェントで分析 → .planning/codebase/。<span class="tag-new">1.7</span> 初回 brownfield セットアップは <code>/gsd:onboard</code> 経由が推奨ルートに（本コマンドは map の更新・深掘りにも随時使用可）</td><td><code>[area]</code> 例: "api", "auth"</td></tr>
+<tr><td><code>/gsd:ship</code></td><td>PR 作成 + レビュー + マージ準備を一括実行（verification 通過後）。<span class="tag-new">1.8</span> broken-windows ledger（<code>.planning/WINDOWS.md</code>）に <code>open</code> エントリが残っていると <code>workflow.windows_enforce: true</code> 時にブロック（waived は理由記録必須）</td><td>—</td></tr>
+<tr><td><code>/gsd:pr-branch</code></td><td>.planning/ コミットを除外したクリーンな PR ブランチを作成</td><td>—</td></tr>
+<tr><td><code>/gsd:import</code></td><td>外部プランをプロジェクト決定との競合チェック付きで取り込む</td><td><code>&lt;file&gt;</code></td></tr>
+</tbody>
+</table>
+</div>
+
+</section>
+
+<!-- ワークフロー -->
+<section id="workflow">
+<div class="card">
+<h2>ワークフロー全体像</h2>
+<pre>
+┌──────────────────────────────────────────────────────────────────┐
+│  /gsd:onboard (1.7)   ← 既存コードベースの導線: map → ingest →   │
+│                          new-project → onboarding SUMMARY        │
+│  /gsd:map-codebase    ← 既存コードがある場合の詳細分析            │
+│  /gsd:new-project     ← 質問 → リサーチ → 要件 → ロードマップ    │
+│  /gsd:ingest-docs     ← 既存 ADR/PRD/SPEC → .planning/ 自動生成  │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+        ┌────────────────────▼──────────────────────┐
+        │          各フェーズを繰り返す               │
+        │                                            │
+        │  /gsd:spike "..."     ← 実現性を検証 (任意) │
+        │  /gsd:sketch "..."    ← UI を探索 (任意)    │
+        │  /gsd:spec-phase N    ← 仕様精査 (任意)     │
+        │  /gsd:discuss-phase N ← 方針固定            │
+        │  /gsd:ui-phase N      ← UI 設計 (任意)      │
+        │  /gsd:plan-phase N    ← 計画 + 検証         │
+        │  /gsd:plan-review-convergence N ← 他AIすり合わせ │
+        │  /gsd:execute-phase N ← 並列実行            │
+        │  /gsd:verify-work N   ← 手動 UAT            │
+        │  /gsd:code-review N   ← コードレビュー       │
+        │           ↓                                │
+        │     次のフェーズへ ──────────────────────────┘
+        │           │ 全フェーズ完了
+        └───────────┼──────────────────────────────┘
+                    │
+        /gsd:audit-milestone      ← 達成度チェック
+        /gsd:complete-milestone   ← アーカイブ + タグ
+        /gsd:new-milestone        ← 次バージョンへ
+</pre>
+<div class="info">
+<strong>/gsd:next</strong> <span class="tag-new">1.7</span> — 状態を自動分類して次アクションのメニューを提示・dispatch（迷ったらここから）。<strong>/gsd:autonomous</strong> — discuss→plan→execute を全フェーズ自動実行。<strong>/gsd:progress --next</strong> — 次の論理ステップを自動判定して実行。<strong>/gsd:ultraplan-phase</strong> <span class="tag-beta">BETA</span> — クラウドで計画作業をオフロード（1.7 で Claude orchestration capability のゲート配下に統合）。<strong>/gsd:plan-review-convergence</strong> <span class="tag-redux">REDUX</span> — 他 AI レビュー→replan を HIGH 懸念ゼロまで自動収束。
+</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>plan-phase のエージェント構成</h3>
+<pre>
+/gsd:plan-phase N
+  ├── Phase Researcher (×4 並列)
+  │    ├── Stack / Features
+  │    ├── Architecture / Pitfalls
+  │    └── → RESEARCH.md
+  ├── Planner
+  │    └── → PLAN.md (XML 構造)
+  └── Plan Checker (最大 3 回ループ)
+       └── PASS → 完了 / FAIL → 修正
+
+主要フラグ:
+  --tdd     → TDD モードで計画生成
+  --mvp     → 縦切り MVP スライス (1.3)
+  --gaps    → ギャップのみ再計画
+  --reviews → 外部レビューを考慮
+  --granularity coarse|standard|fine
+            → 単発で計画粒度を上書き (1.4)
+  --research-phase N → リサーチのみ実行
+    （既存 RESEARCH.md はプロンプト無しで
+      自動使用。--research で強制更新、
+      --view で表示のみ）
+</pre>
+</div>
+<div class="card">
+<h3>execute-phase のウェーブ実行</h3>
+<pre>
+/gsd:execute-phase N
+  ├── 依存関係分析
+  ├── Wave 1 (独立プラン並列)
+  │    ├── Executor A → commit
+  │    └── Executor B → commit
+  ├── Wave 2 (Wave 1 に依存)
+  │    └── Executor C → commit
+  └── Verifier
+       └── PASS / FAIL → VERIFICATION.md
+
+主要フラグ:
+  --tdd         → TDD モードで実行
+  --wave N      → 特定 wave から再開
+  --interactive → 各タスク前に確認
+</pre>
+<p class="small">各 Executor は新鮮な 200K コンテキストで実行。</p>
+</div>
+<div class="card">
+<h3>plan-review-convergence <span class="tag-redux">REDUX</span></h3>
+<pre>
+/gsd:plan-review-convergence N --codex --gemini
+  ├── 既存 PLAN.md を外部 AI に投げる
+  ├── レビュー集約 (HIGH/MED/LOW)
+  ├── HIGH があれば replan
+  ├── 再レビュー → 収束判定
+  └── max-cycles まで繰り返し
+
+主要フラグ:
+  --codex / --gemini / --claude /
+  --opencode / --ollama / --lm-studio /
+  --llama-cpp     → 使う AI を指定
+  --all           → 全レビュアー使用
+  --max-cycles N  → 上限サイクル
+  --ws &lt;name&gt;     → workstream 指定
+</pre>
+</div>
+<div class="card">
+<h3>spec-phase の仕様精査フロー</h3>
+<pre>
+/gsd:spec-phase N
+  ├── コードベーススカウト
+  ├── ソクラテス式対話 (最大6ラウンド)
+  │    └── 4次元で曖昧度スコアリング
+  ├── ゲート: 曖昧度 ≤ 0.20 かつ
+  │          全次元最小値を満たす
+  └── → SPEC.md（偽造不可能な要件）
+       └── discuss-phase が自動ロード
+
+--auto  → 推奨デフォルトで自動決定
+--text  → テキスト形式で出力
+</pre>
+</div>
+<div class="card">
+<h3>spike / sketch のフロー</h3>
+<pre>
+/gsd:spike "アイデア"
+  ├── 実験分解 → リスク順実行
+  ├── 検証 → .planning/spikes/ に記録
+  └── /gsd:spike --wrap-up
+       └── .claude/skills/spike-findings/
+            → 将来のビルドで自動ロード
+
+/gsd:sketch "UI アイデア"
+  ├── モード確認 → 2〜3バリアント生成
+  ├── HTML モックアップ比較
+  └── /gsd:sketch --wrap-up
+       └── .claude/skills/sketch-findings/
+            → UI フェーズで自動ロード
+</pre>
+</div>
+<div class="card">
+<h3>discuss-phase のフラグ</h3>
+<pre>
+/gsd:discuss-phase N
+  --auto    → 推奨デフォルトで自動決定
+  --chain   → 対話後に plan+execute を自動実行
+  --batch   → ファイルベース UI で質問バッチ処理
+  --power   → 全質問を一括生成（自分のペースで回答）
+  --all     → 全 gray area を対話的にカバー
+  --analyze → 想定を分析して表示
+  --text    → テキスト形式で出力
+</pre>
+</div>
+</div>
+</section>
+
+<!-- 実例 -->
+<section id="examples">
+<div class="card">
+<h2>CLI プロダクト向け実例</h2>
+<table class="table">
+<thead><tr><th>やりたいこと</th><th>推奨コマンド</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td>コメントや変数名を直す</td><td><code>/gsd:fast</code></td><td>サブエージェントが不要な trivial な修正</td></tr>
+<tr><td>help 文言の修正</td><td><code>/gsd:quick</code></td><td>局所修正で完結</td></tr>
+<tr><td>どのコマンドか迷っている</td><td><code>/gsd:progress --do "やりたいこと"</code></td><td>redux 統合の dispatcher（旧 /gsd:do）</td></tr>
+<tr><td>アイデアを練りたい・方向性を確認したい</td><td><code>/gsd:explore</code></td><td>プラン確定前のソクラテス式対話</td></tr>
+<tr><td>技術的に動くかどうか確認したい</td><td><code>/gsd:spike [idea]</code></td><td>使い捨て実験で実現性を先に確認</td></tr>
+<tr><td>spike findings を永続化したい</td><td><code>/gsd:spike --wrap-up</code></td><td>旧 spike-wrap-up はフラグ化</td></tr>
+<tr><td>UI デザインの方向性を探りたい</td><td><code>/gsd:sketch [idea]</code></td><td>使い捨て HTML モックで方向性を固める</td></tr>
+<tr><td>フェーズ要件が曖昧で議論したい</td><td><code>/gsd:spec-phase [N]</code></td><td>discuss-phase の前に仕様精査で曖昧度を下げる</td></tr>
+<tr><td>MVP の最小切り出しで進めたい</td><td><code>/gsd:mvp-phase [N]</code></td><td>SPIDR で縦切りスライス化してから plan-phase</td></tr>
+<tr><td>エラーメッセージの見直し（表現方針も決めたい）</td><td><code>/gsd:quick --discuss</code></td><td>小さい変更だが事前の認識合わせが必要</td></tr>
+<tr><td>バグ修正で品質保証もほしい</td><td><code>/gsd:quick --full</code></td><td>plan-check + verification 付きで安全</td></tr>
+<tr><td>実装アプローチを調べてから実装したい</td><td><code>/gsd:quick --research</code></td><td>事前調査だけ有効化</td></tr>
+<tr><td>新しい <code>sync</code> サブコマンドを追加</td><td><code>/gsd:phase "sync subcommand"</code></td><td>独立した機能のまとまり、末尾追加</td></tr>
+<tr><td>設定ファイル構造を作り直してから後続に進みたい</td><td><code>/gsd:phase --insert [N] "..."</code></td><td>後続フェーズの前提となる urgent work</td></tr>
+<tr><td>フェーズの説明だけ修正したい</td><td><code>/gsd:phase --edit [N]</code></td><td>番号を据え置きでフィールドのみ変更</td></tr>
+<tr><td>既存の ADR・PRD から GSD プロジェクトを初期化</td><td><code>/gsd:ingest-docs</code></td><td>ADR &gt; SPEC &gt; PRD の優先度でコンフリクトを自動解消</td></tr>
+<tr><td>GitHub の issue を整理したい</td><td><code>/gsd:inbox</code></td><td>テンプレート照合で未記入・不完全な issue を一括トリアージ</td></tr>
+<tr><td>そのうち欲しい機能アイデアをメモ</td><td><code>/gsd:capture --note "..."</code></td><td>note/backlog/seed 用途を 1 コマンドに集約</td></tr>
+<tr><td>マイルストーンで surface したいアイデア</td><td><code>/gsd:capture --seed "..."</code></td><td>trigger 条件付きアイデア</td></tr>
+<tr><td>溜まった seed を棚卸ししたい <span class="tag-new">1.6</span></td><td><code>/gsd:capture --list-seeds [dormant|active|triggered]</code></td><td>read-only 監査（変更しない）</td></tr>
+<tr><td>backlog (999.x) に積む</td><td><code>/gsd:capture --backlog "..."</code></td><td>パーキングロット</td></tr>
+<tr><td>フロントエンドを追加する</td><td><code>/gsd:sketch</code> → <code>/gsd:ui-phase</code> → <code>/gsd:plan-phase</code></td><td>方向性探索 → UI-SPEC.md → 実装</td></tr>
+<tr><td>AI 機能を組み込む</td><td><code>/gsd:ai-integration-phase</code> → <code>/gsd:plan-phase</code></td><td>AI-SPEC.md でフレームワーク選定・評価戦略を定義</td></tr>
+<tr><td>他 AI のレビュー意見もすり合わせたい</td><td><code>/gsd:plan-review-convergence N --all</code></td><td>HIGH 懸念がゼロになるまで自動収束</td></tr>
+<tr><td>実装後にコードレビュー</td><td><code>/gsd:code-review N</code></td><td>REVIEW.md 生成（自動修正は audit-fix が後継）</td></tr>
+<tr><td>PR を出す</td><td><code>/gsd:ship</code> or <code>/gsd:pr-branch</code></td><td>ship は PR+レビュー一括、pr-branch は .planning/ 除外</td></tr>
+<tr><td>実装後に少し変えたい箇所が見つかった</td><td><code>/gsd:quick</code> or <code>/gsd:verify-work</code></td><td>execute-phase の再実行は避ける</td></tr>
+<tr><td>原因不明のバグが発生</td><td><code>/gsd:debug</code></td><td>科学的手法 + サブエージェントで調査</td></tr>
+<tr><td>GSD ワークフロー自体が失敗した</td><td><code>/gsd:forensics</code></td><td>git 履歴・アーティファクト・状態からポストモーテム</td></tr>
+<tr><td>フェーズをロールバックしたい</td><td><code>/gsd:undo &lt;phase&gt;</code></td><td>依存チェック付きの安全なリバート</td></tr>
+<tr><td>実装後にテストを追加したい</td><td><code>/gsd:add-tests</code></td><td>完了フェーズから unit + E2E テスト生成</td></tr>
+<tr><td>既存プロジェクトで初めて GSD を使う <span class="tag-new">1.7</span></td><td><code>/gsd:onboard</code></td><td>map → ingest → init → summary を安全な順序でガイド（手動なら <code>/gsd:map-codebase</code> → <code>/gsd:new-project</code>）</td></tr>
+<tr><td>状況が分からない・次の一手をメニューで選びたい <span class="tag-new">1.7</span></td><td><code>/gsd:next</code></td><td>state-aware smart-entry。状態を分類して適切なコマンドへ dispatch</td></tr>
+<tr><td>cold-start トークンを削りたい</td><td><code>/gsd:surface profile core</code></td><td>必要な skill のみ surface（インストールは触らない）</td></tr>
+<tr><td>設定を見直したい</td><td><code>/gsd:config</code></td><td>profile/toggles/integrations を統合管理</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>典型的なセッションフロー</h2>
+<div class="grid">
+<div>
+<h3>新規プロジェクト</h3>
+<pre>claude --dangerously-skip-permissions
+/gsd:new-project
+/clear
+/gsd:discuss-phase 1
+/gsd:plan-phase 1
+/gsd:execute-phase 1
+/gsd:code-review 1
+/gsd:verify-work 1
+/clear
+/gsd:discuss-phase 2
+...</pre>
+</div>
+<div>
+<h3>既存コードベース</h3>
+<pre>/gsd:onboard      # 1.7: map → ingest → init
+                  # → summary をガイド付きで
+# または手動で
+/gsd:map-codebase # 詳細分析
+/gsd:new-project
+/clear
+# 以降は通常のフェーズワークフロー</pre>
+</div>
+<div>
+<h3>ドキュメントから初期化</h3>
+<pre># 既存 ADR/PRD/SPEC から .planning/ 生成
+/gsd:ingest-docs
+
+# または
+/gsd:new-project --auto @prd.md</pre>
+</div>
+<div>
+<h3>セッション再開</h3>
+<pre>/gsd:next                # 1.7: 状態を分類して
+                         # 次アクションのメニュー提示
+# または
+/gsd:progress            # 状況確認
+/gsd:resume-work         # フルコンテキスト復元
+/gsd:progress --next     # 次ステップを自動判定</pre>
+</div>
+<div>
+<h3>仕様精査付きフェーズ</h3>
+<pre>/gsd:spec-phase 3        # 要件の曖昧度を解消
+/gsd:discuss-phase 3     # 方針固定 (SPEC.md を自動ロード)
+/gsd:plan-phase 3
+/gsd:execute-phase 3</pre>
+</div>
+<div>
+<h3>スパイク → 実装</h3>
+<pre>/gsd:spike "GraphQL で検索を実装できるか"
+/gsd:spike --wrap-up     # findings をスキルとして保存
+/clear
+/gsd:discuss-phase N     # スパイク結果を踏まえて方針固定
+/gsd:plan-phase N</pre>
+</div>
+<div>
+<h3>スケッチ → UI 実装</h3>
+<pre>/gsd:sketch "ダッシュボードのレイアウト"
+/gsd:sketch --wrap-up    # デザイン決定をスキルとして保存
+/clear
+/gsd:ui-phase N          # デザインスキルを自動ロード
+/gsd:plan-phase N</pre>
+</div>
+<div>
+<h3>MVP 縦切りで進める</h3>
+<pre>/gsd:mvp-phase 4         # user story → SPIDR
+  # → Mode: mvp を書き込み plan-phase へ自動委譲
+/gsd:execute-phase 4
+
+# または直接フラグで
+/gsd:plan-phase 1 --mvp --tdd
+  # Phase 1 なら SKELETON.md も生成</pre>
+</div>
+<div>
+<h3>他 AI レビュー収束</h3>
+<pre>/gsd:plan-phase 5
+/gsd:plan-review-convergence 5 --codex --gemini
+  # HIGH 懸念ゼロまで replan を繰り返す
+/gsd:execute-phase 5</pre>
+</div>
+<div>
+<h3>自律実行モード</h3>
+<pre># 残り全フェーズを自動実行
+/gsd:autonomous
+
+# または次ステップのみ自動判定
+/gsd:progress --next</pre>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 設定 -->
+<section id="config">
+<div class="card">
+<h2>設定リファレンス（.planning/config.json）</h2>
+<div class="grid">
+<div>
+<h3>コア設定</h3>
+<table class="table">
+<thead><tr><th>設定</th><th>選択肢</th><th>デフォルト</th></tr></thead>
+<tbody>
+<tr><td><code>mode</code></td><td>interactive / yolo</td><td>interactive</td></tr>
+<tr><td><code>granularity</code></td><td>coarse / standard / fine</td><td>standard</td></tr>
+<tr><td><code>granularities.&lt;phase_type&gt;</code> <span class="tag-new">1.4</span></td><td>planning / discuss / research / execution / verification / completion 別に coarse / standard / fine</td><td>（未設定）</td></tr>
+<tr><td><code>model_profile</code></td><td>quality / balanced / budget</td><td>balanced</td></tr>
+<tr><td><code>tdd_mode</code></td><td>true / false</td><td>false</td></tr>
+<tr><td><code>phase_id_convention</code> <span class="tag-new">1.3</span></td><td>null / "milestone-prefixed"</td><td>null（従来の数値 ID）</td></tr>
+<tr><td><code>context_window</code> <span class="tag-new">1.5</span></td><td>整数（例 1000000）</td><td>200000（1M モデルは 1000000 で adaptive enrichment 有効）</td></tr>
+<tr><td><code>claude_md_path</code> <span class="tag-new">1.5</span></td><td>ファイルパス</td><td>./.claude/CLAUDE.md（旧 ./CLAUDE.md。手書き CLAUDE.md を汚さない）</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>ワークフロートグル</h3>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>workflow.research</code></td><td>true</td><td>計画前のドメイン調査（1.4 から Research Store にキャッシュ）</td></tr>
+<tr><td><code>workflow.plan_check</code></td><td>true</td><td>プラン検証ループ（最大3回）</td></tr>
+<tr><td><code>workflow.verifier</code></td><td>true</td><td>実行後のゴール検証</td></tr>
+<tr><td><code>workflow.nyquist_validation</code></td><td>true</td><td>テストカバレッジ検証</td></tr>
+<tr><td><code>workflow.use_worktrees</code></td><td>true</td><td>並列実行の git worktree 分離。ブランチが origin/HEAD から分岐していると順次実行へ自動縮退（恒久対策: <code>worktree.baseRef:"head"</code> を settings.local.json へ — 1.4 から新規インストールで自動設定）</td></tr>
+<tr><td><code>workflow.human_verify_mode</code></td><td>'end-of-phase'</td><td>人間検証チェックポイントの方式（'mid-flight' でブロッキング復帰）</td></tr>
+<tr><td><code>workflow.plan_review_convergence</code> <span class="tag-new">1.5</span></td><td>false</td><td><code>/gsd:plan-review-convergence</code> と <code>--converge</code> ルーティングを有効化（デフォルト無効）</td></tr>
+<tr><td><code>workflow.plan_drift_precheck</code> <span class="tag-new">1.6</span></td><td>true</td><td><code>plan:pre</code> の非ブロッキング drift advisory。STRUCTURE.md の drift が <code>workflow.drift_threshold</code> 超過時に <code>/gsd:map-codebase</code> を促す warn-only（計画はブロックせず mapper も spawn しない）。<code>execute:wave:post</code> gate とは独立</td></tr>
+<tr><td><code>workflow.mvp_mode</code> <span class="tag-new">1.6</span></td><td>false</td><td>MVP モードを永続化し <code>--mvp</code> なしで全フェーズを MVP framing に。優先順位: <code>--mvp</code> → ROADMAP.md <code>**Mode:** mvp</code> → 本値 → false</td></tr>
+<tr><td><code>workflow.subagent_timeout</code></td><td>300000</td><td>並列サブエージェントのタイムアウト（<strong>ミリ秒</strong>。5 分。1.5 でドキュメント単位を ms に修正）</td></tr>
+<tr><td><code>workflow.api_coverage_gate</code> <span class="tag-new">1.7</span></td><td>true</td><td>外部 API/SDK/サービス統合フェーズに coverage matrix（<code>COVERAGE.md</code>）を要求する verify ゲート。全 capability surface を列挙し、非統合分は明示 opt-out として記録するまでシール不可</td></tr>
+<tr><td><code>workflow.specless_probe_fallback</code> <span class="tag-new">1.7</span></td><td>true</td><td>SPEC なしフェーズでも plan-phase が edge / prohibition predicate を <code>must_haves</code> に著述（ADR-857 Phase 6）。off にした skip は plan に可視記録</td></tr>
+<tr><td><code>workflow.assumption_delta</code> <span class="tag-new">1.7</span></td><td>true</td><td>singular→plural / required→optional / derived→chosen の変化を検出したとき planner に identity model の再確認を促す advisory checkpoint（非ブロッキング・シグナル検出時のみ）</td></tr>
+<tr><td><code>workflow.test_gate_timeout</code> <span class="tag-new">1.7</span></td><td>600（秒）</td><td>test gate（regression / post-merge / audit-fix）の実行上限。watch-mode ランナーは <code>normalize-test-command</code> で one-shot 化されるが、それでもハングした場合のバックストップ</td></tr>
+<tr><td><code>agent_skills_security.trusted_global_roots</code> <span class="tag-new">1.4</span></td><td>[]</td><td>symlink された global: skill の実体パスとして信頼する追加ルートの許可リスト</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>model_policy プリセット <span class="tag-new">1.4</span></h3>
+<p class="small">プロバイダ中立のモデル tier 設定。<code>/gsd:config</code> → Model Policy で設定。<span class="tag-new">1.5</span> default <code>claude</code> ランタイムでも honored に。</p>
+<table class="table">
+<thead><tr><th>設定</th><th>選択肢</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>model_policy.provider</code></td><td>openai / anthropic / <strong>anthropic-fable</strong> <span class="tag-new">1.5</span> / google / qwen / generic</td><td>既知プロバイダはカタログ準拠プリセットを解禁。<code>anthropic-fable</code> は Claude Fable 5 の high-budget ルーティング（<code>claude-fable-5</code> → <code>fable</code> エイリアス）</td></tr>
+<tr><td><code>model_policy.budget</code></td><td>high / medium / low</td><td>既知プロバイダ向け予算 tier（generic では無視）</td></tr>
+<tr><td><code>model_policy.high/medium/low</code></td><td>モデル ID</td><td>generic/custom プロバイダ用の tier 別モデル指定</td></tr>
+<tr><td><code>model_policy.runtime_tiers.&lt;runtime&gt;.&lt;tier&gt;</code></td><td>{ model, reasoning_effort? }</td><td>ランタイム別・tier 別の明示指定。<code>reasoning_effort</code> は対応ランタイム（現状 codex）にのみ転送</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>MemPalace 設定 <span class="tag-new">1.5</span></h3>
+<p class="small">opt-in のメモリ機能。<code>mempalace.enabled</code> が master gate で、false（デフォルト）なら全 hook 不作動・ループ完全不変。有効化前に <code>pip install mempalace</code>。</p>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>mempalace.enabled</code></td><td>false</td><td>master gate。true で recall/capture hook が作動</td></tr>
+<tr><td><code>mempalace.memory_mode</code></td><td>augment</td><td><span class="tag-new">1.7</span> 3 モードすべて実装済みに: <code>augment</code>（palace は追加層、native と併読）/ <code>kg_backend</code>（KG fact は palace の temporal KG を第一ソースに、<code>.planning/graphs/</code> はフォールバック）/ <code>replace</code>（recall を palace 経由で解決、native はフォールバック）。どのモードも palace 到達不能時は native メモリへ degrade（recall はブロックしない）</td></tr>
+<tr><td><code>mempalace.recall_on_discuss / recall_on_plan</code></td><td>true</td><td>discuss:pre で recall fragment 注入 / plan:pre で <code>MEMORY-RECALL.md</code> 生成</td></tr>
+<tr><td><code>mempalace.capture_artifacts</code></td><td>true</td><td>CONTEXT/PLAN/SUMMARY を各境界で verbatim filing + bug→fix ペア capture</td></tr>
+<tr><td><code>mempalace.mirror_kg</code></td><td>true</td><td>決定・学びを時系列 KG にミラー（<code>valid_from</code> = フェーズ日付）</td></tr>
+<tr><td><code>mempalace.cross_project_tunnels / diary_journal</code></td><td>false / true</td><td>ship:post で他プロジェクトの wing への tunnel 提案 / 1 セッション diary 記録</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>Capability trust / security <span class="tag-new">1.6</span></h3>
+<p class="small">サードパーティ capability（ADR-1244）と read-injection スキャナ（ADR-1577）のポリシー。first-party capability だけ使う場合は <code>capabilities.*</code> は無効。<code>security.*</code> は <strong>top-level</strong>（<code>workflow.security</code> ではない）にネストされる。</p>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>capabilities.strict_known_registries</code></td><td>—</td><td>capability ソースの install ゲート。<strong>host ベース</strong>照合（substring ではない — <code>evilgithub.com</code> は <code>github.com</code> 許可時も拒否）。malformed 値は fail-closed</td></tr>
+<tr><td><code>capabilities.auto_update</code></td><td>false</td><td><code>update</code>/<code>outdated</code> フローが参照。executable surface 集合が変わると常に再 consent を要求</td></tr>
+<tr><td><code>capabilities.integrity</code></td><td>—</td><td>sha512 で fetch した <strong>top-level artifact のみ</strong>を pin（npm の transitive 依存はカバーしない）</td></tr>
+<tr><td><code>security.injection_blocking</code></td><td>false</td><td>read-injection スキャナ（Read/WebFetch/WebSearch の PostToolUse）の circuit-breaker。false=advisory（HIGH 検知をログのみ）／true で HIGH 検知時 <code>decision:"block"</code>。fetch 後 hook のため遡及 redact はしない</td></tr>
+</tbody>
+</table>
+<p class="small" style="margin-top:8px">設定例: <code>gsd config-set security.injection_blocking true</code>（ネストキーとして永続化）。capability overlay の探索ルートは global <code>$GSD_HOME/.gsd/capabilities/&lt;id&gt;/</code> と project <code>&lt;root&gt;/.gsd/capabilities/&lt;id&gt;/</code>。<span class="tag-new">1.7</span> <code>config-set &lt;key&gt; null</code> がキーを本当に削除するように（従来は文字列 <code>"null"</code> を永続化、#2058）。<code>Infinity</code> 等の非有限値は拒否、<code>project_code</code> は常に文字列（<code>007</code> が <code>7</code> に潰れない、#2023）。</p>
+</div>
+<div>
+<h3>1.7 の新設定 <span class="tag-new">1.7</span></h3>
+<p class="small">Claude orchestration（BETA）・umbrella graph・レビュアー構成・statusline の各オプション。workflow トグル 4 種（<code>api_coverage_gate</code> / <code>specless_probe_fallback</code> / <code>assumption_delta</code> / <code>test_gate_timeout</code>）は左のワークフロートグル表を参照。</p>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>claude_orchestration.enabled</code> <span class="tag-beta">BETA</span></td><td>false</td><td>Claude Code の Workflow ツールを execute-phase の並列実行バックエンドに（waves → <code>parallel()</code>、plans → worktree 分離の gsd-executor agent）。Claude 専用・fail-closed（Workflow ツール未検出や SDK 下限未満なら byte-identical にインライン動作）。<code>gsd-tools claude-orchestration detect-backend|emit-workflow</code> で診断可</td></tr>
+<tr><td><code>claude_orchestration.min_agent_sdk_version</code></td><td>0.3.149</td><td>Workflow バックエンドを有効化する Agent SDK の下限バージョン</td></tr>
+<tr><td><code>graphify.graph_path</code></td><td>（未設定）</td><td>知識グラフの場所の上書き（プロジェクトルート相対 or 絶対）。umbrella graph を複数プロジェクトで共有可能に。<code>query|status|diff</code> が参照（build はプロジェクトスコープのまま）。設定先ファイルが無い場合はパスを名指しする actionable エラー</td></tr>
+<tr><td><code>review.default_reviewers</code></td><td>（未設定）</td><td><code>/gsd:review</code> フラグなし時に使うレビュアーの既定リスト（検出済みのもののみ実行）。未設定なら全 CLI</td></tr>
+<tr><td><code>review.reviewer_instances</code></td><td>（未設定）</td><td>1 つのモデル対応アダプタを複数の独立レビュアー identity（adapter+model の組）として定義。instance 名は <code>default_reviewers</code> に書ける（フラグとしては不可）</td></tr>
+<tr><td><code>statusline.show_context_tokens</code></td><td>false</td><td>コンテキストメーターに絶対トークン数を追加表示（例 「46% (156k)」）</td></tr>
+<tr><td><code>statusline.show_git</code></td><td>false</td><td>statusline にブランチ + staged/unstaged/untracked/ahead/behind マーカー（clean は ✓）。無効時は git サブプロセス不起動</td></tr>
+<tr><td><code>external_job.submit_timeout_ms / poll_timeout_ms / artifact_dir</code></td><td>（capability 既定）</td><td>default-off の external-job capability（SLURM アダプタ）の設定。env override &gt; config &gt; registry default の順で解決。<span class="tag-new">1.8</span> config からの設定が実際に SLURM アダプタへ届くように修正</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h3>1.8 の新設定 <span class="tag-new">1.8</span></h3>
+<p class="small">broken-windows ledger・provider escalation・compact statusline。plan-phase の新フラグ（<code>--no-tracer</code> / <code>--no-reversibility-gates</code>）は設定キーではなくコマンドフラグ。</p>
+<table class="table">
+<thead><tr><th>設定</th><th>デフォルト</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>workflow.windows_enforce</code></td><td>false</td><td>broken-windows ledger（<code>.planning/WINDOWS.md</code>）の ship ゲート。true で <code>open</code> エントリが残る限り <code>/gsd:ship</code> をブロック（<code>waived</code> は理由記録必須）。false でも executor による ledger への自動記録と <code>/gsd:progress</code> での件数表示は行われる — 「まず記録、あとでゲート」が可能</td></tr>
+<tr><td><code>statusline.state_format</code></td><td>full</td><td><code>full</code>（従来表示）| <code>compact</code>（「v1.12 · P7/12 · executing」形式。マイルストーン名・プログレスバーを省き、自由文ステータスを正規語彙に collapse）</td></tr>
+<tr><td><code>dynamic_routing.provider_escalation</code></td><td>（未設定）</td><td>quota / rate-limit 失敗時に切り替える fallback モデル ID の順序付きリスト。swap をログ（例 <code>sonnet → gpt-5</code>）、<code>Retry-After</code> 尊重、未設定なら従来の手動リカバリ</td></tr>
+<tr><td><code>dynamic_routing.max_escalations</code></td><td>（capability 既定）</td><td>provider escalation / model エスカレーションの試行上限。<span class="tag-new">1.8</span> dynamic routing のリトライは effort だけでなくモデルも tier ladder でエスカレートするように（#2334）</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="note">
+<strong>変更方法（redux）:</strong> <code>/gsd:config</code> で対話的に編集（旧 settings + set-profile）。プロファイルだけ切替なら <code>/gsd:config --profile budget</code>。surface 制御は <code>/gsd:surface</code> で分離。
+</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>モデルプロファイル詳細</h3>
+<p class="small">v1.6.1 より <strong>standard（sonnet）ティア = Claude Sonnet 5</strong>（GA 2026-06-30、旧 <code>claude-sonnet-4-6</code> を置換）。下表の <strong>Sonnet</strong> は Sonnet 5 に解決される。Opus・Haiku ティアは不変。<span class="tag-new">1.7</span> Codex/OpenAI プリセットは GPT-5.6 世代（Sol / Terra / Luna）へ更新。<code>model_overrides</code> のフル Claude model ID は Agent ツールの tier alias（sonnet/opus/haiku/fable）へ自動マップされ、silently drop されなくなった（#2048）。</p>
+<table class="table">
+<thead><tr><th>エージェント</th><th>quality</th><th>balanced</th><th>budget</th></tr></thead>
+<tbody>
+<tr><td>Planner</td><td>Opus</td><td>Opus</td><td>Sonnet</td></tr>
+<tr><td>Roadmapper</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Executor</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Phase Researcher</td><td>Opus</td><td>Sonnet</td><td>Haiku</td></tr>
+<tr><td>Debugger</td><td>Opus</td><td>Sonnet</td><td>Sonnet</td></tr>
+<tr><td>Codebase Mapper</td><td>Sonnet</td><td>Haiku</td><td>Haiku</td></tr>
+<tr><td>Verifier / Checker</td><td>Sonnet</td><td>Sonnet</td><td>Haiku</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>速度 vs 品質プリセット</h3>
+<table class="table">
+<thead><tr><th>シナリオ</th><th>Mode</th><th>粒度</th><th>Profile</th></tr></thead>
+<tbody>
+<tr><td>プロトタイピング</td><td>yolo</td><td>coarse</td><td>budget</td></tr>
+<tr><td>通常開発</td><td>interactive</td><td>standard</td><td>balanced</td></tr>
+<tr><td>プロダクション</td><td>interactive</td><td>fine</td><td>quality</td></tr>
+</tbody>
+</table>
+<h3 style="margin-top:16px">Git ブランチ戦略</h3>
+<table class="table">
+<thead><tr><th>戦略</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>none</code></td><td>現在のブランチに直接コミット（デフォルト）</td></tr>
+<tr><td><code>phase</code></td><td>フェーズごとにブランチ作成・マージ</td></tr>
+<tr><td><code>milestone</code></td><td>マイルストーン単位で 1 ブランチ</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>Surface / インストールプロファイル</h3>
+<p class="small">cold-start system-prompt のサイズを制御するため「どの skill を surface するか」を独立して管理。1.4 のインストーラプロファイルは <code>core</code>（8 skills、~130 desc tokens）/ <code>standard</code>（14 skills、~700t）/ <code>full</code>（全 skill、デフォルト）。</p>
+<table class="table">
+<thead><tr><th>方法</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>npx @opengsd/gsd-core --profile=core</code></td><td>main-loop 8 skills のみインストール（~12k → ~700t）。<code>--minimal</code> は <code>--profile=core</code> の後方互換エイリアス</td></tr>
+<tr><td><code>npx @opengsd/gsd-core --profile=core,audit</code></td><td>プロファイル合成（closure の和集合）。プロファイルは永続化され <code>gsd update</code> でも維持</td></tr>
+<tr><td><code>/gsd:surface profile &lt;name&gt;</code></td><td>インストール済みのまま surface を切替（<code>profile core,review</code> のような合成も可）</td></tr>
+<tr><td><code>/gsd:surface disable &lt;cluster&gt;</code></td><td>特定クラスター（例: ai, ui, workspace）を非表示</td></tr>
+<tr><td><code>/gsd:surface reset</code></td><td>インストール時プロファイルに戻す</td></tr>
+<tr><td>Namespace router</td><td>flat 67 → router 6 で cold-start ~2,150t → ~120t</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- v1.38 → redux → gsd-core 移行 -->
+<section id="migration" class="card">
+<h2>v1.38.x → redux 1.1.0 → gsd-core 1.8.0 移行表</h2>
+<p>旧 gsd-build v1.38 系（81 コマンド）から redux 1.1.0（67 コマンド）でコマンド統合があり、redux 1.1.0 → gsd-core 1.2.0 では <strong>パッケージ名と binary 名のみリブランド</strong>。gsd-core 1.3/1.4 はコマンド数を変えずフラグ・設定・インストール面を拡張し、1.5.0 で MemPalace 用 2 コマンドが追加されて計 69 に。1.6.0 はスラッシュコマンド数を据え置き（<code>/gsd:capture --list-seeds</code> フラグ追加のみ）、サードパーティ capability を扱う <code>gsd capability</code> ターミナル CLI を新設。1.6.1 はホットフィックス（standard ティアを Claude Sonnet 5 に更新）。<strong>1.7.0 で <code>/gsd:next</code>（smart-entry）と <code>/gsd:onboard</code>（brownfield オンボーディング）が追加され計 71 に</strong>。Gemini CLI ランタイムは廃止（→ Antigravity CLI）。<strong>1.8.0 はコマンド数据え置き（71 のまま）</strong>で、debugger 強化・tracer-first 計画・reversibility tagging・<code>&lt;precondition&gt;</code>・broken-windows ledger など「実行の規律」を追加。</p>
+<table class="table">
+<thead><tr><th>旧コマンド（v1.38）</th><th>redux/gsd-core での扱い</th><th>新コマンド／フラグ</th></tr></thead>
+<tbody>
+<tr><td><code>add-phase</code> / <code>insert-phase</code> / <code>remove-phase</code></td><td>統合（redux で導入）</td><td><code>/gsd:phase [--insert | --remove | --edit] &lt;target&gt;</code></td></tr>
+<tr><td><code>add-todo</code> / <code>note</code> / <code>plant-seed</code> / <code>add-backlog</code></td><td>統合（redux で導入）</td><td><code>/gsd:capture [--note | --backlog | --seed | --list] [text]</code></td></tr>
+<tr><td><code>check-todos</code></td><td>統合</td><td><code>/gsd:capture --list</code></td></tr>
+<tr><td><code>new-workspace</code> / <code>list-workspaces</code> / <code>remove-workspace</code></td><td>統合</td><td><code>/gsd:workspace [--new | --list | --remove] [name]</code></td></tr>
+<tr><td><code>settings</code> / <code>set-profile</code></td><td>統合</td><td><code>/gsd:config [--advanced | --integrations | --profile &lt;name&gt;]</code></td></tr>
+<tr><td><code>do</code> / <code>next</code></td><td>統合</td><td><code>/gsd:progress [--do "..." | --next | --forensic]</code></td></tr>
+<tr><td><code>spike-wrap-up</code> / <code>sketch-wrap-up</code></td><td>フラグ化</td><td><code>/gsd:spike --wrap-up</code> / <code>/gsd:sketch --wrap-up</code></td></tr>
+<tr><td><code>extract_learnings</code></td><td>改名</td><td><code>/gsd:extract-learnings</code>（ハイフン）</td></tr>
+<tr><td><code>code-review-fix</code></td><td>廃止</td><td><code>/gsd:audit-fix</code> または code-review 後手動修正</td></tr>
+<tr><td><code>analyze-dependencies</code></td><td>廃止</td><td>plan-phase に内包</td></tr>
+<tr><td><code>plan-milestone-gaps</code></td><td>廃止</td><td>audit-milestone → 手動 /gsd:phase で追加</td></tr>
+<tr><td><code>research-phase</code></td><td>廃止</td><td>plan-phase に内包（<code>--research</code> 制御）</td></tr>
+<tr><td><code>list-phase-assumptions</code></td><td>廃止</td><td>discuss-phase <code>--analyze</code> で代替</td></tr>
+<tr><td><code>from-gsd2</code> / <code>scan</code> / <code>intel</code> / <code>session-report</code> / <code>join-discord</code> / <code>reapply-patches</code></td><td>廃止</td><td>—（必要なら旧版で実行）</td></tr>
+<tr><td colspan="3" style="background:rgba(196,181,253,.08)"><strong>redux で新規追加（gsd-core でも継続）</strong></td></tr>
+<tr><td>—</td><td>新規</td><td><code>/gsd:mvp-phase</code>（縦切り MVP スライス）</td></tr>
+<tr><td>—</td><td>新規</td><td><code>/gsd:plan-review-convergence</code>（他 AI replan 収束ループ）</td></tr>
+<tr><td>—</td><td>新規</td><td><code>/gsd:surface</code>（skill 表示制御）</td></tr>
+<tr><td>—</td><td>新規</td><td><code>ns-workflow</code> / <code>ns-project</code> / <code>ns-quality</code> / <code>ns-context</code> / <code>ns-manage</code> / <code>ns-ideate</code>（namespace router）</td></tr>
+<tr><td colspan="3" style="background:rgba(252,165,165,.08)"><strong>パッケージ rebrand（2 段階）</strong></td></tr>
+<tr><td>npm: <code>get-shit-done-cc</code></td><td>1回目改名（redux）</td><td>npm: <code>@opengsd/get-shit-done-redux</code></td></tr>
+<tr><td>npm: <code>@opengsd/get-shit-done-redux</code></td><td>2回目改名（gsd-core、2026-05-29 #518）</td><td>npm: <code>@opengsd/gsd-core</code></td></tr>
+<tr><td>install binary: <code>get-shit-done-cc</code></td><td>1回目改名</td><td>install binary: <code>get-shit-done-redux</code></td></tr>
+<tr><td>install binary: <code>get-shit-done-redux</code></td><td>2回目改名</td><td>install binary: <code>gsd-core</code></td></tr>
+<tr><td>SDK: <code>@gsd-build/sdk</code> → <code>@opengsd/gsd-sdk</code></td><td>廃止（ADR-0174）</td><td>本体に統合（cooperating-sibling 廃止）。<code>gsd-sdk</code> binary は installer が <code>~/.local/bin/</code> に symlink</td></tr>
+<tr><td colspan="3" style="background:rgba(134,239,172,.08)"><strong>gsd-core 1.2.0 で導入</strong></td></tr>
+<tr><td>—</td><td>新規／強化</td><td>SDK retirement Phase が完了（複数段階のリファクタリング統合）</td></tr>
+<tr><td>—</td><td>新規／強化</td><td>cross-provider effort controls の統合（Codex/Gemini/Claude などにまたがる effort 設定）</td></tr>
+<tr><td>—</td><td>新規／強化</td><td>plan-vs-codebase drift guard（PLAN.md と実コードの乖離検出 / ADR-22）</td></tr>
+<tr><td>—</td><td>新規／強化</td><td>Configuration Module / STATE.md Document Module / Workstream Inventory Builder のモジュール再編</td></tr>
+<tr><td colspan="3" style="background:rgba(251,191,36,.08)"><strong>gsd-core 1.3 / 1.4 / 1.5 で導入（詳細は <a href="#whatsnew">新機能</a>）</strong></td></tr>
+<tr><td>—</td><td>1.3 新規</td><td><code>plan-phase --mvp</code> / Walking Skeleton / <code>mvp-phase --force</code> / <code>phase_id_convention</code>（milestone-prefixed ID）</td></tr>
+<tr><td>—</td><td>1.4 新規</td><td>Research Store / <code>--granularity</code> / <code>update --next</code>(RC) / <code>model_policy</code> / Claude Code プラグイン &amp; Gemini 拡張インストール / permissions 事前設定 / 15 ランタイム hook 整備</td></tr>
+<tr><td><code>/gsd:mempalace-recall</code> / <code>/gsd:mempalace-capture</code></td><td>1.5 新規コマンド（+2 → 計 69）</td><td>MemPalace メモリ機能（opt-in。<code>mempalace.enabled</code> で有効化）</td></tr>
+<tr><td>—</td><td>1.5 新規</td><td>spec-phase の prohibition probe（NEGATIVE SPEC）+ edge-coverage probe（8 カテゴリ）/ Capability システム（ADR-857）/ <code>progress/autonomous --converge</code> / <code>anthropic-fable</code> プリセット / Kimi CLI 対応 / async 外部ジョブ <code>external_job_waiting</code></td></tr>
+<tr><td>ランタイムディレクトリ <code>~/.claude/get-shit-done/</code></td><td>改名（1.4 #604）</td><td><code>~/.claude/gsd-core/</code>（migration が旧ファイルを自動掃除）</td></tr>
+<tr><td><code>claude_md_path</code> デフォルト <code>./CLAUDE.md</code></td><td>変更（1.5 #1098）</td><td><code>./.claude/CLAUDE.md</code>（手書き CLAUDE.md を上書きしない。GSD マーカー無しファイルは <code>--force</code> 無しでは触らない）</td></tr>
+<tr><td colspan="3" style="background:rgba(134,239,172,.12)"><strong>gsd-core 1.7.0 で導入（詳細は <a href="#whatsnew170">v1.7.0 変更</a>）</strong></td></tr>
+<tr><td><code>/gsd:next</code>（旧: redux で廃止 → <code>progress --next</code>）</td><td>1.7 で名前を再利用して新設（+1 → 計 70）</td><td>state-aware smart-entry launcher（旧 workflow-advance コマンドとは別物）</td></tr>
+<tr><td>—</td><td>1.7 新規コマンド（+1 → 計 71）</td><td><code>/gsd:onboard</code>（brownfield オンボーディングのガイド: map → ingest → init → summary）</td></tr>
+<tr><td>Gemini CLI ランタイム（<code>--gemini</code>）</td><td>廃止（1.7 #1996。Google が 2026-06-18 に Gemini CLI 打ち切り）</td><td>Antigravity CLI（<code>--agy</code> / <code>--antigravity</code>、公式後継）へ移行</td></tr>
+<tr><td>—</td><td>1.7 新規</td><td>Host-Integration Interface（ADR-1239 / EoS、16 ランタイム descriptor 駆動）/ pi・ZCode ランタイム / VS Code 拡張 / <code>gsd-mcp-server</code> / Claude orchestration capability（BETA）/ api-coverage gate / <code>gsd-tools state rebuild</code> / <code>graphify.graph_path</code> / MemPalace <code>kg_backend</code>・<code>replace</code> 実装 / honest verifier（backstop abstention）/ statusline git・トークン表示</td></tr>
+<tr><td colspan="3" style="background:rgba(147,197,253,.12)"><strong>gsd-core 1.8.0 で導入（詳細は <a href="#whatsnew180">v1.8.0 変更</a>）</strong></td></tr>
+<tr><td>—</td><td>1.8 新規（コマンド追加なし・計 71 のまま）</td><td><code>gsd-debugger</code> 総合強化（bug taxonomy / Ochiai SBFL / 分岐 RCA / fix 受け入れゲート / PBT 回帰強化 / Prevention block / MemPalace 意味検索）/ tracer-first 計画（<code>--no-tracer</code>）/ reversibility tagging（<code>--no-reversibility-gates</code>）/ <code>&lt;precondition&gt;</code> タスク要素 / broken-windows ledger（<code>workflow.windows_enforce</code>）/ provider escalation（<code>dynamic_routing.provider_escalation</code>）/ <code>statusline.state_format: compact</code> / todo severity / <code>response_language</code> の orchestrator 適用 / Claude orchestration の実働化</td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- プロンプト -->
+<section id="prompts" class="grid">
+<div class="card">
+<h2>判定プロンプト</h2>
+<pre id="prompt-judge">この変更に対して、GSD Core のどのコマンドで始めるべきか判定してください。
+候補: fast / quick / quick --discuss / quick --full / quick --research / quick --validate /
+      phase / phase --insert / phase --remove / phase --edit /
+      capture / capture --note / capture --backlog / capture --seed /
+      discuss-phase / spec-phase / mvp-phase /
+      spike / spike --wrap-up / sketch / sketch --wrap-up /
+      debug / explore / progress --do / progress --next / next /
+      ai-integration-phase / ui-phase / ship / inbox / ingest-docs /
+      onboard / plan-review-convergence
+
+判断基準:
+- trivial な修正（コメント・変数名）か → fast
+- 局所修正か → quick（フラグで品質調整）
+- 実装前に軽い仕様確認が必要か → --discuss
+- 実装アプローチを調査したいか → --research
+- plan-check と verification だけほしいか → --validate
+- 品質保証（全パイプライン）が必要か → --full
+- 独立した新機能か → phase（新規）
+- 既存ロードマップの途中に差し込む必要があるか → phase --insert
+- フェーズの定義を直したいか → phase --edit
+- 今すぐ実装するか、後で検討するだけか → capture (--note / --backlog / --seed)
+- 何かが壊れているか → debug
+- どのコマンドか迷っているか → progress --do "..."
+- 次に何をすべきか不明（メニューから選びたい）→ next（1.7 smart-entry）
+- 次の論理ステップをそのまま実行したいか → progress --next
+- 既存コードベースで初めて GSD をセットアップするか → onboard
+- アイデアを練りたいか → explore
+- 技術的実現性を先に確認したいか → spike
+- spike findings を保存したいか → spike --wrap-up
+- UI デザインの方向性を先に探りたいか → sketch
+- フェーズ要件が曖昧・仕様を先に固めたいか → spec-phase
+- MVP の縦切りで進めたいか → mvp-phase
+- AI 機能を組み込むか → ai-integration-phase
+- フロントエンドフェーズか → ui-phase
+- 他 AI のレビュー意見もすり合わせたいか → plan-review-convergence
+- 実装完了して PR を出すか → ship
+- GitHub の issues/PR を整理したいか → inbox
+- 既存 ADR/PRD/SPEC から .planning/ を初期化したいか → ingest-docs
+
+前提:
+- プロダクトはすでに完成または運用段階にある
+- 既存コードベースを前提に拡張・修正したい
+
+変更内容:
+[ここにやりたいことを書く]
+
+出力形式:
+- 推奨コマンド（gsd-core 1.8.0 の語彙で）
+- 理由
+- 代替コマンドを使うならどういう場合か
+- 最初に AI へ渡すべき一文の例</pre>
+<div class="toolbar"><button onclick="copyText('prompt-judge')">コピー</button></div>
+<div id="prompt-judge-status" class="small"></div>
+</div>
+
+<div class="card">
+<h2>HTML 再生成プロンプト</h2>
+<pre id="prompt-regen">最新の GSD Core 公式ドキュメントと最新リリースを参照して、single HTML のチートシートを 1 ファイルで生成してください。
+
+要件:
+- 出力は self-contained な single HTML
+- 外部 CSS / JS / フォントに依存しない
+- 日本語で記述
+- ダーク / ライトの両方で読みやすい（CSS 変数ベース）
+- 以下を必ず含める:
+  1. GSD Core の全コマンド早見表（コア / フェーズ管理 / スパイク&スケッチ&アイデア / コードレビュー&品質 / AI統合&UI / ワークスペース / ナレッジ / セッション / 設定&メンテナンス / ユーティリティ）
+  2. fast / quick / quick フラグ（--discuss / --full / --research / --validate）の使い分け
+  3. phase コマンドの 4 形態（追加 / --insert / --remove / --edit）と旧 add/insert/remove-phase からの統合
+  4. capture コマンドのフラグ（--note / --backlog / --seed / --list）と旧 add-todo/note/plant-seed/add-backlog 統合
+  5. config / workspace / surface などの統合・新規コマンド
+  6. spike / sketch / spec-phase の使い方と --wrap-up（旧 -wrap-up はフラグ化）
+  7. mvp-phase / plan-review-convergence など redux 新規コマンド（gsd-core でも継続）
+  8. progress の --do / --next / --forensic 統合
+  9. namespace router（gsd:workflow / gsd:project / gsd:quality / gsd:context / gsd:manage / gsd:ideate）の説明
+  10. execute-phase を再実行せず quick / verify-work を使うべき注意点
+  11. ワークフロー全体像とエージェント構成図
+  12. 設定リファレンス（config.json / モデルプロファイル / Git ブランチ戦略 / surface プロファイル）
+  13. v1.38 → redux → gsd-core の 2 段階移行表（削除コマンドと後継、パッケージ名変遷）
+  14. 既存プロダクト保守・CLI 拡張向けの実例
+  15. コピーボタン付きの判定プロンプト
+  16. 出典セクション
+- 表とカード UI を使って見やすくする
+- 印刷しても読めるようにする
+- Project Continuity Notice（gsd-build → redux → gsd-core 2段階リブランド）をヒーローに含める
+
+情報源の優先順位:
+1. open-gsd/gsd-core の README
+2. docs/USER-GUIDE.md
+3. 最新 release notes / CHANGELOG.md
+4. commands/gsd/*.md の各コマンド定義
+5. agents/gsd-ns-*.md の namespace router 定義
+
+ファクト要件（gsd-core 1.8.0 時点）:
+- コマンド総数 71（1.5.0 で MemPalace 用 2 コマンド追加で 69、1.7.0 で /gsd:next と /gsd:onboard 追加で 71、1.8.0 は据え置き）
+- パッケージ名: npm = @opengsd/gsd-core、install binary = gsd-core
+- ランタイムディレクトリは ~/.claude/gsd-core/（1.4 で旧 ~/.claude/get-shit-done/ から改名、#604）
+- 改名履歴: get-shit-done-cc → @opengsd/get-shit-done-redux → @opengsd/gsd-core（2026-05-29、改名コミット #518）
+- SDK パッケージ @gsd-build/sdk → @opengsd/gsd-sdk は ADR-0174 で廃止（本体に統合）。gsd-sdk binary のみ ~/.local/bin/ に symlink
+- 6 個の namespace router（gsd:workflow / gsd:project / gsd:quality / gsd:context / gsd:manage / gsd:ideate）
+- phase コマンド統合（旧 add/insert/remove-phase）
+- capture コマンド統合（旧 add-todo/note/plant-seed/add-backlog）
+- workspace コマンド統合（旧 new/list/remove-workspace）
+- config コマンド統合（旧 settings/set-profile）
+- progress 統合（旧 next/do を --next / --do に統合、新規 --forensic）
+- spike / sketch の wrap-up はフラグ化（旧 spike-wrap-up / sketch-wrap-up 廃止）
+- extract-learnings に改名（ハイフン形）
+- mvp-phase / plan-review-convergence / surface は redux 新規（gsd-core でも継続）
+- gsd-core 1.2.0 で完了した強化: SDK retirement / cross-provider effort controls / plan-vs-codebase drift guard（ADR-22）
+- gsd-core 1.3.0: plan-phase --mvp（縦切りスライス + Walking Skeleton）/ mvp-phase の guided 化（--force）/ phase_id_convention（milestone-prefixed）
+- gsd-core 1.4.0: Research Store（キャッシュ + confidence tier）/ plan-phase --granularity / update --next(--rc) / model_policy プリセット / Claude Code プラグイン（claude plugin install、/gsd-core: 名前空間）/ Gemini CLI 拡張 / permissions 事前設定 / autonomous --only・--text / インストールプロファイル core(8)・standard(14)・full
+- gsd-core 1.4.1〜1.4.3: 安定化（context: fork 撤回 #921、plan-review-convergence の replan 修復 #936、--reapply 誤検知修正 #934 等）
+- gsd-core 1.4.4〜1.4.5: anthropic-fable プリセット追加（#1015）、claude ランタイムで model_policy honored（#1133）
+- gsd-core 1.5.0（2026-06-17、361 コミット）: MemPalace メモリ機能（opt-in、mempalace-recall / mempalace-capture、mempalace.enabled が master gate）/ spec-phase の prohibition probe（NEGATIVE SPEC → must_haves.prohibitions）+ edge-coverage probe（8 カテゴリ taxonomy）/ Capability システム（ADR-857: tdd・schema-gate・drift・gap-analysis・profile-pipeline を宣言的 capability 化、gsd-tools capability set）/ progress・autonomous の --converge（plan-review convergence ルーティング、workflow.plan_review_convergence で gating）/ anthropic-fable プリセット（Claude Fable 5）/ Kimi CLI 対応 / agent_skills の global:&lt;plugin&gt;:&lt;skill&gt; 参照 / async 外部ジョブ external_job_waiting / PROJECT.md の Business Context / claude_md_path デフォルトが ./.claude/CLAUDE.md に変更
+- gsd-core 1.6.0（2026-06-25、221 コミット）: スラッシュコマンド 69 据え置き（/gsd:capture に --list-seeds [status] 追加のみ、REQ-SEED-03 read-only seed 監査）/ gsd capability CLI（ADR-1244: install・update・remove・list・outdated・disable・enable、サードパーティ overlay を registry/git/npm/tarball/local から導入、copy-only staging + 実行サーフェスは consent、capabilities.strict_known_registries で host ベース fail-closed ゲート）/ installed overlay レジストリ（first-party always wins、engines.gsd semver skip、Federated Config）/ read-injection スキャナ（security.injection_blocking top-level、Read/WebFetch/WebSearch PostToolUse circuit-breaker、ADR-1577、デフォルト false=advisory）/ WebFetch/WebSearch injection isolation（ADR-1585）/ host-integration capability matrix + cross-platform portability rules（ADR-1703）/ markdown sectionizer seam（ADR-1372）/ resolution provenance（ADR-1411）/ workflow.plan_drift_precheck（plan:pre の非ブロッキング drift advisory、#1592、デフォルト true）/ workflow.mvp_mode 設定化 / embeddable orchestration engine（ADR-1239、install write-confinement）/ DispatchEvent（#1646）
+- 1.5.0 で test-tier prohibition の fail-first を機械的証明化（ADR-550、violationFixture を RED 確認）
+- gsd-core 1.6.1（2026-07-01、ホットフィックス）: standard（sonnet）ティアの既定モデルを Claude Sonnet 5（GA 2026-06-30）に更新（claude/copilot/anthropic/anthropic-fable プリセットと opencode/hermes の anthropic/claude-sonnet-5、旧 claude-sonnet-4-6 を置換。Opus/Haiku 不変、#1847/#1848）/ milestone complete・roadmap analyze が Phase 0/999 backlog sentinel を除外（#1691）/ phase.complete の &lt;details&gt; 内チェックボックス phase での is_last_phase 誤判定修正（見出し式と - [ ]/- [x] Phase N: 両対応、#1591/#1752/#1819）/ Windows: $CLAUDE_PROJECT_DIR アンカー管理 node hook path の二重クオート修正（MODULE_NOT_FOUND / PreToolUse-guard デッドロック解消、#1746）。スラッシュコマンド・フラグ・設定キーの追加なし
+- gsd-core 1.7.0（2026-07-15、前 pin から 623 コミット）: 新コマンド /gsd:next（state-aware smart-entry launcher、gsd-tools smart-entry --json で状態分類 → メニュー提示 → dispatch。redux で廃止された旧 next とは別物、#1798）と /gsd:onboard（brownfield オンボーディング: map-codebase → ingest-docs → new-project → .planning/onboarding/SUMMARY.md、--fast/--text、#1994）で計 71 / Host-Integration Interface（ADR-1239 / EoS: 6 interface point の versioned negotiated contract、negotiateHostCapabilities は fail-closed、16 ランタイム全部が capability descriptor 駆動化、install 出力は golden-parity で byte-identical）/ 新ランタイム pi（--pi）・ZCode（--zcode）、VS Code 拡張（vscode.lm + Language Model Tools）、Kimi native hook bus / gsd-mcp-server companion MCP サーバ（stdio JSON-RPC 2.0、gsd_invoke_command + gsd_read_state/gsd_write_state。OpenCode インストールで opencode.json に mcp.gsd 自動登録）/ Claude orchestration capability（BETA・default-off・Claude 専用: claude_orchestration.enabled + min_agent_sdk_version（既定 0.3.149）で execute-phase が Workflow スクリプト（waves → parallel() barriers、plans → agent({agentType:'gsd-executor', isolation:'worktree'})）を emit。ultraplan-phase も同ゲート配下。fail-closed、#1143/#2044）/ api-coverage gate（外部 API 統合フェーズは COVERAGE.md（全 capability surface + 明示 opt-out）まで verify-work シール不可。workflow.api_coverage_gate、default on、#1562/#2065）/ MemPalace memory_mode の kg_backend・replace が実装済み（palace 到達不能時は native へ degrade、#2010。headless capture の mine --room 修正 #2220）/ gsd-tools state rebuild（STATE.md 本文を canonical ソースから再導出、--dry-run/--verbose、Rebuild Log 監査、#1830）/ graphify.graph_path（umbrella graph 共有、#1825/#2013）/ review.default_reviewers + review.reviewer_instances（フラグなし /gsd:review の既定 + 複数レビュアー identity、#1517/#1766）/ honest verifier（backstop truth を human_needed / insufficient_spec で abstain、#1154/#1738）/ workflow.specless_probe_fallback（default on、#1835）/ workflow.assumption_delta（advisory checkpoint、#1561/#1767）/ workflow.test_gate_timeout（600s）+ normalize-test-command（vitest watch-mode ハング解消、#2060）/ ui-consideration-probe（8 UI 状態 → ## UI Considerations → must_haves 昇格、#1979）/ statusline.show_context_tokens・show_git（default false、#2174/#2183）/ external-job capability producer 側（SLURM、default-off、#1105/#1998）/ CLI の runtime build 自己修復（#2036）/ Codex/OpenAI デフォルト GPT-5.6（Sol/Terra/Luna、#2122/#2146）/ Community Capability Registry + EoS Registry + .claude-plugin/marketplace.json / Removed: Gemini CLI ランタイム（2026-06-18 Google 打ち切り → Antigravity CLI、#1928/#1996）/ Security: gate="blocking-human" checkpoint の auto-approve 穴修正（#2107/#2113）、markdown パーサ ReDoS 線形化（#2128/#2141）、installer write-confinement（#1725/#1706）/ 主な Fixed: verify-work gap-closure 状態保持（gap_id contract、#2025）、ROADMAP/STATE 表エディットの構造バウンド（withSection seam、#2250/#2253）、model_overrides 実適用 + Claude ID → tier alias マップ（#2074/#2048）、milestone complete --dry-run（#2155）、context7 plugin-marketplace 対応（#2029）、config-set null でキー削除（#2058）、PowerShell hook 対応（#2261）
+- gsd-core 1.8.0（2026-07-22、v1.7.0 pin から 93 コミット）: スラッシュコマンドの追加・削除なし（71 のまま）。gsd-debugger 総合強化 7 項目（#1958〜#1964: bug taxonomy 分類（Bohrbug/Heisenbug-Mandelbug/Concurrency → 手法ルーティング、Phase 1.75）/ Ochiai SBFL 容疑箇所ランキング / 分岐 RCA（Ishikawa ≥2 カテゴリ + AND-gate、単線 5-Whys の single-cause bias 対策）/ 5 シグナル fix 受け入れゲート（target テスト + Stryker mutation check + no-op diff 検出 + held-out テスト + revert-and-reconfirm → 不合格は FIX REJECTED BY GUARDRAIL）/ PBT shrinking + oracle 分類（specified/derived/metamorphic/implicit）+ boundary neighbors の回帰テスト強化 / blameless postmortem Prevention block（why_not_caught + recurrence_guard を knowledge-base に）/ MemPalace 意味検索 recall（Phase 0、不在時は keyword フォールバック）。ルールは gsd-core/references/debugger-*.md）/ tracer-first 計画がデフォルト（検証済み E2E スライスで開始、--no-tracer で従来動作、--mvp は tracer の上に重ねる、#1945/#2294）/ reversibility tagging（reversible/costly/one-way、one-way は checkpoint:decision、--no-reversibility-gates で抑止、#1951/#2471）/ &lt;precondition&gt; タスク要素（DbC、executor が実行前 assert、#1949/#2422）/ broken-windows ledger（.planning/WINDOWS.md、executor が stub・skip テスト・未実行 verify を自動記録、workflow.windows_enforce=true で open が残る限り ship ブロック、waived は理由必須、#1950/#2441）/ provider escalation（dynamic_routing.provider_escalation の順序付き fallback リスト、Retry-After 尊重、max_escalations、#2296/#2458）/ dynamic routing がモデルも tier ladder でエスカレート（#2068/#2334）/ statusline.state_format compact（#2162/#2175）/ todo severity end-to-end（blocker/major/minor/cosmetic、#2337/#2381）/ deferred-items.md を progress forensic + audit-uat が surface（#2287/#2318）/ response_language が orchestrator プロンプト + UAT checkpoint にも適用（#2402/#2457）/ Claude orchestration の実働化（1.7 は registered-but-inert、execute:wave:pre レンダリング + バックエンド検出を配線、#2285/#2314）/ Claude Code permission 事前承認を Edit() ルールで実効化（#2278/#2302）/ GSD_ALLOW_SYMLINKED_DEST=1 / pi 統合実働化（gsd.js、#2478）+ Oh My Pi EoS Registry 掲載 / Security: query config-get の secret masking + prototype-chain gating（#2299）、version ラベルの path traversal 拒否（#2323）、production 依存 advisory ゼロ / 主な Fixed: progress/STATE の per-counter ratchet（total_plans 凍結解消、#2468）、verify-work の全 UAT blocked 時 silent 終了、/gsd:debug auto-resume、phases.clear のアーカイブ化（破壊防止）、worktree subagent の絶対パス emit（#2428）、volta/macOS/CRLF 環境系多数
+
+出力形式:
+- まず HTML 本文のみを返す
+- markdown の前置きや説明文は不要</pre>
+<div class="toolbar"><button onclick="copyText('prompt-regen')">コピー</button></div>
+<div id="prompt-regen-status" class="small"></div>
+</div>
+</section>
+
+<!-- 注意点 -->
+<section id="notes" class="card">
+<h2>注意点</h2>
+<div class="warn"><strong>execute-phase をやり直さない。</strong> 実装後に少し変えたいなら <span class="kbd">/gsd:quick</span>、体系的に問題を洗いたいなら <span class="kbd">/gsd:verify-work</span> を使う。</div>
+<div class="warn"><strong>trivial な修正に quick を使わない。</strong> コメント追加・変数名変更レベルなら <span class="kbd">/gsd:fast</span> で十分。quick はサブエージェントを起動するのでコストがかかる。</div>
+<div class="warn"><strong>旧コマンド名を使わない。</strong> add-phase / insert-phase / remove-phase / add-todo / note / plant-seed / set-profile / settings / next / do / spike-wrap-up / sketch-wrap-up はすべて redux で統合・改名・廃止されています。<a href="#migration">v1.38→redux 移行表</a>を参照。</div>
+<ul>
+<li>計画がズレていると感じたら <span class="kbd">/gsd:discuss-phase [N]</span> を挟んでから re-plan。</li>
+<li>フェーズ要件が曖昧なら <span class="kbd">/gsd:spec-phase [N]</span> で discuss 前に仕様精査。<span class="tag-new">1.5</span> edge-coverage probe（8 カテゴリ）と prohibition probe（「黙って何になってはいけないか」= NEGATIVE SPEC）が走り、確認された制約は <code>must_haves.prohibitions</code> として verify 時にゲートされる。</li>
+<li><span class="tag-new">1.5</span> クロスセッション/クロスプロジェクトの記憶を使いたいなら MemPalace を有効化（<code>pip install mempalace</code> → <code>mempalace.enabled: true</code>）。plan 前に <span class="kbd">/gsd:mempalace-recall</span> で過去の決定を <code>MEMORY-RECALL.md</code> へ。デフォルト無効・エラー時 skip なのでループは止まらない。</li>
+<li><span class="tag-new">1.5</span> 計画の質を上げたいなら <span class="kbd">/gsd:progress --next --auto --converge</span>（<code>workflow.plan_review_convergence: true</code> が必要）で plan-review convergence 経由に。</li>
+<li><span class="tag-new">1.5</span> Claude Fable 5 を使うなら <code>model_policy.provider: "anthropic-fable"</code> + <code>context_window: 1000000</code>。default <code>claude</code> ランタイムでも honored。</li>
+<li>技術的に動くか不安なら <span class="kbd">/gsd:spike</span> で先に実験 → <span class="kbd">/gsd:spike --wrap-up</span> で findings を永続化。</li>
+<li>UI の方向性が決まっていないなら <span class="kbd">/gsd:sketch</span> で先にモックアップ探索 → <span class="kbd">/gsd:sketch --wrap-up</span> で設計を永続化。</li>
+<li>MVP で縦切りに進めたいなら <span class="kbd">/gsd:mvp-phase [N]</span>。SPIDR 分割 → plan-phase に橋渡し。</li>
+<li>他 AI のセカンドオピニオンが欲しいなら <span class="kbd">/gsd:plan-review-convergence [N]</span> で自動 replan ループ。</li>
+<li><span class="tag-new">1.7</span> 迷ったら <span class="kbd">/gsd:next</span> — プロジェクト状態を自動分類して次アクションのメニューを提示・dispatch する state-aware な入口。redux で廃止された旧 <code>next</code>（workflow-advance）とは別物なので注意。</li>
+<li><span class="tag-new">1.7</span> 既存コードベースの初回セットアップは <span class="kbd">/gsd:onboard</span> — map → ingest → init → summary を安全な順序でガイド（既存 planning ファイルを明示ゲートなしに上書きしない）。</li>
+<li><span class="tag-new">1.7</span> <strong>Gemini CLI ランタイムは廃止</strong>（Google が 2026-06-18 に打ち切り）。<code>--gemini</code> は deprecation notice を表示。移行先は Antigravity CLI（<code>--agy</code>）。</li>
+<li><span class="tag-new">1.7</span> 外部 API/SDK を統合するフェーズは <code>COVERAGE.md</code>（coverage matrix）が無いと verify-work でシールできない（<code>workflow.api_coverage_gate</code>、default on）。「最初のユースケース分だけ統合」を防ぐゲート。</li>
+<li><span class="tag-new">1.7</span> Claude Code で wave 並列を Workflow ツールに委ねたいなら <code>claude_orchestration.enabled: true</code> <span class="tag-beta">BETA</span>（Agent SDK ≥ 0.3.149 必須。条件未達なら自動でインライン動作に fail-closed）。<span class="tag-new">1.8</span> 1.7 では有効化しても実際には何も起きなかった（registered-but-inert）— 実働するのは 1.8.0 から（#2314）。</li>
+<li><span class="tag-new">1.8</span> プランは <strong>tracer-first がデフォルト</strong>に — 最初のタスクが全レイヤー貫通の E2E スライスになり、検証してから残りを構築。従来の horizontal-layer 順に戻すなら <span class="kbd">/gsd:plan-phase --no-tracer</span>。</li>
+<li><span class="tag-new">1.8</span> one-way な決定（undo にデータ移行・公開契約の破壊が伴う）は plan に <code>checkpoint:decision</code> が入り無人実行でも停止する。無人運転前提のランは <span class="kbd">/gsd:plan-phase --no-reversibility-gates</span> で抑止（格付け自体は記録される）。</li>
+<li><span class="tag-new">1.8</span> stub・skip テスト・未実行 verify の「割れ窓」を ship でゲートしたいなら <code>gsd config-set workflow.windows_enforce true</code>。off でも <code>.planning/WINDOWS.md</code> への記録と <span class="kbd">/gsd:progress</span> での件数表示は行われるので、まず記録だけ始めて後からゲート化できる。</li>
+<li><span class="tag-new">1.8</span> quota / rate-limit で実行が止まるプロジェクトは <code>dynamic_routing.provider_escalation</code> に fallback モデルの順序付きリストを設定 — throttle 時に自動でプロバイダを切替（<code>Retry-After</code> 尊重・<code>max_escalations</code> 上限）。</li>
+<li><span class="tag-new">1.8</span> statusline が長すぎて折り返すなら <code>statusline.state_format: "compact"</code>（「v1.12 · P7/12 · executing」形式）。</li>
+<li><span class="tag-new">1.8</span> GSD の応答を日本語にしたいなら <code>response_language</code> を設定 — 1.8 から orchestrator 自身の質問や UAT checkpoint banner にも効く（従来は subagent プロンプトのみだった）。</li>
+<li><span class="tag-new">1.7</span> codex / opencode では <code>model_overrides</code> 等のモデル設定変更後に <code>gsd install &lt;runtime&gt;</code> の再実行が必要（変更検出時に stderr 警告が出る。Claude Code は spawn 時解決のため不要）。</li>
+<li>セッションをまたぐなら <span class="kbd">/gsd:progress</span> → <span class="kbd">/gsd:resume-work</span> → <span class="kbd">/gsd:progress --next</span>（次を自動判定）。</li>
+<li>コンテキスト品質が落ちたら <code>/clear</code> してから <span class="kbd">/gsd:resume-work</span>。<span class="kbd">/gsd:health --context</span> でコンテキスト利用率を確認可（60%で警告 / 70%でクリティカル）。</li>
+<li>既存コードベースで初めて GSD を使う場合は <span class="kbd">/gsd:onboard</span>（1.7〜）。手動でやるなら <span class="kbd">/gsd:map-codebase</span> → <span class="kbd">/gsd:new-project</span>。</li>
+<li>既存の ADR/PRD/SPEC がある場合は <span class="kbd">/gsd:ingest-docs</span> で .planning/ を自動生成（最大50ドキュメント、ADR 優先）。</li>
+<li>プランが大きすぎると stub になる。タスクは 2-3 個が目安。</li>
+<li>コスト削減: <span class="kbd">/gsd:config --profile budget</span> + <span class="kbd">/gsd:config</span> で research / plan_check をオフ。surface 制御は <span class="kbd">/gsd:surface</span>。</li>
+<li>cold-start を最小化したいならインストール時に <code>--profile=core</code>（旧 <code>--minimal</code> は同義のエイリアス）または <span class="kbd">/gsd:surface profile core</span>。32K–128K の小規模モデル向け。</li>
+<li><span class="tag-new">1.4</span> RC を試すなら <span class="kbd">/gsd:update --next</span>（<code>@next</code> dist-tag）。安定版に戻すにはフラグ無しの <span class="kbd">/gsd:update</span>。</li>
+<li><span class="tag-new">1.4</span> Claude Code ではネイティブプラグインとしても導入可: <code>claude plugin install gsd-core</code>。その場合コマンドは <code>/gsd-core:&lt;command&gt;</code> 名前空間（npm インストーラの <code>/gsd:</code> と共存可能）。</li>
+<li><span class="tag-new">1.4</span> デフォルトブランチから分岐したブランチで execute-phase が順次実行に縮退する場合は <code>worktree.baseRef: "head"</code> を <code>.claude/settings.local.json</code> に設定（新規インストールでは自動設定済み）。</li>
+<li><span class="tag-new">1.3</span> マルチマイルストーンでフェーズ番号が衝突するなら <code>phase_id_convention: "milestone-prefixed"</code> + <code>gsd-tools roadmap upgrade --convention milestone-prefixed</code>。</li>
+<li>.planning/ をバージョン管理したくない場合は <code>commit_docs: false</code> + <code>.gitignore</code> に追加。</li>
+<li>フェーズをロールバックしたいなら <span class="kbd">/gsd:undo &lt;phase&gt;</span>（依存チェック付き）。</li>
+<li>PR を出すときは <span class="kbd">/gsd:pr-branch</span> で .planning/ コミットを除外したクリーンブランチを作成。</li>
+<li><span class="kbd">/gsd:ultraplan-phase</span> <span class="tag-beta">BETA</span> は Claude Code v2.1.91+ が必要。安定版は <span class="kbd">/gsd:plan-phase</span>。</li>
+<li>SDK は本体に統合済み（ADR-0174）。<code>@gsd-build/sdk</code> や <code>@opengsd/gsd-sdk</code> は不要。<code>gsd-sdk</code> バイナリは installer が <code>~/.local/bin/</code> に symlink。</li>
+</ul>
+
+<h3 style="margin-top:16px">リカバリー早見表</h3>
+<table class="table">
+<thead><tr><th>問題</th><th>対処</th></tr></thead>
+<tbody>
+<tr><td>新セッション / コンテキスト喪失</td><td><code>/gsd:next</code>（1.7 メニュー提示）or <code>/gsd:resume-work</code> or <code>/gsd:progress [--next]</code></td></tr>
+<tr><td>フェーズの実装がおかしい</td><td><code>/gsd:undo &lt;phase&gt;</code> or <code>git revert</code> → re-plan</td></tr>
+<tr><td>スコープ変更が必要</td><td><code>/gsd:phase</code> / <code>phase --insert</code> / <code>phase --remove</code> / <code>phase --edit</code></td></tr>
+<tr><td>マイルストーン監査でギャップ</td><td><code>/gsd:audit-milestone</code> → <code>/gsd:phase</code> で手動追加（v1.38 の plan-milestone-gaps は廃止）</td></tr>
+<tr><td>何かが壊れた</td><td><code>/gsd:debug "description"</code></td></tr>
+<tr><td>GSD ワークフロー自体が失敗</td><td><code>/gsd:forensics</code></td></tr>
+<tr><td>素早い修正</td><td><code>/gsd:quick</code> (小〜中) / <code>/gsd:fast</code> (trivial)</td></tr>
+<tr><td>コストが高い</td><td><code>/gsd:config --profile budget</code> + surface を絞る</td></tr>
+<tr><td>cold-start トークンが重い</td><td><code>/gsd:surface profile core</code> または <code>--profile=core</code> 再インストール</td></tr>
+<tr><td>.planning/ が壊れた</td><td><code>/gsd:health --repair</code></td></tr>
+<tr><td>execute-phase が exit 42（worktree base mismatch）</td><td>1.4 で自動縮退するように。恒久対策は <code>worktree.baseRef:"head"</code>（<code>gsd-tools worktree set-baseref</code>）</td></tr>
+<tr><td>更新後に <code>--reapply</code> が FAIL を誤報</td><td>1.4.3 で修正済み。まず <code>/gsd:update</code> で最新化</td></tr>
+<tr><td>コンテキスト利用率が高い</td><td><code>/gsd:health --context</code> → <code>/gsd:thread</code> でセッション分割</td></tr>
+<tr><td>コードレビュー指摘を直したい</td><td><code>/gsd:audit-fix</code>（v1.38 の code-review-fix は廃止）</td></tr>
+<tr><td>quota / rate-limit で実行が止まる</td><td><span class="tag-new">1.8</span> <code>dynamic_routing.provider_escalation</code> に fallback モデルリストを設定して自動切替</td></tr>
+<tr><td>ship 前に stub / skip テストが放置されていないか確認したい</td><td><span class="tag-new">1.8</span> <code>.planning/WINDOWS.md</code> を確認（<code>/gsd:progress</code> が件数表示）。ゲート化は <code>workflow.windows_enforce: true</code></td></tr>
+<tr><td>STATE.md の進捗表示が壊れた / drift した</td><td><code>gsd-tools state rebuild [--dry-run]</code>（1.7〜）。1.8 で progress カウンタの凍結・誤カウントも大量修正済み — まず <code>/gsd:update</code></td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- .planning/ 構造 -->
+<section class="card">
+<h2>.planning/ ディレクトリ構造</h2>
+<pre>
+.planning/
+  PROJECT.md              # プロジェクトビジョン（常時ロード）
+  REQUIREMENTS.md         # スコープ付き v1/v2 要件（ID 付き）
+  ROADMAP.md              # フェーズ一覧 + ステータス
+  STATE.md                # 決定・ブロッカー・セッションメモリ
+  config.json             # ワークフロー設定（/gsd:config で編集）
+  MILESTONES.md           # 完了マイルストーンのアーカイブ
+  WINDOWS.md              # broken-windows ledger（1.8。executor が自動記録、workflow.windows_enforce で ship ゲート）
+  INGEST-CONFLICTS.md     # /gsd:ingest-docs のコンフリクトレポート
+  research/               # /gsd:new-project のドメインリサーチ
+  graphs/                 # /gsd:graphify のプロジェクト知識グラフ
+  spikes/                 # /gsd:spike の実験記録
+  sketches/               # /gsd:sketch の HTML モックアップ
+  todos/
+    pending/              # /gsd:capture --note / --backlog などのキャプチャ
+    done/                 # 完了した todo
+  backlog/                # /gsd:capture --backlog の 999.x アイテム
+  debug/                  # アクティブなデバッグセッション
+    resolved/             # 解決済みデバッグセッション
+  codebase/               # /gsd:map-codebase の出力
+    STACK.md / ARCHITECTURE.md / CONVENTIONS.md / CONCERNS.md
+  phases/                 # フラット版（小規模）
+    XX-phase-name/
+      XX-YY-PLAN.md       # 実行用アトミックプラン（XML 構造）
+      XX-YY-SUMMARY.md    # 実行結果と決定事項
+      XX-CONTEXT.md       # 実装方針（discuss-phase の出力）
+      XX-RESEARCH.md      # エコシステムリサーチ結果
+      XX-SPEC.md          # 仕様（spec-phase の出力。1.5: edge/prohibition probe 結果を含む）
+      XX-MEMORY-RECALL.md # /gsd:mempalace-recall の出力（1.5、MemPalace 有効時）
+      XX-VERIFICATION.md  # 実行後の検証結果
+      XX-VALIDATION.md    # Nyquist テストカバレッジ契約
+      XX-UAT.md           # 手動 UAT 結果
+      REVIEW.md           # コードレビュー結果
+      deferred-items.md   # スコープ外発見の記録（1.8 から progress forensic / audit-uat が surface）
+      AI-SPEC.md          # AI 統合設計コントラクト
+      UI-SPEC.md          # UI 設計コントラクト
+      LEARNINGS.md        # /gsd:extract-learnings の出力
+      plans/              # ネスト版（中〜大規模、#3139 以降）
+        XX-PLAN-NN-slug.md
+  milestones/             # マイルストーンアーカイブ（archive 後）
+    v1-phases/
+  quick/                  # /gsd:quick のタスク管理
+  threads/                # /gsd:thread の永続コンテキスト
+  workspaces/             # /gsd:workspace の隔離環境
+  async-jobs/             # 非同期外部ジョブのマニフェスト（1.5、external_job_waiting）
+
+.claude/
+  skills/
+    spike-findings-[project]/  # /gsd:spike --wrap-up の出力
+    sketch-findings-[project]/ # /gsd:sketch --wrap-up の出力
+</pre>
+</section>
+
+<!-- 出典 -->
+<section id="sources" class="card">
+<h2>出典</h2>
+<ul>
+<li><a href="https://github.com/open-gsd/gsd-core">open-gsd/gsd-core README</a> — gsd-core v1.8.0</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/COMMANDS.md">docs/COMMANDS.md</a> — フラグ詳細</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/CONFIGURATION.md">docs/CONFIGURATION.md</a> — model_policy / mempalace / capabilities / security</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/USER-GUIDE.md">USER-GUIDE.md</a></li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/reference/gsd-capability-command.md">docs/reference/gsd-capability-command.md</a> — <code>gsd capability</code> CLI（ADR-1244）</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/explanation/security-model.md">docs/explanation/security-model.md</a> — read-injection（ADR-1577）</li>
+<li><a href="https://github.com/open-gsd/gsd-core/tree/next/commands/gsd">commands/gsd</a> — 全 71 コマンド定義</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/next/docs/how-to/connect-gsd-mcp-server.md">docs/how-to/connect-gsd-mcp-server.md</a> — <code>gsd-mcp-server</code> companion MCP サーバ（1.7）</li>
+<li><a href="https://github.com/open-gsd/gsd-core/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
+<li><a href="https://github.com/open-gsd/gsd-core/releases">Releases</a></li>
+<li><a href="https://www.npmjs.com/package/@opengsd/gsd-core">npm: @opengsd/gsd-core</a></li>
+<li><a href="https://github.com/open-gsd/get-shit-done-redux">open-gsd/get-shit-done-redux</a>（改名前リポジトリ、参考）</li>
+</ul>
+<p class="small">Generated from submodule at <code>@opengsd/gsd-core@1.8.0</code>（branch <code>main</code> / commit <code>3a4df4d8</code>）• Single HTML / offline friendly / editable • 71 コマンド（1.8.0 は 2026-07-22 リリース、v1.7.0 pin から 93 コミット。コマンド追加なしの「実行の規律」リリース — gsd-debugger 総合強化（bug taxonomy / Ochiai SBFL / 分岐 RCA / fix 受け入れゲート / PBT 回帰強化 / Prevention block / MemPalace 意味検索）、tracer-first 計画、reversibility tagging、&lt;precondition&gt; タスク要素、broken-windows ledger、provider escalation、Claude orchestration（BETA）の実働化）</p>
+</section>
+
+</div>
+</body>
+</html>
