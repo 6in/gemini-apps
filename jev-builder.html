@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jev ビルダー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#1b2430; --ink2:#5a6673; --line:#d5dbe2;
+  --track:#e3e8ee; --fill:#3a5bd9; --fill-soft:#c8d3f7; --warn:#c7871a; --warn-soft:#f6e4c2;
+  --noul-no:#b0bac6; --danger:#b3261e;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161b22; --panel:#1f2630; --ink:#e6ebf1; --ink2:#98a5b3; --line:#323c48;
+    --track:#2b3440; --fill:#7c96f0; --fill-soft:#3a4a7a; --warn:#e0a54a; --warn-soft:#4a3a1a; --noul-no:#4a5563; --danger:#f28b82;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161b22; --panel:#1f2630; --ink:#e6ebf1; --ink2:#98a5b3; --line:#323c48;
+  --track:#2b3440; --fill:#7c96f0; --fill-soft:#3a4a7a; --warn:#e0a54a; --warn-soft:#4a3a1a; --noul-no:#4a5563; --danger:#f28b82;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.6 "IBM Plex Sans JP","Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+header{padding:22px 24px 6px;max-width:1500px;margin:0 auto;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+header h1{margin:0;font-size:21px;font-weight:600;letter-spacing:-.01em}
+header p{margin:0;color:var(--ink2)}
+main{max-width:1500px;margin:0 auto;padding:12px 24px 48px;display:grid;grid-template-columns:minmax(280px,360px) minmax(340px,1fr) minmax(340px,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){main{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.panel > h2{margin:0;padding:12px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.panel > h2 .sp{flex:1}
+.pad{padding:14px 16px}
+label.f{display:block;font-size:12.5px;color:var(--ink2);margin:0 0 4px}
+input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;border:1px solid var(--line);border-radius:4px;padding:7px 9px;background:var(--bg);color:var(--ink);font:inherit;font-size:13.5px}
+textarea{resize:vertical;line-height:1.5}
+textarea.code{font-size:12.5px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--fill);outline-offset:1px}
+.field{margin-bottom:10px}
+button{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:4px;font:inherit;font-size:13.5px;cursor:pointer}
+button.primary{background:var(--fill);border-color:var(--fill);color:#fff}
+button.sm{padding:3px 8px;font-size:12.5px}
+button.icon{padding:2px 7px;font-size:13px;line-height:1.4}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.err{color:var(--danger);font-size:12.5px;min-height:1.2em;margin-top:6px;white-space:pre-wrap}
+.ok{color:var(--ink2);font-size:12.5px;min-height:1.2em;margin-top:6px}
+.keyrow{display:flex;gap:6px}.keyrow input{flex:1}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);margin-top:6px}
+/* questions */
+.qlist{display:grid;gap:12px;padding:14px 16px}
+.q{border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:grid;gap:8px}
+.q .head{display:grid;grid-template-columns:1fr 120px auto;gap:8px;align-items:end}
+.q .head .id input{font-weight:600}
+.crit{display:grid;gap:6px}
+.crit .r{display:grid;grid-template-columns:minmax(90px,1fr) minmax(120px,2fr) auto;gap:6px;align-items:center}
+.crit .r.score{grid-template-columns:auto 1fr auto auto auto}
+.crit .n{color:var(--ink2);font-size:12.5px;min-width:3ch;text-align:right}
+.crit .lab{font-size:12px;color:var(--ink2)}
+.hint{font-size:12px;color:var(--ink2)}
+.tabs{display:flex;gap:2px;padding:8px 12px 0;border-bottom:1px solid var(--line)}
+.tabs button{border:1px solid transparent;border-bottom:none;border-radius:4px 4px 0 0;background:transparent;color:var(--ink2)}
+.tabs button.on{background:var(--panel);border-color:var(--line);color:var(--ink);margin-bottom:-1px}
+.tab{display:none}.tab.on{display:block}
+pre.json{margin:0;padding:14px 16px;font-size:12.5px;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto}
+/* results (from viewer) */
+.meta{display:flex;flex-wrap:wrap;gap:4px 20px;padding:12px 16px;border-bottom:1px solid var(--line);color:var(--ink2);font-size:12.5px}
+.meta b{color:var(--ink);font-weight:500}
+.answers{display:grid;gap:12px;padding:14px 16px}
+.ans{border:1px solid var(--line);border-radius:6px;padding:14px 16px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 20px}
+.ans h3{grid-column:1;margin:0;font-size:16px;font-weight:600}
+.ans .type{grid-column:2;grid-row:1;align-self:start;font-size:12px;color:var(--ink2);border:1px solid var(--line);border-radius:3px;padding:1px 7px}
+.ans .body{grid-column:1 / -1}
+.verdict{font-size:24px;font-weight:600;line-height:1.2;margin:2px 0 10px;letter-spacing:-.01em}
+.verdict small{font-size:13px;font-weight:400;color:var(--ink2);margin-left:10px}
+.bars{display:grid;grid-template-columns:max-content 1fr max-content;gap:6px 12px;align-items:center}
+.bars .k{font-size:13.5px}.bars .k.win{font-weight:600}
+.track{height:13px;background:var(--track);border-radius:3px;overflow:hidden;position:relative}
+.track > i{display:block;height:100%;background:var(--fill-soft);width:0;transition:width .35s ease}
+.track > i.win{background:var(--fill)}
+.bars .v{font-size:12.5px;color:var(--ink2);min-width:5ch;text-align:right}
+.scale{position:relative;height:38px;margin:6px 0 4px}
+.scale .line{position:absolute;left:0;right:0;top:12px;height:4px;background:var(--track);border-radius:2px}
+.scale .tick{position:absolute;top:8px;width:2px;height:12px;background:var(--line);transform:translateX(-1px)}
+.scale .tl{position:absolute;top:24px;font-size:11px;color:var(--ink2);transform:translateX(-50%);white-space:nowrap}
+.scale .pin{position:absolute;top:4px;width:14px;height:20px;background:var(--fill);border-radius:3px;transform:translateX(-50%);box-shadow:0 0 0 3px var(--panel)}
+.gauge{position:relative;height:18px;border-radius:3px;overflow:hidden;background:var(--noul-no)}
+.gauge > i{position:absolute;left:0;top:0;bottom:0;background:var(--fill);width:0;transition:width .35s ease}
+.gauge-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-top:4px}
+.conf{margin-top:12px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink2)}
+.conf .bar{flex:1;height:6px;background:var(--track);border-radius:3px;overflow:hidden}
+.conf .bar i{display:block;height:100%;background:var(--fill)}
+.conf.low .bar i{background:var(--warn)}.conf.low{color:var(--warn)}
+.flag{display:inline-block;background:var(--warn-soft);color:var(--warn);border-radius:3px;padding:0 6px;font-size:12px}
+.empty{padding:36px 16px;color:var(--ink2);text-align:center}
+details.raw{margin:0 16px 16px}details.raw summary{cursor:pointer;color:var(--ink2);font-size:12.5px}
+details.raw pre{margin:8px 0 0;font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:10px}
+@media (prefers-reduced-motion:reduce){.track>i,.gauge>i{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Jev ビルダー</h1>
+  <p>state を YAML で、質問を UI で組み立ててリクエスト JSON を生成し、そのまま実行して結果を確認します。</p>
+</header>
+<main>
+  <!-- ===== 左: 接続 + state ===== -->
+  <div style="display:grid;gap:16px">
+    <section class="panel">
+      <h2>接続</h2>
+      <div class="pad">
+        <div class="field"><label class="f" for="url">エンドポイントURL</label>
+          <input id="url" class="mono" type="url" value="https://openrouter.ai/api/alpha/decisions" spellcheck="false"></div>
+        <div class="field"><label class="f" for="model">model</label>
+          <input id="model" class="mono" type="text" value="typesafe/jev-1.13" spellcheck="false"></div>
+        <div class="field"><label class="f" for="key">APIキー</label>
+          <div class="keyrow"><input id="key" class="mono" type="password" placeholder="sk-or-v1-... / tsk-..." autocomplete="off" spellcheck="false"><button id="eye" type="button" class="sm">表示</button></div>
+          <label class="chk"><input id="savekey" type="checkbox"> このブラウザにキーを保存する</label></div>
+        <div class="row" style="margin-top:6px">
+          <button class="primary" id="run">実行する</button>
+          <label class="hint" style="margin-left:auto">警告しきい値 <input id="th" type="number" min="0" max="1" step="0.05" value="0.7" style="width:62px;margin-left:4px;padding:3px 6px;font-size:12.5px"></label>
+        </div>
+        <div class="err" id="runerr"></div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>state <span class="hint">YAML</span><span class="sp"></span><button class="sm" id="fmtyaml" title="整形">整形</button></h2>
+      <div class="pad">
+        <textarea id="yaml" class="mono code" rows="16" spellcheck="false"></textarea>
+        <div class="err" id="yamlerr"></div>
+        <div class="hint">トップレベルはマップ・配列・文字列のいずれでも可。質問側から <span class="mono">`field`</span> で参照できます。</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 中: 質問ビルダー ===== -->
+  <section class="panel">
+    <h2>questions <span class="sp"></span>
+      <button class="sm" id="add-noul">+ noul</button><button class="sm" id="add-choice">+ choice</button><button class="sm" id="add-score">+ score</button>
+    </h2>
+    <div class="qlist" id="qlist"></div>
+    <div class="pad" style="border-top:1px solid var(--line)">
+      <div class="row">
+        <button class="sm" id="loadsample">サンプルを読み込む</button>
+        <button class="sm" id="importjson">JSONから読み込む</button>
+        <button class="sm danger" id="clearall" style="margin-left:auto">全部消す</button>
+      </div>
+      <textarea id="importbox" class="mono code" rows="5" placeholder="既存のリクエストJSON（model/state/questions）を貼って「JSONから読み込む」" style="margin-top:8px;display:none"></textarea>
+    </div>
+  </section>
+
+  <!-- ===== 右: JSON / 結果 ===== -->
+  <section class="panel">
+    <div class="tabs">
+      <button class="on" data-tab="json">リクエストJSON</button>
+      <button data-tab="result">結果</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="sm" id="copyjson" style="margin-bottom:6px">コピー</button>
+    </div>
+    <div class="tab on" id="tab-json"><pre class="json mono" id="jsonout"></pre><div class="err" id="jsonerr" style="padding:0 16px 12px"></div></div>
+    <div class="tab" id="tab-result"><div id="out"><div class="empty">「実行する」を押すとここに結果が表示されます。</div></div></div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct = v => (v*100).toFixed(v*100 >= 10 || v === 0 ? 0 : 1) + '%';
+const LS = { get:k=>{try{return localStorage.getItem(k)}catch{return null}}, set:(k,v)=>{try{localStorage.setItem(k,v)}catch{}}, del:k=>{try{localStorage.removeItem(k)}catch{}} };
+
+// ---------- サンプル ----------
+const SAMPLE_YAML = `channel: email
+customer_tier: enterprise
+message: |
+  先週から出荷データのEDI連携が全件エラーになっています。
+  月末締めに間に合わないので至急対応をお願いします。
+`;
+const SAMPLE_Q = [
+  { id:'is_urgent', type:'noul', instructions:'Does `message` require urgent attention?',
+    t:'Explicit deadline, outage, or business-blocking issue', f:'Routine question with no time pressure' },
+  { id:'department', type:'choice', instructions:'Which team should handle `message`?',
+    options:[ {k:'billing',d:'Invoices, payments, refunds'}, {k:'technical',d:'Bugs, outages, integrations, EDI'}, {k:'sales',d:'Pricing, upgrades, new contracts'}, {k:'other',d:''} ] },
+  { id:'severity', type:'score', instructions:'How severe is the business impact described in `message`?',
+    levels:['No impact','Minor inconvenience','Partial outage','Full outage / blocked'] },
+];
+
+// ---------- 質問モデル ----------
+let questions = [];
+const newQ = type => ({ id: uniqueId(type), type, instructions:'',
+  t:'', f:'', options:[{k:'',d:''},{k:'',d:''}], levels:['',''] });
+function uniqueId(base){ let i=1, id=base; while (questions.some(q=>q.id===id)) id = `${base}_${++i}`; return id; }
+
+function renderQuestions(){
+  const list = $('#qlist');
+  if (!questions.length){ list.innerHTML = '<div class="empty">上の「+ noul / + choice / + score」で質問を追加してください。</div>'; return; }
+  list.innerHTML = questions.map((q,i) => `
+  <article class="q" data-i="${i}">
+    <div class="head">
+      <div class="id"><label class="f">質問ID（回答キー）</label><input class="mono" data-f="id" value="${esc(q.id)}" spellcheck="false"></div>
+      <div><label class="f">type</label>
+        <select data-f="type"><option ${q.type==='noul'?'selected':''}>noul</option><option ${q.type==='choice'?'selected':''}>choice</option><option ${q.type==='score'?'selected':''}>score</option></select></div>
+      <div class="row" style="gap:4px">
+        <button class="icon" data-act="up" title="上へ" ${i===0?'disabled':''}>↑</button>
+        <button class="icon" data-act="down" title="下へ" ${i===questions.length-1?'disabled':''}>↓</button>
+        <button class="icon danger" data-act="del" title="削除">✕</button>
+      </div>
+    </div>
+    <div><label class="f">instructions <span class="hint">英語推奨。state のフィールドは \`name\` で参照</span></label>
+      <textarea data-f="instructions" rows="2">${esc(q.instructions)}</textarea></div>
+    ${renderCriteria(q)}
+  </article>`).join('');
+}
+
+function renderCriteria(q){
+  if (q.type==='noul') return `
+    <div class="crit"><div class="lab">criteria（任意）— true / false それぞれの条件</div>
+      <div class="r" style="grid-template-columns:auto 1fr"><span class="n mono">true</span><input data-f="t" value="${esc(q.t)}" placeholder="この条件なら「はい」"></div>
+      <div class="r" style="grid-template-columns:auto 1fr"><span class="n mono">false</span><input data-f="f" value="${esc(q.f)}" placeholder="この条件なら「いいえ」"></div>
+    </div>`;
+  if (q.type==='choice') return `
+    <div class="crit"><div class="lab">criteria — 選択肢（キー）と説明。説明が空なら null。最大255</div>
+      ${q.options.map((o,j)=>`<div class="r"><input class="mono" data-f="ok" data-j="${j}" value="${esc(o.k)}" placeholder="key"><input data-f="od" data-j="${j}" value="${esc(o.d)}" placeholder="説明（任意）"><button class="icon danger" data-act="odel" data-j="${j}" ${q.options.length<=2?'disabled':''}>✕</button></div>`).join('')}
+      <div><button class="sm" data-act="oadd">+ 選択肢</button></div>
+    </div>`;
+  return `
+    <div class="crit"><div class="lab">criteria — 段階を低い順に。2〜10段階</div>
+      ${q.levels.map((l,j)=>`<div class="r score"><span class="n mono">${j}</span><input data-f="lv" data-j="${j}" value="${esc(l)}" placeholder="段階 ${j} の説明"><button class="icon" data-act="lup" data-j="${j}" ${j===0?'disabled':''}>↑</button><button class="icon" data-act="ldown" data-j="${j}" ${j===q.levels.length-1?'disabled':''}>↓</button><button class="icon danger" data-act="ldel" data-j="${j}" ${q.levels.length<=2?'disabled':''}>✕</button></div>`).join('')}
+      <div><button class="sm" data-act="ladd" ${q.levels.length>=10?'disabled':''}>+ 段階</button></div>
+    </div>`;
+}
+
+$('#qlist').addEventListener('input', e => {
+  const art = e.target.closest('.q'); if (!art) return;
+  const q = questions[+art.dataset.i], f = e.target.dataset.f, j = +e.target.dataset.j;
+  if (f==='id') q.id = e.target.value.trim();
+  else if (f==='instructions') q.instructions = e.target.value;
+  else if (f==='t') q.t = e.target.value; else if (f==='f') q.f = e.target.value;
+  else if (f==='ok') q.options[j].k = e.target.value.trim(); else if (f==='od') q.options[j].d = e.target.value;
+  else if (f==='lv') q.levels[j] = e.target.value;
+  buildJSON();
+});
+$('#qlist').addEventListener('change', e => {
+  const art = e.target.closest('.q'); if (!art) return;
+  if (e.target.dataset.f==='type'){ questions[+art.dataset.i].type = e.target.value; renderQuestions(); buildJSON(); }
+});
+$('#qlist').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const art = b.closest('.q'), i = +art.dataset.i, q = questions[i], j = +b.dataset.j, a = b.dataset.act;
+  const swap = (arr,x,y)=>{ [arr[x],arr[y]]=[arr[y],arr[x]]; };
+  if (a==='del') questions.splice(i,1);
+  else if (a==='up') swap(questions,i,i-1); else if (a==='down') swap(questions,i,i+1);
+  else if (a==='oadd') q.options.push({k:'',d:''}); else if (a==='odel') q.options.splice(j,1);
+  else if (a==='ladd') q.levels.push(''); else if (a==='ldel') q.levels.splice(j,1);
+  else if (a==='lup') swap(q.levels,j,j-1); else if (a==='ldown') swap(q.levels,j,j+1);
+  renderQuestions(); buildJSON();
+  if (a==='oadd' || a==='ladd'){ const inputs = $('#qlist').querySelectorAll(`.q[data-i="${i}"] .crit input`); const last = a==='oadd' ? inputs[inputs.length-2] : inputs[inputs.length-1]; last && last.focus(); }
+});
+['noul','choice','score'].forEach(t => $('#add-'+t).addEventListener('click', () => { questions.push(newQ(t)); renderQuestions(); buildJSON(); const arts=$('#qlist').querySelectorAll('.q'); arts[arts.length-1].querySelector('input[data-f=id]').focus(); }));
+
+// ---------- JSON 組み立て ----------
+function parseState(){
+  const y = $('#yaml').value;
+  if (!y.trim()) return { state: undefined, err: 'state が空です' };
+  try { return { state: jsyaml.load(y), err: null }; }
+  catch(e){ return { state: undefined, err: 'YAML: ' + e.message }; }
+}
+function buildQuestions(){
+  const out = {}, errs = [];
+  questions.forEach((q, i) => {
+    const label = q.id || `#${i+1}`;
+    if (!q.id) errs.push(`#${i+1}: 質問IDが空です`);
+    if (q.id && out[q.id] !== undefined) errs.push(`${label}: 質問IDが重複しています`);
+    if (!q.instructions.trim()) errs.push(`${label}: instructions が空です`);
+    const item = { type: q.type, instructions: q.instructions };
+    if (q.type==='noul'){ if (q.t.trim() || q.f.trim()) item.criteria = { true: q.t, false: q.f }; }
+    else if (q.type==='choice'){
+      const c = {}; q.options.forEach(o => { if (!o.k) return; if (c[o.k] !== undefined) errs.push(`${label}: 選択肢 "${o.k}" が重複`); c[o.k] = o.d.trim() ? o.d : null; });
+      if (Object.keys(c).length < 2) errs.push(`${label}: 選択肢は2つ以上必要です`);
+      if (Object.keys(c).length > 255) errs.push(`${label}: 選択肢は255以下`);
+      item.criteria = c;
+    } else {
+      const lv = q.levels.map(s=>s.trim());
+      if (lv.some(s=>!s)) errs.push(`${label}: 空の段階があります`);
+      if (lv.length < 2 || lv.length > 10) errs.push(`${label}: 段階は2〜10`);
+      item.criteria = lv;
+    }
+    out[q.id || `_${i+1}`] = item;
+  });
+  if (!questions.length) errs.push('質問がありません');
+  return { questions: out, errs };
+}
+let currentRequest = null;
+function buildJSON(){
+  const { state, err: yerr } = parseState();
+  $('#yamlerr').textContent = yerr || '';
+  const { questions: qs, errs } = buildQuestions();
+  const req = { model: $('#model').value.trim(), state, questions: qs };
+  $('#jsonout').textContent = JSON.stringify(req, null, 2);
+  const all = [yerr, ...errs].filter(Boolean);
+  $('#jsonerr').textContent = all.join('\n');
+  currentRequest = all.length ? null : req;
+  $('#run').disabled = !currentRequest;
+  persist();
+}
+$('#yaml').addEventListener('input', buildJSON);
+$('#model').addEventListener('input', buildJSON);
+$('#fmtyaml').addEventListener('click', () => { const {state,err}=parseState(); if(!err && state!==undefined){ $('#yaml').value = jsyaml.dump(state,{lineWidth:120}); buildJSON(); } });
+$('#copyjson').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#jsonout').textContent); $('#copyjson').textContent='コピー済'; setTimeout(()=>$('#copyjson').textContent='コピー',1200); } catch{} });
+
+// ---------- import / sample / clear ----------
+function fromRequest(req){
+  if (req.model) $('#model').value = req.model;
+  if (req.state !== undefined) $('#yaml').value = typeof req.state === 'string' ? req.state : jsyaml.dump(req.state,{lineWidth:120});
+  questions = Object.entries(req.questions || {}).map(([id, q]) => {
+    const base = { id, type: q.type, instructions: q.instructions ?? '', t:'', f:'', options:[{k:'',d:''},{k:'',d:''}], levels:['',''] };
+    if (q.type==='noul' && q.criteria) { base.t = q.criteria.true ?? ''; base.f = q.criteria.false ?? ''; }
+    if (q.type==='choice') base.options = Object.entries(q.criteria||{}).map(([k,d])=>({k, d: d ?? ''}));
+    if (q.type==='score') base.levels = Array.isArray(q.criteria) ? q.criteria.slice() : Object.values(q.criteria||{});
+    return base;
+  });
+  renderQuestions(); buildJSON();
+}
+$('#loadsample').addEventListener('click', () => { $('#yaml').value = SAMPLE_YAML; questions = JSON.parse(JSON.stringify(SAMPLE_Q)); renderQuestions(); buildJSON(); });
+$('#importjson').addEventListener('click', () => {
+  const box = $('#importbox');
+  if (box.style.display==='none'){ box.style.display='block'; box.focus(); $('#importjson').textContent='読み込む'; return; }
+  try { fromRequest(JSON.parse(box.value)); box.value=''; box.style.display='none'; $('#importjson').textContent='JSONから読み込む'; }
+  catch(e){ $('#jsonerr').textContent = 'JSONとして読めません: ' + e.message; }
+});
+$('#clearall').addEventListener('click', () => { if (confirm('state と質問をすべて消しますか？')) { $('#yaml').value=''; questions=[]; renderQuestions(); buildJSON(); } });
+
+// ---------- 実行 ----------
+async function run(){
+  const err = $('#runerr'), btn = $('#run'); err.textContent = '';
+  if (!currentRequest){ err.textContent = 'リクエストにエラーがあります。右のJSONタブを確認してください。'; return; }
+  const url = $('#url').value.trim(), key = $('#key').value.trim();
+  if (!url || !key){ err.textContent = 'エンドポイントURLとAPIキーを入れてください。'; return; }
+  btn.disabled = true; btn.textContent = '実行中…';
+  const t0 = performance.now();
+  try {
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), {name:'AbortError'})), 15000));
+    const resp = await Promise.race([ fetch(url, { method:'POST', headers:{ 'Authorization':'Bearer '+key, 'Content-Type':'application/json' }, body: JSON.stringify(currentRequest) }), timeout ]);
+    const ms = performance.now() - t0;
+    const text = await resp.text();
+    let data; try { data = JSON.parse(text); } catch { data = null; }
+    showTab('result');
+    if (!resp.ok){
+      err.textContent = `HTTP ${resp.status}: ` + (data?.error?.message || data?.detail || text.slice(0,300));
+      $('#out').innerHTML = `<details class="raw" open style="margin-top:16px"><summary>エラーレスポンス</summary><pre class="mono">${esc(data ? JSON.stringify(data,null,2) : text)}</pre></details>`;
+      return;
+    }
+    if (!data){ err.textContent = 'レスポンスがJSONではありません: ' + text.slice(0,200); return; }
+    renderResult(data, ms);
+  } catch(e){
+    err.textContent = e.name==='AbortError' ? '15秒でタイムアウトしました。' : '通信に失敗しました: ' + e.message + '（CORSで拒否された場合はブラウザのコンソールを確認）';
+  } finally { btn.disabled = !currentRequest; btn.textContent = '実行する'; }
+}
+$('#run').addEventListener('click', run);
+document.addEventListener('keydown', e => { if ((e.metaKey||e.ctrlKey) && e.key==='Enter') run(); });
+
+// ---------- 結果描画 ----------
+let lastData = null, lastMs = null;
+function confBlock(c, th){
+  if (typeof c !== 'number') return '';
+  const low = c < th;
+  return `<div class="conf ${low?'low':''}"><span>確信度 ${c.toFixed(2)}</span><div class="bar"><i style="width:${c*100}%"></i></div>${low?'<span class="flag">しきい値未満 — 人の確認を推奨</span>':''}</div>`;
+}
+function renderNoul(a){
+  const p = a.noul, yes = p >= 0.5;
+  const strength = Math.abs(p-0.5) < 0.15 ? '判断が割れています' : (yes ? 'はい' : 'いいえ');
+  return `<div class="verdict">${esc(strength)}<small>P(yes) = ${p.toFixed(2)}</small></div><div class="gauge"><i style="width:${p*100}%"></i></div><div class="gauge-labels"><span>いいえ 0</span><span>0.5</span><span>1 はい</span></div>`;
+}
+function renderChoice(a, th){
+  const probs = Object.entries(a.probabilities || {}).sort((x,y)=>y[1]-x[1]);
+  const rows = probs.map(([k,v]) => `<span class="k ${k===a.choice?'win':''}">${esc(k)}</span><div class="track"><i class="${k===a.choice?'win':''}" style="width:${v*100}%"></i></div><span class="v mono">${pct(v)}</span>`).join('');
+  return `<div class="verdict">${esc(a.choice)}<small>${probs.length} 択</small></div><div class="bars">${rows}</div>${confBlock(a.confidence, th)}`;
+}
+function renderScore(a, th){
+  const legend = a.legend || {}, levels = Object.keys(legend).map(Number).sort((x,y)=>x-y), max = levels.length-1;
+  const pos = v => max === 0 ? 50 : (v/max)*100;
+  const nearest = levels.reduce((b,l)=>Math.abs(l-a.score)<Math.abs(b-a.score)?l:b, levels[0]);
+  const ticks = levels.map(l=>`<span class="tick" style="left:${pos(l)}%"></span><span class="tl" style="left:${pos(l)}%">${l} ${esc(legend[l])}</span>`).join('');
+  const rows = levels.map(l => { const v = (a.probabilities||{})[String(l)] ?? 0;
+    return `<span class="k ${l===nearest?'win':''}">${l}. ${esc(legend[l])}</span><div class="track"><i class="${l===nearest?'win':''}" style="width:${v*100}%"></i></div><span class="v mono">${pct(v)}</span>`; }).join('');
+  return `<div class="verdict">${a.score.toFixed(2)}<small>0〜${max}、最も近い段階は「${esc(legend[nearest])}」</small></div><div class="scale"><div class="line"></div>${ticks}<span class="pin" style="left:${pos(a.score)}%"></span></div><div class="bars" style="margin-top:22px">${rows}</div>${confBlock(a.confidence, th)}`;
+}
+function renderResult(data = lastData, ms = lastMs){
+  if (!data) return; lastData = data; lastMs = ms;
+  const th = parseFloat($('#th').value) || 0, u = data.usage || {};
+  const meta = [['モデル',data.model],['プロバイダ',data.provider],['入力トークン',u.input_tokens],['出力トークン',u.output_tokens],
+    ['コスト', typeof u.cost==='number' ? '$'+u.cost.toFixed(6) : undefined],['往復時間', typeof ms==='number' ? Math.round(ms)+' ms' : undefined],['ID',data.id]]
+    .filter(([,v])=>v!==undefined).map(([k,v])=>`<span>${k} <b class="mono">${esc(v)}</b></span>`).join('');
+  const cards = Object.entries(data.answers || {}).map(([id,a]) => {
+    let body;
+    try { body = a.type==='noul' ? renderNoul(a) : a.type==='choice' ? renderChoice(a,th) : a.type==='score' ? renderScore(a,th) : `<pre class="mono" style="margin:0;white-space:pre-wrap">${esc(JSON.stringify(a,null,2))}</pre>`; }
+    catch { body = '<span class="flag">この回答の形式を解釈できません</span>'; }
+    return `<article class="ans"><h3 class="mono">${esc(id)}</h3><span class="type mono">${esc(a.type||'?')}</span><div class="body">${body}</div></article>`;
+  }).join('');
+  $('#out').innerHTML = `<div class="meta">${meta}</div><div class="answers">${cards}</div><details class="raw"><summary>生のレスポンスJSON</summary><pre class="mono">${esc(JSON.stringify(data,null,2))}</pre></details>`;
+}
+$('#th').addEventListener('change', () => renderResult());
+
+// ---------- タブ / キー表示 / 保存 ----------
+function showTab(name){ document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.classList.toggle('on', b.dataset.tab===name)); document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.id==='tab-'+name)); }
+document.querySelectorAll('.tabs button[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+$('#eye').addEventListener('click', () => { const k=$('#key'); k.type = k.type==='password' ? 'text' : 'password'; $('#eye').textContent = k.type==='password' ? '表示' : '隠す'; });
+
+function persist(){ LS.set('jevb-yaml', $('#yaml').value); LS.set('jevb-q', JSON.stringify(questions)); LS.set('jevb-model', $('#model').value); LS.set('jevb-url', $('#url').value); }
+const syncKey = () => { if ($('#savekey').checked) LS.set('jevb-key', $('#key').value); else LS.del('jevb-key'); };
+$('#key').addEventListener('input', syncKey); $('#savekey').addEventListener('change', syncKey);
+$('#url').addEventListener('input', persist);
+
+(function init(){
+  if (LS.get('jevb-url')) $('#url').value = LS.get('jevb-url');
+  if (LS.get('jevb-model')) $('#model').value = LS.get('jevb-model');
+  if (LS.get('jevb-key')) { $('#key').value = LS.get('jevb-key'); $('#savekey').checked = true; }
+  const y = LS.get('jevb-yaml'), q = LS.get('jevb-q');
+  if (y !== null || q){ $('#yaml').value = y || ''; try { questions = JSON.parse(q||'[]'); } catch { questions = []; } }
+  else { $('#yaml').value = SAMPLE_YAML; questions = JSON.parse(JSON.stringify(SAMPLE_Q)); }
+  if (typeof jsyaml === 'undefined'){ $('#yamlerr').textContent = 'js-yaml の読み込みに失敗しました（オフライン？）。YAML を解釈できません。'; }
+  renderQuestions(); buildJSON();
+})();
+</script>
+</body>
+</html>
