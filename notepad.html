@@ -2258,9 +2258,13 @@ async function openFolderPicker() {
   }
 }
 
-function clearCurrentBody() {
+async function clearCurrentBody() {
   var note = getActiveNote();
   if (!note || !editor) return;
+
+  var ok = await appConfirm('本文をクリアしますか？', '本文クリア', 'クリアする', 'キャンセル', true);
+  if (!ok) return;
+
   note.model.setValue('');
   renderPreview();
   if (isFileMode) {
